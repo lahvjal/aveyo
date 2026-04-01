@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ava AI Integration Template</title>
+    
+    <!-- Include Ava authenticated embed script -->
+    <script src="https://ava-ai-chatbot.vercel.app/embed/ava-auth-embed.js"></script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .user-info {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-danger { background: #dc3545; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
+        .status {
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 5px;
+            background: #e9ecef;
+        }
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+        pre {
+            margin: 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Ava AI Integration Template</h1>
+    
+    <p>This template demonstrates how to integrate the Ava AI authenticated chatbot into your website.</p>
+    
+    <!-- Simulate user login state -->
+    <div class="user-info">
+        <h3>Simulated User Session</h3>
+        <p><strong>Email:</strong> <span id="user-email">john.doe@example.com</span></p>
+        <p><strong>Name:</strong> <span id="user-name">John Doe</span></p>
+        <p><strong>User ID:</strong> <span id="user-id">user_123</span></p>
+        <p><strong>Status:</strong> <span id="login-status">Logged Out</span></p>
+    </div>
+    
+    <!-- Control buttons -->
+    <div class="controls">
+        <button class="btn-primary" onclick="simulateLogin()">Simulate Login</button>
+        <button class="btn-danger" onclick="simulateLogout()">Simulate Logout</button>
+        <button class="btn-success" onclick="openAvaChat()">Open Ava Chat</button>
+        <button class="btn-secondary" onclick="closeAvaChat()">Close Ava Chat</button>
+    </div>
+    
+    <!-- Status display -->
+    <div class="status">
+        <h4>Integration Status</h4>
+        <p><strong>Script Loaded:</strong> <span id="script-status">Checking...</span></p>
+        <p><strong>Session Set:</strong> <span id="session-status">No</span></p>
+        <p><strong>Widget Open:</strong> <span id="widget-status">No</span></p>
+    </div>
+    
+    <!-- Integration code example -->
+    <div class="code-block">
+        <h4>Your Integration Code</h4>
+        <pre><code>&lt;!-- 1. Include the Ava script --&gt;
+&lt;script src="https://ava-ai-chatbot.vercel.app/embed/ava-auth-embed.js"&gt;&lt;/script&gt;
+
+&lt;script&gt;
+// 2. When user logs in to your website
+function onUserLogin(userData) {
+    if (window.AvaAuth) {
+        window.AvaAuth.setSession({
+            email: userData.email,        // Required
+            userId: userData.id,          // Your internal user ID
+            name: userData.fullName,      // User's display name
+            token: userData.authToken,    // Your auth token (optional)
+            customData: {                 // Any additional data
+                accountType: userData.accountType,
+                subscriptionPlan: userData.plan
+            }
+        });
+    }
+}
+
+// 3. When user logs out
+function onUserLogout() {
+    if (window.AvaAuth) {
+        window.AvaAuth.clearSession();
+    }
+}
+&lt;/script&gt;</code></pre>
+    </div>
+    
+    <div class="code-block">
+        <h4>Platform-Specific Examples</h4>
+        <h5>WordPress (PHP)</h5>
+        <pre><code>&lt;?php if (is_user_logged_in()): ?&gt;
+&lt;script&gt;
+window.AvaAuth.setSession({
+    email: '&lt;?php echo wp_get_current_user()-&gt;user_email; ?&gt;',
+    userId: '&lt;?php echo get_current_user_id(); ?&gt;',
+    name: '&lt;?php echo wp_get_current_user()-&gt;display_name; ?&gt;'
+});
+&lt;/script&gt;
+&lt;?php endif; ?&gt;</code></pre>
+        
+        <h5>React/JavaScript</h5>
+        <pre><code>// After user login
+const userData = await loginUser(credentials);
+if (userData && window.AvaAuth) {
+    window.AvaAuth.setSession({
+        email: userData.email,
+        userId: userData.id,
+        name: userData.name,
+        token: userData.accessToken
+    });
+}</code></pre>
+    </div>
+    
+    <script>
+        // Simulated user data
+        const mockUser = {
+            email: 'john.doe@example.com',
+            id: 'user_123',
+            name: 'John Doe',
+            token: 'mock_token_12345',
+            accountType: 'premium',
+            plan: 'residential'
+        };
+        
+        let isLoggedIn = false;
+        
+        // Check if Ava script is loaded
+        function checkScriptStatus() {
+            const scriptLoaded = !!window.AvaAuth;
+            document.getElementById('script-status').textContent = scriptLoaded ? 'Yes' : 'No';
+            
+            if (scriptLoaded) {
+                updateStatus();
+            } else {
+                setTimeout(checkScriptStatus, 100);
+            }
+        }
+        
+        // Update status display
+        function updateStatus() {
+            if (window.AvaAuth) {
+                const session = window.AvaAuth.getSession();
+                const isOpen = window.AvaAuth.isOpen();
+                
+                document.getElementById('session-status').textContent = session ? 'Yes' : 'No';
+                document.getElementById('widget-status').textContent = isOpen ? 'Yes' : 'No';
+            }
+        }
+        
+        // Simulate user login
+        function simulateLogin() {
+            isLoggedIn = true;
+            document.getElementById('login-status').textContent = 'Logged In';
+            
+            // Set Ava session
+            if (window.AvaAuth) {
+                window.AvaAuth.setSession({
+                    email: mockUser.email,
+                    userId: mockUser.id,
+                    name: mockUser.name,
+                    token: mockUser.token,
+                    customData: {
+                        accountType: mockUser.accountType,
+                        plan: mockUser.plan,
+                        loginTime: new Date().toISOString()
+                    }
+                });
+                
+                console.log('Ava session set:', window.AvaAuth.getSession());
+                updateStatus();
+            }
+        }
+        
+        // Simulate user logout
+        function simulateLogout() {
+            isLoggedIn = false;
+            document.getElementById('login-status').textContent = 'Logged Out';
+            
+            // Clear Ava session
+            if (window.AvaAuth) {
+                window.AvaAuth.clearSession();
+                console.log('Ava session cleared');
+                updateStatus();
+            }
+        }
+        
+        // Open Ava chat
+        function openAvaChat() {
+            if (window.AvaAuth) {
+                window.AvaAuth.open();
+                setTimeout(updateStatus, 100);
+            }
+        }
+        
+        // Close Ava chat
+        function closeAvaChat() {
+            if (window.AvaAuth) {
+                window.AvaAuth.close();
+                setTimeout(updateStatus, 100);
+            }
+        }
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkScriptStatus();
+            
+            // Update status every 2 seconds
+            setInterval(updateStatus, 2000);
+        });
+        
+        // Log Ava events for debugging
+        window.addEventListener('message', function(event) {
+            if (event.origin === 'https://ava-ai-chatbot.vercel.app') {
+                console.log('Ava message:', event.data);
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+{
+  "name": "app-aveyo-com",
+  "version": "0.2.0",
+  "private": true,
+  "description": "app.aveyo.com dashboard and platform orchestration",
+  "scripts": {
+    "dev": "next dev -p 4004",
+    "build": "next build",
+    "start": "next start -p 4004",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "echo \"No TypeScript sources in app-aveyo-com\"",
+    "test": "echo \"No tests configured for app-aveyo-com\"",
+    "orchestration:dev": "pnpm --dir ../.. exec turbo run dev --filter=app-aveyo-com --filter=ava-aveyo-com --filter=api-aveyo-com --filter=auth-aveyo-com --filter=org-aveyo-com --filter=kpi-aveyo-com --parallel",
+    "orchestration:build": "pnpm --dir ../.. exec turbo run build --filter=app-aveyo-com --filter=ava-aveyo-com --filter=api-aveyo-com --filter=auth-aveyo-com --filter=org-aveyo-com --filter=kpi-aveyo-com",
+    "orchestration:lint": "pnpm --dir ../.. exec turbo run lint --filter=app-aveyo-com --filter=ava-aveyo-com --filter=api-aveyo-com --filter=auth-aveyo-com --filter=org-aveyo-com --filter=kpi-aveyo-com",
+    "orchestration:typecheck": "pnpm --dir ../.. exec turbo run typecheck --filter=app-aveyo-com --filter=ava-aveyo-com --filter=api-aveyo-com --filter=auth-aveyo-com --filter=org-aveyo-com --filter=kpi-aveyo-com",
+    "orchestration:dev:api": "pnpm --filter api-aveyo-com run dev",
+    "orchestration:build:api": "pnpm --filter api-aveyo-com run build",
+    "orchestration:lint:api": "pnpm --filter api-aveyo-com run lint",
+    "orchestration:typecheck:api": "pnpm --filter api-aveyo-com run typecheck",
+    "supabase:projects:provision": "bash scripts/supabase/provision-projects.sh",
+    "supabase:migrations:check-source": "node scripts/supabase/check-migration-source.mjs",
+    "supabase:migrate:dev": "bash scripts/supabase/migrate-env.sh dev",
+    "supabase:migrate:staging": "bash scripts/supabase/migrate-env.sh staging",
+    "supabase:migrate:prod": "bash scripts/supabase/migrate-env.sh prod",
+    "supabase:migrate:ordered": "bash scripts/supabase/migrate-sequential.sh",
+    "supabase:seed:dev": "bash scripts/supabase/seed-env.sh dev",
+    "supabase:seed:staging": "bash scripts/supabase/seed-env.sh staging",
+    "supabase:smoke:dev": "node scripts/supabase/smoke-nonprod.mjs dev",
+    "supabase:smoke:staging": "node scripts/supabase/smoke-nonprod.mjs staging",
+    "supabase:seed-and-smoke:nonprod": "bash scripts/supabase/seed-and-smoke-nonprod.sh all",
+    "supabase:env:check": "node scripts/supabase/check-env-secrets.mjs",
+    "supabase:auth:callbacks:dev": "pnpm --filter auth-aveyo-com run supabase:auth:callbacks:dev --",
+    "supabase:auth:callbacks:staging": "pnpm --filter auth-aveyo-com run supabase:auth:callbacks:staging --",
+    "supabase:auth:callbacks:prod": "pnpm --filter auth-aveyo-com run supabase:auth:callbacks:prod --",
+    "supabase:auth:verify:dev": "pnpm --filter auth-aveyo-com run supabase:auth:verify:dev",
+    "supabase:auth:verify:staging": "pnpm --filter auth-aveyo-com run supabase:auth:verify:staging",
+    "supabase:auth:verify:prod": "pnpm --filter auth-aveyo-com run supabase:auth:verify:prod",
+    "supabase:session:verify": "pnpm --filter auth-aveyo-com run supabase:session:verify"
+  },
+  "dependencies": {
+    "@ava/config": "workspace:*",
+    "@ava/ui": "workspace:*",
+    "next": "^16.1.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.1.6"
+  }
+}

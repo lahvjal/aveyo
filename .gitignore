@@ -1,0 +1,29 @@
+.DS_Store
+*.log
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build and cache output
+.next/
+**/.next/
+.turbo/
+**/.turbo/
+dist/
+coverage/
+*.tsbuildinfo
+**/.temp/
+
+# Vercel local files
+.vercel/
+**/.vercel/
+
+# Environment files
+.env
+.env.*
+
+# Local oversized source videos (GitHub hard-limit guard)
+apps/aveyo.com/public/video/hero-vid.mp4
+apps/aveyo.com/public/video/Aveyo.com#2.mp4
+apps/aveyo.com/public/video/Aveyo.com#3.mp4

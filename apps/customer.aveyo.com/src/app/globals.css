@@ -1,0 +1,59 @@
+@import "tailwindcss";
+@import "../styles/brand-colors.css";
+
+/* Telegraf Font Family */
+@font-face {
+  font-family: "PPTelegraf";
+  src: local("PP Telegraf"), local("PPTelegraf");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "PPTelegraf";
+  src: local("PP Telegraf Italic"), local("PPTelegraf-Italic");
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #212121; /* Updated to brand dark color */
+  --font-telegraf:
+    "PPTelegraf",
+    "PP Telegraf",
+    "Telegraf",
+    "Inter",
+    "Segoe UI",
+    sans-serif;
+  
+  /* Brand colors */
+  --brand-dark: #212121;
+  --brand-white: #FFFFFF;
+  --brand-light-blue: #D9E8F6;
+  --brand-blue: #0F62DE;
+}
+
+/* Global theme variables */
+:root {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-telegraf);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--gradient-page-bg, var(--background));
+  color: var(--foreground);
+  font-family: var(--font-telegraf), Arial, Helvetica, sans-serif;
+  min-height: 100vh;
+}

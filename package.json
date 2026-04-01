@@ -1,0 +1,22 @@
+{
+  "name": "monoveyo",
+  "private": true,
+  "packageManager": "pnpm@10.33.0",
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "orchestrate:dev": "pnpm --filter app-aveyo-com run orchestration:dev",
+    "orchestrate:build": "pnpm --filter app-aveyo-com run orchestration:build",
+    "orchestrate:lint": "pnpm --filter app-aveyo-com run orchestration:lint",
+    "orchestrate:typecheck": "pnpm --filter app-aveyo-com run orchestration:typecheck",
+    "supabase:migrate:ordered": "pnpm --filter app-aveyo-com run supabase:migrate:ordered",
+    "supabase:seed-and-smoke:nonprod": "pnpm --filter app-aveyo-com run supabase:seed-and-smoke:nonprod",
+    "supabase:session:verify": "pnpm --filter app-aveyo-com run supabase:session:verify"
+  },
+  "devDependencies": {
+    "turbo": "^2.9.3"
+  }
+}

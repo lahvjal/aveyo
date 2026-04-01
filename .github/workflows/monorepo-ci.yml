@@ -1,0 +1,225 @@
+name: Monorepo CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - staging
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      org: ${{ steps.filter.outputs.org }}
+      customer: ${{ steps.filter.outputs.customer }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            org:
+              - 'apps/org.aveyo.com/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - '.github/workflows/monorepo-ci.yml'
+            customer:
+              - 'apps/customer.aveyo.com/**'
+              - 'packages/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'turbo.json'
+              - '.github/workflows/monorepo-ci.yml'
+
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm run lint
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: Test
+        run: pnpm run test
+
+      - name: Build
+        run: pnpm run build
+
+  org-authz-tests:
+    needs:
+      - changes
+      - verify
+    if: needs.changes.outputs.org == 'true'
+    runs-on: ubuntu-latest
+    env:
+      # Test-only placeholders so auth modules can initialize in CI.
+      VITE_SUPABASE_URL: https://example.supabase.co
+      VITE_SUPABASE_ANON_KEY: test-anon-key
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: test-anon-key
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run org authz app tests
+        run: pnpm --filter org-aveyo-com run test
+
+  org-sql-authz-tests:
+    needs:
+      - changes
+      - verify
+    if: needs.changes.outputs.org == 'true'
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PGCONNECT_TIMEOUT: 10
+    steps:
+      - name: Check DATABASE_URL availability
+        id: sql-authz-gate
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "run_sql_authz=false" >> "$GITHUB_OUTPUT"
+            echo "DATABASE_URL is not set; SQL authz checks will be skipped."
+          else
+            echo "run_sql_authz=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
+        uses: actions/checkout@v4
+
+      - name: Install psql client
+        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Setup pnpm
+        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Run SQL authz checks
+        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
+        run: pnpm --filter org-aveyo-com run test:sql-authz
+
+  customer-quality:
+    needs:
+      - changes
+      - verify
+    if: needs.changes.outputs.customer == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint customer app
+        run: pnpm --filter customer-aveyo-com run lint
+
+      - name: Typecheck customer app
+        run: pnpm --filter customer-aveyo-com run typecheck
+
+      - name: Build customer app
+        run: pnpm --filter customer-aveyo-com run build
+
+  deploy-customer-staging:
+    needs:
+      - changes
+      - customer-quality
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging' && needs.changes.outputs.customer == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy customer staging
+        uses: amondnet/vercel-action@v20
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_STAGING }}
+          vercel-args: "--prod"
+          working-directory: ./apps/customer.aveyo.com
+
+  deploy-customer-production:
+    needs:
+      - changes
+      - customer-quality
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.customer == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deploy customer production
+        uses: amondnet/vercel-action@v20
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_PRODUCTION }}
+          vercel-args: "--prod"
+          working-directory: ./apps/customer.aveyo.com

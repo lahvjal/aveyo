@@ -1,0 +1,7 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "!archive/**"
+  - "!**/node_modules/**"
+  - "!**/.next/**"
+  - "!**/.migration-backups/**"

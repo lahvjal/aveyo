@@ -1,0 +1,367 @@
+"use client";
+
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { resolveEnvironment } from "@ava/config/runtime/app-urls";
+import {
+  PLATFORM_PRIMARY_NAV_ITEMS,
+  PLATFORM_UTILITY_NAV_ITEMS,
+  getAveyoSiteUrl,
+  getPlatformNavIconSrc,
+  resolvePlatformNavHref
+} from "../platform-nav";
+import styles from "./platform-side-nav.module.css";
+import type {
+  PlatformNavIconRenderer,
+  PlatformProfileRowProps,
+  PlatformSideNavClassNames,
+  PlatformSideNavLinkRenderer,
+  PlatformUtilityNavItem,
+  RuntimeEnvironment
+} from "./types";
+
+type PlatformPrimaryNavItem = (typeof PLATFORM_PRIMARY_NAV_ITEMS)[number];
+type PlatformNavIconKey = Parameters<typeof getPlatformNavIconSrc>[0];
+
+export interface PlatformSideNavProps {
+  pathname?: string;
+  storageKey: string;
+  renderWordmark?: (collapsed: boolean) => ReactNode;
+  wordmarkLogoSrc?: string;
+  wordmarkMiniLogoSrc?: string;
+  wordmarkAlt?: string;
+  profile: PlatformProfileRowProps;
+  sameAppHrefByItemId?: Record<string, string>;
+  utilityItems?: PlatformUtilityNavItem[];
+  iconPrefix?: string;
+  defaultCollapsed?: boolean;
+  brandAriaLabel?: string;
+  isPrimaryItemActive?: (itemId: string, pathname: string) => boolean;
+  isUtilityItemActive?: (item: PlatformUtilityNavItem, pathname: string) => boolean;
+  renderLink?: PlatformSideNavLinkRenderer;
+  renderIcon?: PlatformNavIconRenderer;
+  onCollapsedChange?: (collapsed: boolean) => void;
+  resolveBrandHref?: (environment: RuntimeEnvironment) => string;
+}
+
+const DEFAULT_PATHNAME = "/";
+const SHARED_CLASS_NAMES: PlatformSideNavClassNames = {
+  aside: styles.aside,
+  header: styles.header,
+  brandRow: styles.brandRow,
+  collapseToggle: styles.collapseToggle,
+  primaryNav: styles.primaryNav,
+  navItem: styles.navItem,
+  navIcon: styles.navIcon,
+  navLabel: styles.navLabel,
+  utilityNav: styles.utilityNav,
+  utilityItem: styles.utilityItem,
+  profileRow: styles.profileRow,
+  profileAvatar: styles.profileAvatar,
+  profileCopy: styles.profileCopy
+};
+
+function joinClassNames(
+  baseClassName: string,
+  options: { active?: boolean; disabled?: boolean } = {}
+) {
+  let value = baseClassName;
+  if (options.active) {
+    value += ` ${styles.active}`;
+  }
+  if (options.disabled) {
+    value += ` ${styles.disabled}`;
+  }
+  return value;
+}
+
+function routeMatches(pathname: string, prefixes: string[] | undefined): boolean {
+  if (!prefixes || prefixes.length === 0) {
+    return false;
+  }
+  return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function readRuntimeEnvironment(): RuntimeEnvironment {
+  if (typeof window === "undefined") {
+    return "local";
+  }
+  return resolveEnvironment(window.location.hostname);
+}
+
+function readStoredCollapsedState(storageKey: string, fallbackValue: boolean): boolean {
+  if (typeof window === "undefined") {
+    return fallbackValue;
+  }
+  const stored = window.localStorage.getItem(storageKey);
+  if (stored === "0") {
+    return false;
+  }
+  if (stored === "1") {
+    return true;
+  }
+  return fallbackValue;
+}
+
+function readPublicEnv(name: string): string | undefined {
+  const processLike = globalThis as unknown as {
+    process?: {
+      env?: Record<string, string | undefined>;
+    };
+  };
+  return processLike.process?.env?.[name];
+}
+
+function getInitials(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return "AV";
+  }
+
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) {
+    return parts[0].slice(0, 2).toUpperCase();
+  }
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
+
+function defaultRenderLink({
+  key,
+  href,
+  className,
+  title,
+  ariaLabel,
+  children
+}: {
+  key: string;
+  href: string;
+  className: string;
+  title?: string;
+  ariaLabel: string;
+  children: ReactNode;
+}) {
+  return (
+    <a key={key} href={href} className={className} title={title} aria-label={ariaLabel}>
+      {children}
+    </a>
+  );
+}
+
+function defaultRenderIcon({ src }: { icon: string; src: string }) {
+  return <img src={src} alt="" aria-hidden="true" />;
+}
+
+function toAvatarUrl(value: string | null | undefined): string {
+  if (typeof value !== "string") {
+    return "";
+  }
+  return value.trim();
+}
+
+export function PlatformSideNav({
+  pathname = DEFAULT_PATHNAME,
+  storageKey,
+  renderWordmark,
+  wordmarkLogoSrc,
+  wordmarkMiniLogoSrc,
+  wordmarkAlt = "Aveyo",
+  profile,
+  sameAppHrefByItemId = {},
+  utilityItems,
+  iconPrefix = "/",
+  defaultCollapsed = true,
+  brandAriaLabel = "Open Aveyo site",
+  isPrimaryItemActive,
+  isUtilityItemActive,
+  renderLink = defaultRenderLink,
+  renderIcon = defaultRenderIcon,
+  onCollapsedChange,
+  resolveBrandHref
+}: PlatformSideNavProps) {
+  const classNames = SHARED_CLASS_NAMES;
+  const [runtimeEnvironment, setRuntimeEnvironment] = useState<RuntimeEnvironment>(
+    readRuntimeEnvironment
+  );
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() =>
+    readStoredCollapsedState(storageKey, defaultCollapsed)
+  );
+
+  useEffect(() => {
+    setRuntimeEnvironment(readRuntimeEnvironment());
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(storageKey, isCollapsed ? "1" : "0");
+    }
+    onCollapsedChange?.(isCollapsed);
+  }, [storageKey, isCollapsed, onCollapsedChange]);
+
+  const primaryNavItems = PLATFORM_PRIMARY_NAV_ITEMS as PlatformPrimaryNavItem[];
+  const configuredUtilityItems = useMemo(
+    () =>
+      utilityItems ??
+      ((PLATFORM_UTILITY_NAV_ITEMS as PlatformPrimaryNavItem[]).map((item) => ({
+        id: item.id,
+        label: item.label,
+        icon: item.icon
+      })) as PlatformUtilityNavItem[]),
+    [utilityItems]
+  );
+
+  const brandHref =
+    resolveBrandHref?.(runtimeEnvironment) ??
+    getAveyoSiteUrl(runtimeEnvironment, readPublicEnv("NEXT_PUBLIC_AVEYO_APP_URL"));
+  const logoSrc = wordmarkLogoSrc ?? "/images/aveyo-logo.svg";
+  const miniLogoSrc = wordmarkMiniLogoSrc ?? "/images/aveyo-icon.svg";
+  const wordmark = renderWordmark ?? ((collapsed: boolean) => (
+    <div
+      className={`${styles.wordmark}${collapsed ? ` ${styles.collapsed}` : ""}`}
+      aria-label="Aveyo"
+    >
+      <img src={logoSrc} alt={wordmarkAlt} className={styles.wordmarkLogo} />
+      <span className={styles.wordmarkMini} aria-hidden="true">
+        <img src={miniLogoSrc} alt="" className={styles.wordmarkMiniLogo} />
+      </span>
+    </div>
+  ));
+  const profileAvatarUrl = toAvatarUrl(profile.avatarUrl);
+  const profileInitials = profile.initials?.trim() || getInitials(profile.displayName);
+
+  return (
+    <aside
+      className={`${classNames.aside}${isCollapsed ? ` ${styles.collapsed}` : ""}`}
+    >
+      <div className={classNames.header}>
+        <div className={classNames.brandRow}>
+          <a href={brandHref} aria-label={brandAriaLabel}>
+            {wordmark(isCollapsed)}
+          </a>
+        </div>
+        <button
+          type="button"
+          className={classNames.collapseToggle}
+          onClick={() => setIsCollapsed((value) => !value)}
+          aria-label={isCollapsed ? "Expand side navigation" : "Collapse side navigation"}
+          title={isCollapsed ? "Expand navigation" : "Collapse navigation"}
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="M12.5 4.5 7 10l5.5 5.5" />
+          </svg>
+        </button>
+      </div>
+
+      <nav className={classNames.primaryNav} aria-label="Primary navigation">
+        {primaryNavItems.map((item) => {
+          const href = resolvePlatformNavHref(item, runtimeEnvironment, {
+            sameAppHrefByItemId
+          });
+          const itemIsActive =
+            isPrimaryItemActive?.(item.id, pathname) ??
+            routeMatches(pathname, item.id === "dashboard" ? ["/"] : undefined);
+          const itemClassName = joinClassNames(classNames.navItem, {
+            active: itemIsActive,
+            disabled: !href
+          });
+          const title = isCollapsed ? item.label : undefined;
+          const iconSrc = getPlatformNavIconSrc(item.icon as PlatformNavIconKey, { prefix: iconPrefix });
+          const navBody = (
+            <>
+              <span className={classNames.navIcon}>
+                {iconSrc ? renderIcon({ icon: item.icon, src: iconSrc }) : null}
+              </span>
+              <span className={classNames.navLabel}>{item.label}</span>
+            </>
+          );
+
+          if (!href) {
+            return (
+              <div key={item.id} className={itemClassName} title={title}>
+                {navBody}
+              </div>
+            );
+          }
+
+          return renderLink({
+            key: item.id,
+            href,
+            className: itemClassName,
+            title,
+            ariaLabel: item.label,
+            children: navBody
+          });
+        })}
+      </nav>
+
+      <div className={classNames.utilityNav}>
+        {configuredUtilityItems.map((item) => {
+          const itemIsActive =
+            isUtilityItemActive?.(item, pathname) ??
+            item.active ??
+            routeMatches(pathname, item.matchPrefixes);
+          const itemClassName = joinClassNames(classNames.utilityItem, {
+            active: itemIsActive,
+            disabled: item.disabled
+          });
+          const title = isCollapsed ? item.label : undefined;
+          const iconSrc = getPlatformNavIconSrc(item.icon as PlatformNavIconKey, { prefix: iconPrefix });
+          const navBody = (
+            <>
+              <span className={classNames.navIcon}>
+                {iconSrc ? renderIcon({ icon: item.icon, src: iconSrc }) : null}
+              </span>
+              <span className={classNames.navLabel}>{item.label}</span>
+            </>
+          );
+
+          if (item.href && !item.disabled) {
+            return renderLink({
+              key: item.id,
+              href: item.href,
+              className: itemClassName,
+              title,
+              ariaLabel: item.label,
+              children: navBody
+            });
+          }
+
+          if (item.onClick) {
+            return (
+              <button
+                key={item.id}
+                type="button"
+                className={itemClassName}
+                title={title}
+                onClick={item.onClick}
+                disabled={item.disabled}
+              >
+                {navBody}
+              </button>
+            );
+          }
+
+          return (
+            <div key={item.id} className={itemClassName} title={title}>
+              {navBody}
+            </div>
+          );
+        })}
+
+        <button
+          type="button"
+          className={classNames.profileRow}
+          onClick={profile.onClick}
+          disabled={profile.disabled}
+          title={isCollapsed ? `${profile.displayName} (${profile.roleLabel})` : undefined}
+        >
+          <span className={classNames.profileAvatar} aria-hidden="true">
+            {profileAvatarUrl ? <img src={profileAvatarUrl} alt="" /> : profileInitials}
+          </span>
+          <span className={classNames.profileCopy}>
+            <strong>{profile.displayName}</strong>
+            <small>{profile.roleLabel}</small>
+          </span>
+        </button>
+      </div>
+    </aside>
+  );
+}

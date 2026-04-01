@@ -1,0 +1,41 @@
+{
+  "total_sales": {
+    "current_week": 50,
+    "previous_week": 50,
+    "mtd": 200,
+    "ytd": 2400
+  },
+  "installs_complete": {
+    "current_week": 40,
+    "previous_week": 40,
+    "mtd": 160,
+    "ytd": 1920
+  },
+  "avg_days_pp_to_install": {
+    "current_week": 60,
+    "previous_week": 60,
+    "mtd": 60
+  },
+  "avg_days_install_to_m2": {
+    "previous_week": 30,
+    "ytd": 30
+  },
+  "avg_days_pp_to_pto": {
+    "previous_week": 90,
+    "mtd": 90,
+    "ytd": 90
+  },
+  "total_kw_scheduled": {
+    "current_week": 500,
+    "next_week": 500
+  },
+  "total_kw_installed": {
+    "current_week": 400,
+    "previous_week": 400,
+    "mtd": 1600,
+    "ytd": 19200
+  }
+}
+
+
+

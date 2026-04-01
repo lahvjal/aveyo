@@ -1,0 +1,110 @@
+import {
+  type CustomerPanelDetails,
+  type HistoryNote,
+  type Ticket
+} from "@/lib/dashboard-types";
+import { InitialChip } from "./initial-chip";
+
+interface DetailColumnProps {
+  activeTicket: Ticket | null;
+  customerDetails: CustomerPanelDetails | null;
+  customerDetailsLoading?: boolean;
+  sidebarNote: string;
+  historyNotes: HistoryNote[];
+  onSidebarNoteChange: (value: string) => void;
+  onAddSidebarNote: () => void;
+}
+
+export function DetailColumn({
+  activeTicket,
+  customerDetails,
+  customerDetailsLoading = false,
+  sidebarNote,
+  historyNotes,
+  onSidebarNoteChange,
+  onAddSidebarNote
+}: DetailColumnProps) {
+  const fieldValue = (value: string | null | undefined) =>
+    customerDetailsLoading ? "Loading..." : value || "N/A";
+
+  return (
+    <aside className="detail-column">
+      <header className="detail-topbar">
+        <div className="chat-top-identity">
+          <InitialChip initials={activeTicket?.initials ?? "JD"} tone="sand" size={40} />
+          <strong>{activeTicket?.fullName ?? "John Doe"}</strong>
+        </div>
+        <button type="button" aria-label="Close panel">
+          ×
+        </button>
+      </header>
+
+      <div className="detail-info">
+        <div>
+          <span>ID:</span>
+          <p>{fieldValue(customerDetails?.customerId)}</p>
+        </div>
+        <div>
+          <span>Email:</span>
+          <p>{fieldValue(customerDetails?.email ?? activeTicket?.email)}</p>
+        </div>
+        <div>
+          <span>Phone Number:</span>
+          <p>{fieldValue(customerDetails?.phone)}</p>
+        </div>
+        <div>
+          <span>Address:</span>
+          <p>{fieldValue(customerDetails?.address)}</p>
+        </div>
+        <div>
+          <span>Fin:</span>
+          <p>{fieldValue(customerDetails?.fin)}</p>
+        </div>
+        <div>
+          <span>Project Ref:</span>
+          <p>{fieldValue(customerDetails?.projectRef)}</p>
+        </div>
+        <div>
+          <span>Project Status:</span>
+          <p>{fieldValue(customerDetails?.projectStatus)}</p>
+        </div>
+      </div>
+
+      <div className="detail-note-block">
+        <p>Notes</p>
+        <div className="detail-note-input">
+          <textarea
+            value={sidebarNote}
+            onChange={(event) => onSidebarNoteChange(event.target.value)}
+            placeholder="Write a note..."
+          />
+          <button type="button" onClick={onAddSidebarNote} aria-label="Save side note">
+            ↑
+          </button>
+        </div>
+      </div>
+
+      <div className="detail-history">
+        {historyNotes.length === 0 ? (
+          <p className="empty-state">No notes yet. Add one above.</p>
+        ) : (
+          historyNotes.map((note) => (
+            <article key={note.id} className="history-item">
+              <div className="history-head">
+                <div className="history-author">
+                  <InitialChip initials="JC" tone="sand" size={40} />
+                  <div>
+                    <strong>{note.author}</strong>
+                    <small>{note.timestamp}</small>
+                  </div>
+                </div>
+                <span aria-hidden>•••</span>
+              </div>
+              <p>{note.body}</p>
+            </article>
+          ))
+        )}
+      </div>
+    </aside>
+  );
+}

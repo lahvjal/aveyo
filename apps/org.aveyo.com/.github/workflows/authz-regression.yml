@@ -1,0 +1,80 @@
+name: Authz Regression
+
+on:
+  pull_request:
+  push:
+    branches:
+      - '**'
+
+jobs:
+  app-authz-tests:
+    runs-on: ubuntu-latest
+    env:
+      # Test-only placeholders so modules importing supabase client can initialize in CI.
+      VITE_SUPABASE_URL: https://example.supabase.co
+      VITE_SUPABASE_ANON_KEY: test-anon-key
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run authz regression tests
+        run: pnpm --filter org-aveyo-com run test
+
+  sql-authz-tests:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      PGCONNECT_TIMEOUT: 10
+    steps:
+      - name: Check DATABASE_URL availability
+        id: sql-authz-gate
+        run: |
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "run_sql_authz=false" >> "$GITHUB_OUTPUT"
+            echo "DATABASE_URL is not set; SQL authz checks will be skipped."
+          else
+            echo "run_sql_authz=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
+        uses: actions/checkout@v4
+
+      - name: Install psql client
+        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Setup Node
+        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Setup pnpm
+        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Install dependencies
+        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
+        run: pnpm install --frozen-lockfile
+
+      - name: Run SQL authz checks
+        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
+        run: pnpm --filter org-aveyo-com run test:sql-authz

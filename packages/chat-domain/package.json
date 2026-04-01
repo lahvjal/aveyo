@@ -1,0 +1,27 @@
+{
+  "name": "@ava/chat-domain",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared chat domain types and mock helpers",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./mock-data": "./src/mock-data.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --project tsconfig.json --noEmit"
+  },
+  "keywords": [
+    "ava",
+    "domain",
+    "chat"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "@ava/config": "workspace:*",
+    "typescript": "^5.9.3"
+  }
+}

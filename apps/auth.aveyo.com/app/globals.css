@@ -1,0 +1,313 @@
+@font-face {
+  font-family: "PPTelegraf";
+  src: local("PP Telegraf"), local("PPTelegraf");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  color-scheme: light;
+  font-family:
+    "PPTelegraf",
+    "PP Telegraf",
+    "Telegraf",
+    "Inter",
+    "Segoe UI",
+    sans-serif;
+  background: #f5f5f5;
+  color: #1e1e1e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #f5f5f5;
+  color: #1e1e1e;
+}
+
+.login-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+}
+
+.login-brand {
+  display: block;
+  width: 110px;
+  height: auto;
+}
+
+.login-frame {
+  width: min(1026px, 100%);
+  min-height: 700px;
+  display: flex;
+  align-items: stretch;
+  gap: 19px;
+  padding: 20px;
+  border-radius: 20px;
+  border: 1px solid #e2e2e2;
+  background: linear-gradient(180deg, rgba(247, 247, 247, 0.5) 0%, rgba(241, 241, 241, 0.5) 100%);
+}
+
+.login-visual {
+  flex: 1 0 0;
+  border-radius: 10px;
+  background:
+    radial-gradient(121% 113% at 100% 2%, #ffffff 0%, #808080 50%, #000000 100%),
+    radial-gradient(55% 42% at 0% 9%, rgba(15, 51, 98, 1) 0%, rgba(132, 145, 162, 0) 100%),
+    radial-gradient(58% 45% at 106% 88%, rgba(120, 93, 155, 0.9) 0%, rgba(132, 145, 162, 0) 100%);
+  background-blend-mode: normal, overlay, overlay;
+  min-width: 0;
+}
+
+.login-panel {
+  flex: 1 0 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 20px;
+  padding: 20px 30px;
+}
+
+.login-title {
+  margin: 0;
+  font-size: 36px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.login-subtitle {
+  margin: 0;
+  color: #ababab;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+.login-field {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+.login-field span {
+  font-size: 16px;
+  font-weight: 700;
+  color: #000000;
+  line-height: 1.25;
+}
+
+.login-field input,
+.login-password-shell {
+  width: 100%;
+  height: 42px;
+  border: 1px solid #f0f0f0;
+  background: #ffffff;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 14px;
+  color: #1e1e1e;
+  font-family: inherit;
+  transition: outline-color 120ms ease;
+}
+
+.login-field input::placeholder,
+.login-password-shell input::placeholder {
+  color: #c6c6c6;
+}
+
+.login-field input:focus,
+.login-password-shell:focus-within {
+  outline: 2px solid rgba(112, 190, 255, 0.45);
+  outline-offset: 0;
+}
+
+.login-password-shell {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-right: 14px;
+}
+
+.login-password-shell input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  outline: none;
+}
+
+.login-password-toggle {
+  width: 19px;
+  height: 20px;
+  border: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: #c6c6c6;
+  cursor: pointer;
+}
+
+.login-password-toggle svg {
+  display: block;
+  width: 19px;
+  height: 12.385px;
+  fill: currentColor;
+}
+
+.login-primary-button,
+.login-google-button {
+  width: 100%;
+  height: 42px;
+  border: 0;
+  border-radius: 10px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.login-primary-button {
+  margin-top: 2px;
+  background: #000000;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.login-divider p {
+  margin: 0;
+  font-size: 14px;
+  color: #ababab;
+  white-space: nowrap;
+}
+
+.login-divider-line {
+  flex: 1;
+  height: 1px;
+  background: #ababab;
+}
+
+.login-google-button {
+  background: #e1e1e1;
+  color: #ffffff;
+  cursor: not-allowed;
+}
+
+.login-forgot-button {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  align-self: center;
+  color: #70beff;
+  text-decoration: underline;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.login-status {
+  margin: 0;
+  width: 100%;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.login-status[data-tone="info"] {
+  background: rgba(17, 17, 17, 0.06);
+  border: 1px solid rgba(17, 17, 17, 0.14);
+  color: #434343;
+}
+
+.login-status[data-tone="error"] {
+  background: rgba(255, 96, 96, 0.11);
+  border: 1px solid rgba(255, 112, 112, 0.35);
+  color: #9f1f1f;
+}
+
+.login-primary-button:disabled,
+.login-google-button:disabled,
+.login-forgot-button:disabled,
+.login-password-toggle:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+@media (max-width: 1080px) {
+  .login-shell {
+    justify-content: flex-start;
+    padding-top: 48px;
+  }
+
+  .login-frame {
+    min-height: 620px;
+  }
+}
+
+@media (max-width: 860px) {
+  .login-frame {
+    min-height: 0;
+    flex-direction: column;
+  }
+
+  .login-visual {
+    min-height: 220px;
+  }
+
+  .login-panel {
+    padding: 12px 6px 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .login-shell {
+    gap: 16px;
+    padding: 20px 14px 28px;
+  }
+
+  .login-frame {
+    border-radius: 16px;
+    gap: 14px;
+    padding: 14px;
+  }
+
+  .login-visual {
+    min-height: 180px;
+    border-radius: 8px;
+  }
+
+  .login-title {
+    font-size: 32px;
+  }
+}

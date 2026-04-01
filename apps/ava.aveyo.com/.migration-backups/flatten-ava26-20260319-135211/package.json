@@ -1,0 +1,62 @@
+{
+  "name": "ava26",
+  "version": "0.1.0",
+  "description": "Ava app workspace",
+  "private": true,
+  "scripts": {
+    "dev": "npm run dev -w @ava/rep-web",
+    "dev:rep": "npm run dev -w @ava/rep-web",
+    "dev:api": "npm --prefix ../api.aveyo.com run dev",
+    "dev:api:legacy": "npm --prefix apps/api run dev",
+    "build": "npm run build -w @ava/rep-web",
+    "build:api": "npm --prefix ../api.aveyo.com run build",
+    "build:api:legacy": "npm --prefix apps/api run build",
+    "lint": "npm run lint -w @ava/rep-web && npm run auth:template:check",
+    "lint:api": "npm --prefix ../api.aveyo.com run lint",
+    "lint:api:legacy": "npm --prefix apps/api run lint",
+    "typecheck": "npm run typecheck -w @ava/rep-web && npm run auth:template:check",
+    "typecheck:api": "npm --prefix ../api.aveyo.com run typecheck",
+    "typecheck:api:legacy": "npm --prefix apps/api run typecheck",
+    "auth:template:check": "node scripts/auth/check-template-conformance.mjs",
+    "supabase:projects:provision": "npm --prefix ../app.aveyo.com run supabase:projects:provision",
+    "supabase:migrations:check-source": "npm --prefix ../app.aveyo.com run supabase:migrations:check-source",
+    "supabase:migrate:dev": "npm --prefix ../app.aveyo.com run supabase:migrate:dev",
+    "supabase:migrate:staging": "npm --prefix ../app.aveyo.com run supabase:migrate:staging",
+    "supabase:migrate:prod": "npm --prefix ../app.aveyo.com run supabase:migrate:prod",
+    "supabase:migrate:ordered": "npm --prefix ../app.aveyo.com run supabase:migrate:ordered",
+    "supabase:seed:dev": "npm --prefix ../app.aveyo.com run supabase:seed:dev",
+    "supabase:seed:staging": "npm --prefix ../app.aveyo.com run supabase:seed:staging",
+    "supabase:smoke:dev": "npm --prefix ../app.aveyo.com run supabase:smoke:dev",
+    "supabase:smoke:staging": "npm --prefix ../app.aveyo.com run supabase:smoke:staging",
+    "supabase:seed-and-smoke:nonprod": "npm --prefix ../app.aveyo.com run supabase:seed-and-smoke:nonprod",
+    "supabase:env:check": "npm --prefix ../app.aveyo.com run supabase:env:check",
+    "supabase:auth:callbacks:dev": "npm --prefix ../auth.aveyo.com run supabase:auth:callbacks:dev",
+    "supabase:auth:callbacks:staging": "npm --prefix ../auth.aveyo.com run supabase:auth:callbacks:staging",
+    "supabase:auth:callbacks:prod": "npm --prefix ../auth.aveyo.com run supabase:auth:callbacks:prod",
+    "supabase:auth:callbacks:dev:cli": "npm --prefix ../auth.aveyo.com run supabase:auth:callbacks:dev:cli --",
+    "supabase:auth:callbacks:staging:cli": "npm --prefix ../auth.aveyo.com run supabase:auth:callbacks:staging:cli --",
+    "supabase:auth:callbacks:prod:cli": "npm --prefix ../auth.aveyo.com run supabase:auth:callbacks:prod:cli --",
+    "supabase:auth:verify:dev": "npm --prefix ../auth.aveyo.com run supabase:auth:verify:dev",
+    "supabase:auth:verify:staging": "npm --prefix ../auth.aveyo.com run supabase:auth:verify:staging",
+    "supabase:auth:verify:prod": "npm --prefix ../auth.aveyo.com run supabase:auth:verify:prod",
+    "supabase:session:verify": "npm --prefix ../auth.aveyo.com run supabase:session:verify"
+  },
+  "keywords": [
+    "ava",
+    "nextjs"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "type": "module",
+  "workspaces": [
+    "apps/rep-web",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "typescript": "^5.9.3"
+  }
+}

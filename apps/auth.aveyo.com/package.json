@@ -1,0 +1,35 @@
+{
+  "name": "auth-aveyo-com",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Auth.aveyo.com shared auth contract and callback tooling",
+  "scripts": {
+    "dev": "next dev -p 4003",
+    "build": "next build",
+    "start": "next start -p 4003",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "echo \"No TypeScript sources in auth-aveyo-com\"",
+    "test": "echo \"No tests configured for auth-aveyo-com\"",
+    "supabase:auth:callbacks:dev": "node scripts/configure-auth-callbacks.mjs dev --apply",
+    "supabase:auth:callbacks:staging": "node scripts/configure-auth-callbacks.mjs staging --apply",
+    "supabase:auth:callbacks:prod": "node scripts/configure-auth-callbacks.mjs prod --apply",
+    "supabase:auth:callbacks:dev:cli": "bash scripts/configure-auth-callbacks-cli.sh dev",
+    "supabase:auth:callbacks:staging:cli": "bash scripts/configure-auth-callbacks-cli.sh staging",
+    "supabase:auth:callbacks:prod:cli": "bash scripts/configure-auth-callbacks-cli.sh prod",
+    "supabase:auth:verify:dev": "node scripts/configure-auth-callbacks.mjs dev --verify",
+    "supabase:auth:verify:staging": "node scripts/configure-auth-callbacks.mjs staging --verify",
+    "supabase:auth:verify:prod": "node scripts/configure-auth-callbacks.mjs prod --verify",
+    "supabase:session:verify": "bash scripts/verify-session-flow.sh"
+  },
+  "dependencies": {
+    "@ava/config": "workspace:*",
+    "@supabase/supabase-js": "^2.99.1",
+    "next": "^16.1.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.1.6"
+  }
+}

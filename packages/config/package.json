@@ -1,0 +1,31 @@
+{
+  "name": "@ava/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared tsconfig and lint presets for Ava apps",
+  "type": "module",
+  "exports": {
+    "./tsconfig/base.json": "./tsconfig/base.json",
+    "./tsconfig/nextjs.json": "./tsconfig/nextjs.json",
+    "./runtime/app-urls": "./runtime/app-urls.js",
+    "./runtime/platform-nav": {
+      "types": "./runtime/platform-nav.d.ts",
+      "default": "./runtime/platform-nav.js"
+    },
+    "./runtime/auth-urls": {
+      "types": "./runtime/auth-urls.d.ts",
+      "default": "./runtime/auth-urls.js"
+    }
+  },
+  "scripts": {
+    "typecheck": "echo \"No runtime code in config package\""
+  },
+  "keywords": [
+    "ava",
+    "config",
+    "tsconfig"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "devDependencies": {}
+}

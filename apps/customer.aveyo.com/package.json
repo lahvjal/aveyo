@@ -1,0 +1,43 @@
+{
+  "name": "customer-aveyo-com",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 4008",
+    "prebuild": "prisma generate",
+    "build": "next build",
+    "start": "next start -p 4008",
+    "lint": "next lint",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "test": "echo \"No tests configured for customer-aveyo-com\"",
+    "prisma:generate": "prisma generate"
+  },
+  "dependencies": {
+    "@ava/config": "workspace:*",
+    "@ava/ui": "workspace:*",
+    "@ava/widget": "workspace:*",
+    "@prisma/client": "^6.19.0",
+    "@supabase/auth-helpers-nextjs": "^0.10.0",
+    "@supabase/supabase-js": "^2.50.0",
+    "@vercel/analytics": "^1.5.0",
+    "@vercel/speed-insights": "^1.2.0",
+    "dotenv": "^16.5.0",
+    "mysql2": "^3.15.3",
+    "next": "15.3.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "resend": "^4.6.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.2",
+    "prisma": "^6.19.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

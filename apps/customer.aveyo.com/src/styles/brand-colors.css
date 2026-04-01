@@ -1,0 +1,51 @@
+/* Brand Colors for Aveyo Customer Portal */
+
+:root {
+  /* Base colors */
+  --color-dark: #212121;
+  --color-white: #FFFFFF;
+  --color-light-blue: #D9E8F6;
+  --color-blue: #0F62DE;
+  
+  /* Gradients */
+  --gradient-page-bg: linear-gradient(to bottom, #FFFFFF, #D0E3F4);
+  --gradient-button: linear-gradient(to right, #0F62DE, #3B83F6);
+}
+
+/* Page background styles */
+.page-background {
+  background: var(--gradient-page-bg);
+  min-height: 100vh;
+}
+
+/* Button styles */
+.brand-button {
+  background: var(--gradient-button);
+  color: var(--color-white);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.brand-button:hover {
+  opacity: 0.9;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+.brand-button:disabled {
+  background: #CBD5E1;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Text colors */
+.text-brand-dark {
+  color: var(--color-dark);
+}
+
+.text-brand-blue {
+  color: var(--color-blue);
+}

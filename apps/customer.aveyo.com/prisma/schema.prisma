@@ -1,0 +1,207 @@
+// This is your Prisma schema file for Aveyo Customer Portal
+// MySQL Database hosted on Digital Ocean
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "darwin-arm64"]
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+// Main project data table
+model ProjectData {
+  itemId                      BigInt    @id @map("item_id")
+  projectTitle                String?   @map("project-title") @db.Text
+  projectId                   String?   @map("project-id")
+  sentToSupabaseDate          DateTime? @map("sent-to-supabase-date")
+  projectDataUpdatedDate      DateTime? @map("project-data-updated-date")
+  lastSync                    DateTime? @map("last-sync")
+  customerId                  String?   @map("customer-id")
+  projectStatus               String?   @map("project-status")
+  milestone                   String?   @db.Text
+  fasttrack                   String?
+  customerName                String?   @map("customer-name")
+  firstName                   String?   @map("first-name")
+  lastName                    String?   @map("last-name")
+  fullAddress                 String?   @map("full-address") @db.Text
+  address                     String?   @db.Text
+  city                        String?
+  state                       String?
+  zip                         String?
+  ph                          String?
+  email                       String    @db.VarChar(255)
+  projectManager              String?   @map("project-manager")
+  projectManager2             String?   @map("project-manager-2")
+  salesChannelId              String?   @map("sales-channel-id")
+  salesRepName                String?   @map("sales-rep-name")
+  repDevId                    String?   @map("rep-dev-id")
+  salesRepId                  String?   @map("sales-rep-id")
+  salesRepEmail               String?   @map("sales-rep-email")
+  setterName                  String?   @map("setter-name")
+  setterDevId                 String?   @map("setter-dev-id")
+  setterId                    String?   @map("setter-id")
+  setterEmail                 String?   @map("setter-email")
+  utilityCompany              String?   @map("utility-company")
+  utilityCompanyDevId         String?   @map("utility-company-dev-id")
+  ahj                         String?
+  ahjDevId                    String?   @map("ahj-dev-id")
+  adders                      String?   @db.Text
+  installer                   String?
+  installBranch               String?   @map("install-branch")
+  contractPrice               Float?    @map("contract-price")
+  contractPriceCur            String?   @map("contract-price_cur")
+  lender                      String?
+  lenderDevId                 String?   @map("lender-dev-id")
+  financeId                   String?   @map("finance-id")
+  financeType                 String?   @map("finance-type")
+  fundingStatus               String?   @map("funding-status")
+  grossPpw                    Float?    @map("gross-ppw")
+  netPpw                      Float?    @map("net-ppw")
+  m1Submitted                 DateTime? @map("m1-submitted")
+  m1Approved                  DateTime? @map("m1-approved")
+  m1EarnedDate                DateTime? @map("m1-earned-date")
+  m1ReceivedDate              DateTime? @map("m1-received-date")
+  m2Submitted                 DateTime? @map("m2-submitted")
+  m2Approved                  DateTime? @map("m2-approved")
+  m2EarnedDate                DateTime? @map("m2-earned-date")
+  m2ReceivedDate              DateTime? @map("m2-received-date")
+  m3Submitted                 DateTime? @map("m3-submitted")
+  m3Approved                  DateTime? @map("m3-approved")
+  inverterBrand               String?   @map("inverter-brand")
+  inverterModel               String?   @map("inverter-model")
+  inverterCount               Int?      @map("inverter-count")
+  panelBrand                  String?   @map("panel-brand")
+  panelModel                  String?   @map("panel-model")
+  panelCount                  Int?      @map("panel-count")
+  batteryModel                String?   @map("battery-model")
+  batteryCount                Int?      @map("battery-count")
+  systemSize                  Float?    @map("system-size")
+  estimatedYearlyProduction   Int?      @map("estimated-yearly-production")
+  latitude                    Float?
+  longitude                   Float?
+  vwcStatus                   String?   @map("vwc-status")
+  vwcFormUrl                  String?   @map("vwc-form-url") @db.Text
+  vwcCompleteDate             DateTime? @map("vwc-complete-date")
+  customerSowStatus           String?   @map("customer-sow-status")
+  customerSowFormUrl          String?   @map("customer-sow-form-url") @db.Text
+  customerSowDueDate          DateTime? @map("customer-sow-due-date")
+  customerSowCompleteDate     DateTime? @map("customer-sow-complete-date")
+  projectDevId                String?   @map("project-dev-id")
+  dataUpdatedTimestamp        DateTime? @map("data-updated-timestamp")
+  errors                      String?   @db.Text
+  payload                     String?   @db.LongText
+  isDeleted                   Boolean   @default(false) @map("is_deleted")
+  delCheck                    Int?      @map("del_check")
+
+  @@map("project-data")
+  @@index([email])
+  @@index([projectId])
+}
+
+// Timeline table for milestone data
+model Timeline {
+  itemId                      BigInt    @id @map("item_id")
+  projectTitle                String?   @map("project-title") @db.Text
+  projectId                   String?   @map("project-id")
+  cancellationDate            DateTime? @map("cancellation-date")
+  cancellationReason          String?   @map("cancellation-reason") @db.Text
+  contractSigned              DateTime? @map("contract-signed")
+  ntpComplete                 DateTime? @map("ntp-complete")
+  packetApproval              DateTime? @map("packet-approval")
+  siteSurveyStatus            String?   @map("site-survey-status")
+  siteSurveyAppointment       DateTime? @map("site-survey-appointment")
+  siteSurveyComplete          DateTime? @map("site-survey-complete")
+  designStatus                String?   @map("design-status")
+  cadComplete                 DateTime? @map("cad-complete")
+  engineeringComplete         DateTime? @map("engineering-complete")
+  repScopeApprovalStatus      String?   @map("rep-scope-approval-status")
+  repScopeApproved            DateTime? @map("rep-scope-approved")
+  utilityStatus               String?   @map("utility-status")
+  utilityApplicationSubmitted DateTime? @map("utility-application-submitted")
+  utilityApplicationApproved  DateTime? @map("utility-application-approved")
+  permitStatus                String?   @map("permit-status")
+  buildingPermitSubmitted     DateTime? @map("building-permit-submitted")
+  buildingPermitApproved      DateTime? @map("building-permit-approved")
+  electriclaPermitSubmitted   DateTime? @map("electricla-permit-submitted")
+  electricalPermitApproved    DateTime? @map("electrical-permit-approved")
+  zoningPermitSubmitted       DateTime? @map("zoning-permit-submitted")
+  zoningPermitApproved        DateTime? @map("zoning-permit-approved")
+  additionalPermitSubmitted   DateTime? @map("additional-permit-submitted")
+  additionalPermitApproved    DateTime? @map("additional-permit-approved")
+  allPermitsComplete          DateTime? @map("all-permits-complete")
+  equipmentOrdered            DateTime? @map("equipment-ordered")
+  installReady                String?   @map("install-ready")
+  installReadyDate            DateTime? @map("install-ready-date")
+  hoaYesNo                    String?   @map("hoa-yes-no")
+  hoaStatus                   String?   @map("hoa-status")
+  hoaApprovedDate             DateTime? @map("hoa-approved-date")
+  installStageStatus          String?   @map("install-stage-status")
+  estimatedInstallDate        DateTime? @map("estimated-install-date")
+  installAppointment          DateTime? @map("install-appointment")
+  panelInstallComplete        DateTime? @map("panel-install-complete")
+  electricalWorkStatus        String?   @map("electrical-work-status")
+  mpuComplete                 DateTime? @map("mpu-complete")
+  electricalWorkComplete      DateTime? @map("electrical-work-complete")
+  installComplete             DateTime? @map("install-complete")
+  photoAudit                  String?   @map("photo-audit")
+  inspectionStatus            String?   @map("inspection-status")
+  ahjInspectionAppointment    DateTime? @map("ahj-inspection-appointment")
+  ahjInspectionComplete       DateTime? @map("ahj-inspection-complete")
+  ptoStatus                   String?   @map("pto-status")
+  ptoSubmitted                DateTime? @map("pto-submitted")
+  ptoReceived                 DateTime? @map("pto-received")
+  energizeStatus              String?   @map("energize-status")
+  systemActive                DateTime? @map("system-active")
+  energizeCompleteDate        DateTime? @map("energize-complete-date")
+  projectComplete             DateTime? @map("project-complete")
+  projectDevId                String?   @map("project-dev-id")
+  isDeleted                   Boolean   @default(false) @map("is_deleted")
+  delCheck                    Int?      @map("del_check")
+
+  @@map("timeline")
+  @@index([itemId])
+  @@index([projectId])
+}
+
+// Customer SOW table
+model CustomerSow {
+  itemId                      BigInt    @id @map("item_id")
+  title                       String?   @db.Text
+  status                      String?
+  customerComment             String?   @map("customer-comment") @db.Text
+  designDoc                   String?   @map("design-doc") @db.Text
+  sendToCustomer              Boolean?  @map("send-to-customer")
+  sendEmailToCustomer         Boolean?  @map("send-email-to-customer")
+  sentToCustomerDatetime      DateTime? @map("sent-to-customer-datetime")
+  customerInformation         String?   @map("customer-information") @db.Text
+  systemSpecs                 String?   @map("system-specs") @db.Text
+  adders                      String?   @db.Text
+  fileAttachmentUrl           String?   @map("file-attachment-url") @db.Text
+  createdDate                 DateTime? @map("created-date")
+  customerComments            String?   @map("customer-comments") @db.Text
+  approveRejectedDate         DateTime? @map("approverejected-date")
+  sowSentTimestamp            DateTime? @map("sow-sent-timestamp")
+  customerApproval            String?   @map("customer-approval")
+  sowApprovedTimestamp        DateTime? @map("sow-approved-timestamp")
+  sowRejectionReason          String?   @map("sow-rejection-reason") @db.Text
+  rejectionTimestamp          DateTime? @map("rejection-timestamp")
+  linkToScopeOfWork           String?   @map("link-to-scope-of-work") @db.Text
+  linkToScopeOfWorkIds        String?   @map("link-to-scope-of-work_ids")
+  linkToScopeApprovalForm     String?   @map("link-to-scope-approval-form") @db.Text
+  linkToScopeApprovalFormIds  String?   @map("link-to-scope-approval-form_ids")
+  customerPortalSowStatus     String?   @map("customer-portal-sow-status")
+  customerSowDueDate          DateTime? @map("customer-sow-due-date")
+  deliveryLocationPhotoUrl    String?   @map("delivery-location-photo-url") @db.Text
+  isDeleted                   Boolean   @default(false) @map("is_deleted")
+  delCheck                    Int?      @map("del_check")
+  linkToWebform               String?   @map("link-to-webform") @db.Text
+  customerViewOnlyWebform     String?   @map("customer-view-only-webform") @db.Text
+  salesRepViewOnlyWebform     String?   @map("sales-rep-view-only-webform") @db.Text
+
+  @@map("customer-sow")
+  @@index([itemId])
+}

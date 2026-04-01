@@ -1,0 +1,71 @@
+{
+  "name": "ava-aveyo-com",
+  "version": "0.1.0",
+  "description": "Ava app",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 4001",
+    "dev:rep": "npm run dev",
+    "dev:api": "pnpm --filter app-aveyo-com run orchestration:dev:api",
+    "build": "next build",
+    "start": "next start -p 4001",
+    "build:api": "pnpm --filter app-aveyo-com run orchestration:build:api",
+    "lint": "eslint . --max-warnings=0 && npm run auth:template:check",
+    "lint:api": "pnpm --filter app-aveyo-com run orchestration:lint:api",
+    "typecheck": "tsc --project tsconfig.json --noEmit && npm run auth:template:check",
+    "test": "echo \"No tests configured for ava-aveyo-com\"",
+    "typecheck:api": "pnpm --filter app-aveyo-com run orchestration:typecheck:api",
+    "auth:template:check": "node scripts/auth/check-template-conformance.mjs",
+    "supabase:projects:provision": "pnpm --filter app-aveyo-com run supabase:projects:provision",
+    "supabase:migrations:check-source": "pnpm --filter app-aveyo-com run supabase:migrations:check-source",
+    "supabase:migrate:dev": "pnpm --filter app-aveyo-com run supabase:migrate:dev",
+    "supabase:migrate:staging": "pnpm --filter app-aveyo-com run supabase:migrate:staging",
+    "supabase:migrate:prod": "pnpm --filter app-aveyo-com run supabase:migrate:prod",
+    "supabase:migrate:ordered": "pnpm --filter app-aveyo-com run supabase:migrate:ordered",
+    "supabase:seed:dev": "pnpm --filter app-aveyo-com run supabase:seed:dev",
+    "supabase:seed:staging": "pnpm --filter app-aveyo-com run supabase:seed:staging",
+    "supabase:smoke:dev": "pnpm --filter app-aveyo-com run supabase:smoke:dev",
+    "supabase:smoke:staging": "pnpm --filter app-aveyo-com run supabase:smoke:staging",
+    "supabase:seed-and-smoke:nonprod": "pnpm --filter app-aveyo-com run supabase:seed-and-smoke:nonprod",
+    "supabase:env:check": "pnpm --filter app-aveyo-com run supabase:env:check",
+    "supabase:auth:callbacks:dev": "pnpm --filter app-aveyo-com run supabase:auth:callbacks:dev",
+    "supabase:auth:callbacks:staging": "pnpm --filter app-aveyo-com run supabase:auth:callbacks:staging",
+    "supabase:auth:callbacks:prod": "pnpm --filter app-aveyo-com run supabase:auth:callbacks:prod",
+    "supabase:auth:callbacks:dev:cli": "pnpm --filter app-aveyo-com run supabase:auth:callbacks:dev:cli --",
+    "supabase:auth:callbacks:staging:cli": "pnpm --filter app-aveyo-com run supabase:auth:callbacks:staging:cli --",
+    "supabase:auth:callbacks:prod:cli": "pnpm --filter app-aveyo-com run supabase:auth:callbacks:prod:cli --",
+    "supabase:auth:verify:dev": "pnpm --filter app-aveyo-com run supabase:auth:verify:dev",
+    "supabase:auth:verify:staging": "pnpm --filter app-aveyo-com run supabase:auth:verify:staging",
+    "supabase:auth:verify:prod": "pnpm --filter app-aveyo-com run supabase:auth:verify:prod",
+    "supabase:session:verify": "pnpm --filter app-aveyo-com run supabase:session:verify"
+  },
+  "keywords": [
+    "ava",
+    "nextjs"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "type": "module",
+  "dependencies": {
+    "@ava/chat-domain": "workspace:*",
+    "@ava/config": "workspace:*",
+    "@ava/ui": "workspace:*",
+    "@ava/widget": "workspace:*",
+    "@supabase/supabase-js": "^2.99.1",
+    "lucide-react": "^1.7.0",
+    "next": "^16.1.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.1.6",
+    "typescript": "^5.9.3"
+  }
+}
