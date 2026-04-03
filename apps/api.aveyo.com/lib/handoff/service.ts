@@ -3,6 +3,7 @@ import {
   listQueue,
   requestHandoff,
   resolveHandoff,
+  submitHandoffRating,
   StoreError
 } from "@/lib/store/mock-store";
 import { ServiceError } from "@/lib/service-error";
@@ -25,6 +26,11 @@ export interface ClaimBody {
 export interface ResolveBody {
   conversationId?: string;
   resolutionNote?: string;
+}
+
+export interface RatingBody {
+  conversationId?: string;
+  rating?: "thumbs_up" | "thumbs_down";
 }
 
 export async function getQueueResult(
@@ -117,5 +123,32 @@ export async function createHandoffResolveResult(body: ResolveBody, actorUserId:
       throw new ServiceError(error.status, error.message);
     }
     throw new ServiceError(500, error instanceof Error ? error.message : "Unable to resolve handoff.");
+  }
+}
+
+export async function createHandoffRatingResult(body: RatingBody, actorUserId: string) {
+  if (!body.conversationId) {
+    throw new ServiceError(400, "conversationId is required.");
+  }
+  if (body.rating !== "thumbs_up" && body.rating !== "thumbs_down") {
+    throw new ServiceError(400, "rating must be thumbs_up or thumbs_down.");
+  }
+
+  try {
+    return await submitHandoffRating(
+      {
+        conversationId: body.conversationId,
+        rating: body.rating
+      },
+      actorUserId
+    );
+  } catch (error) {
+    if (error instanceof StoreError) {
+      throw new ServiceError(error.status, error.message);
+    }
+    throw new ServiceError(
+      500,
+      error instanceof Error ? error.message : "Unable to submit handoff rating."
+    );
   }
 }

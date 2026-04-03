@@ -141,7 +141,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [pending, setPending] = useState(true);
+  const [isBootstrappingSession, setIsBootstrappingSession] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState("info");
 
@@ -154,7 +155,8 @@ export default function LoginPage() {
     } catch (error) {
       setStatusTone("error");
       setStatus(describeAuthError(error, "Unable to initialize Supabase client."));
-      setPending(false);
+    } finally {
+      setIsBootstrappingSession(false);
     }
   }, []);
 
@@ -165,7 +167,7 @@ export default function LoginPage() {
 
     let cancelled = false;
     async function bootstrapSession() {
-      setPending(true);
+      setIsBootstrappingSession(true);
       setStatusTone("info");
       setStatus(logoutRequested ? "Signing out old session..." : "Checking existing session...");
 
@@ -203,7 +205,7 @@ export default function LoginPage() {
         setStatus(describeAuthError(error, "Unable to initialize auth session."));
       } finally {
         if (!cancelled) {
-          setPending(false);
+          setIsBootstrappingSession(false);
         }
       }
     }
@@ -214,17 +216,34 @@ export default function LoginPage() {
     };
   }, [supabase, logoutRequested]);
 
+  function getActiveSupabaseClient() {
+    if (supabase) {
+      return supabase;
+    }
+
+    try {
+      const client = getSupabaseBrowserClient();
+      setSupabase(client);
+      return client;
+    } catch (error) {
+      setStatusTone("error");
+      setStatus(describeAuthError(error, "Unable to initialize Supabase client."));
+      return null;
+    }
+  }
+
   async function handleSignIn(event) {
     event.preventDefault();
-    if (!supabase) {
+    const activeSupabase = getActiveSupabaseClient();
+    if (!activeSupabase) {
       return;
     }
 
-    setPending(true);
+    setIsSubmitting(true);
     setStatusTone("info");
     setStatus("Signing in...");
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await activeSupabase.auth.signInWithPassword({
         email: email.trim(),
         password
       });
@@ -235,7 +254,7 @@ export default function LoginPage() {
       const session =
         data.session ??
         (
-          await supabase.auth.getSession()
+          await activeSupabase.auth.getSession()
         ).data.session;
       if (!session) {
         throw new Error("Sign-in succeeded but no session was returned.");
@@ -249,13 +268,14 @@ export default function LoginPage() {
     } catch (error) {
       setStatusTone("error");
       setStatus(describeAuthError(error, "Unable to sign in."));
-      setPending(false);
+      setIsSubmitting(false);
     }
   }
 
   async function handleForgotPassword(event) {
     event.preventDefault();
-    if (!supabase) {
+    const activeSupabase = getActiveSupabaseClient();
+    if (!activeSupabase) {
       return;
     }
     const trimmedEmail = email.trim();
@@ -265,11 +285,11 @@ export default function LoginPage() {
       return;
     }
 
-    setPending(true);
+    setIsSubmitting(true);
     setStatusTone("info");
     setStatus("Sending password reset email...");
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail);
+      const { error } = await activeSupabase.auth.resetPasswordForEmail(trimmedEmail);
       if (error) {
         throw error;
       }
@@ -278,12 +298,12 @@ export default function LoginPage() {
       setStatusTone("error");
       setStatus(describeAuthError(error, "Unable to send password reset email."));
     } finally {
-      setPending(false);
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <main className="login-shell">
+    <main className="login-shell" aria-busy={isBootstrappingSession || isSubmitting}>
       <img src="/aveyo-logo.svg" alt="Aveyo" className="login-brand" />
 
       <section className="login-frame">
@@ -303,7 +323,7 @@ export default function LoginPage() {
                 onChange={(event) => setEmail(event.target.value)}
                 autoComplete="email"
                 required
-                disabled={pending}
+                disabled={isSubmitting}
               />
             </label>
 
@@ -317,14 +337,14 @@ export default function LoginPage() {
                   onChange={(event) => setPassword(event.target.value)}
                   autoComplete="current-password"
                   required
-                  disabled={pending}
+                  disabled={isSubmitting}
                 />
                 <button
                   type="button"
                   className="login-password-toggle"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                   onClick={() => setShowPassword((current) => !current)}
-                  disabled={pending}
+                  disabled={isSubmitting}
                 >
                   <svg viewBox="0 0 20 13" aria-hidden="true">
                     <path d="M3.0858 2.69223C6.67563 -0.897383 12.496 -0.897435 16.0858 2.69223L18.8788 5.4852C19.2691 5.87564 19.269 6.50876 18.8788 6.89926L16.0858 9.69223L15.743 10.0184C12.251 13.1736 6.9207 13.1735 3.42857 10.0184L3.0858 9.69223L0.292831 6.89926C-0.097569 6.50872 -0.0976518 5.87568 0.292831 5.4852L3.0858 2.69223ZM14.6717 4.10629C11.863 1.29768 7.30864 1.29773 4.49986 4.10629L2.41392 6.19223L4.49986 8.27816C7.30867 11.0869 11.863 11.0869 14.6717 8.27816L16.7577 6.19223L14.6717 4.10629ZM9.5858 3.79477C10.9101 3.79477 11.984 4.86798 11.9842 6.19223C11.9842 7.51664 10.9102 8.59066 9.5858 8.59066C8.26144 8.5906 7.18834 7.5166 7.18834 6.19223C7.18854 4.86802 8.26156 3.79483 9.5858 3.79477Z" />
@@ -333,7 +353,7 @@ export default function LoginPage() {
               </div>
             </label>
 
-            <button type="submit" className="login-primary-button" disabled={pending}>
+            <button type="submit" className="login-primary-button" disabled={isSubmitting}>
               Login
             </button>
           </form>
@@ -354,7 +374,7 @@ export default function LoginPage() {
             onClick={(event) => {
               void handleForgotPassword(event);
             }}
-            disabled={pending || !supabase}
+            disabled={isSubmitting}
           >
             Forgot password?
           </button>

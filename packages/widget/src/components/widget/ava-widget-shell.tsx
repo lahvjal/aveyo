@@ -271,6 +271,89 @@ function isRepConfirmationYes(text: string) {
   return yesPhrases.some((phrase) => normalized === phrase || normalized.startsWith(`${phrase} `));
 }
 
+const TIMELINE_RESET_INACTIVITY_MS = 30 * 60 * 1000;
+const TIMELINE_RESET_STORAGE_PREFIX = "ava-widget-timeline-reset-v1:";
+
+function toTimestampMs(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(value).getTime();
+  if (Number.isNaN(parsed)) {
+    return null;
+  }
+  return parsed;
+}
+
+function getLastThreadActivityMs(thread: ConversationThread) {
+  const latestMessage = thread.messages[thread.messages.length - 1];
+  const latestMessageMs = toTimestampMs(latestMessage?.createdAt);
+  if (latestMessageMs !== null) {
+    return latestMessageMs;
+  }
+  return toTimestampMs(thread.updatedAt);
+}
+
+function readTimelineResetMs(conversationId: string) {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const value = window.localStorage.getItem(`${TIMELINE_RESET_STORAGE_PREFIX}${conversationId}`);
+    if (!value) {
+      return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeTimelineResetMs(conversationId: string, resetMs: number | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const key = `${TIMELINE_RESET_STORAGE_PREFIX}${conversationId}`;
+    if (resetMs === null) {
+      window.localStorage.removeItem(key);
+      return;
+    }
+    window.localStorage.setItem(key, String(resetMs));
+  } catch {
+    // Ignore storage write failures in private mode or restricted contexts.
+  }
+}
+
+function shouldSkipAutoTimelineReset(thread: ConversationThread) {
+  return (
+    thread.handoff.state === "pending" ||
+    thread.handoff.state === "claimed" ||
+    thread.handoff.state === "active"
+  );
+}
+
+function createTimelineResetGreeting(
+  conversationId: string,
+  greetingName: string,
+  resetMs: number
+): TimelineMessage {
+  return {
+    id: `timeline-reset-greeting-${conversationId}-${resetMs}`,
+    conversationId,
+    kind: "ava",
+    text: greetingName ? toPersonalizedGreetingText(greetingName) : "Hi! How can I help you today?",
+    createdAt: new Date(resetMs).toISOString(),
+    deliveryState: "sent"
+  };
+}
+
 export function AvaWidgetShell({
   embedMode = false,
   defaultOpen = true,
@@ -308,6 +391,8 @@ export function AvaWidgetShell({
   const [draft, setDraft] = useState("");
   const [requestError, setRequestError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [ratingSubmissionRequestId, setRatingSubmissionRequestId] = useState<string | null>(null);
+  const [timelineResetAtMs, setTimelineResetAtMs] = useState<number | null>(null);
   const closeTimerRef = useRef<number | null>(null);
   const realtimeCursorRef = useRef<string | undefined>(undefined);
   const realtimeBusyRef = useRef(false);
@@ -323,6 +408,38 @@ export function AvaWidgetShell({
     return personalizeInitialGreeting(thread, greetingName);
   }, [authSession.authenticated, greetingName, thread]);
   const activeThread = authSession.authenticated ? personalizedThread : thread;
+  const visibleThread = useMemo(() => {
+    if (!authSession.authenticated || !conversationReady || !timelineResetAtMs) {
+      return activeThread;
+    }
+
+    const filteredMessages = activeThread.messages.filter((message) => {
+      const createdAtMs = toTimestampMs(message.createdAt);
+      if (createdAtMs === null) {
+        return true;
+      }
+      return createdAtMs >= timelineResetAtMs;
+    });
+
+    if (filteredMessages.length > 0) {
+      return {
+        ...activeThread,
+        messages: filteredMessages
+      };
+    }
+
+    const resetGreeting = createTimelineResetGreeting(activeThread.id, greetingName, timelineResetAtMs);
+    return {
+      ...activeThread,
+      messages: [resetGreeting]
+    };
+  }, [
+    activeThread,
+    authSession.authenticated,
+    conversationReady,
+    greetingName,
+    timelineResetAtMs
+  ]);
 
   const toImpersonationLabel = (customer: ImpersonationCustomer) =>
     customer.email || customer.customerName || customer.customerId || customer.projectRef;
@@ -541,6 +658,31 @@ export function AvaWidgetShell({
     }
   };
 
+  const submitHandoffRating = async (
+    requestId: string,
+    rating: "thumbs_up" | "thumbs_down"
+  ) => {
+    if (!authSession.authenticated || !conversationReady || isSubmitting || !thread.id) {
+      return;
+    }
+
+    setRatingSubmissionRequestId(requestId);
+    try {
+      const result = await api.submitHandoffRating({
+        conversationId: thread.id,
+        rating
+      });
+      setThread(result.thread);
+      setRequestError(null);
+    } catch (error) {
+      setRequestError(
+        error instanceof Error ? error.message : "Unable to submit rating right now."
+      );
+    } finally {
+      setRatingSubmissionRequestId(null);
+    }
+  };
+
   useEffect(() => {
     return () => {
       if (closeTimerRef.current !== null) {
@@ -694,6 +836,51 @@ export function AvaWidgetShell({
 
   useEffect(() => {
     if (!authSession.authenticated || !conversationReady) {
+      setTimelineResetAtMs(null);
+      return;
+    }
+
+    if (canUseTestMode && isTestModeEnabled) {
+      setTimelineResetAtMs(null);
+      return;
+    }
+
+    const conversationId = thread.id;
+    const existingResetMs = readTimelineResetMs(conversationId);
+    if (shouldSkipAutoTimelineReset(thread)) {
+      setTimelineResetAtMs(existingResetMs);
+      return;
+    }
+
+    const lastActivityMs = getLastThreadActivityMs(thread);
+    if (lastActivityMs === null) {
+      setTimelineResetAtMs(existingResetMs);
+      return;
+    }
+
+    const nowMs = Date.now();
+    const inactiveForMs = nowMs - lastActivityMs;
+    if (inactiveForMs >= TIMELINE_RESET_INACTIVITY_MS) {
+      const shouldCreateNewReset = !existingResetMs || existingResetMs < lastActivityMs;
+      const nextResetMs = shouldCreateNewReset ? nowMs : existingResetMs;
+      if (shouldCreateNewReset) {
+        writeTimelineResetMs(conversationId, nextResetMs);
+      }
+      setTimelineResetAtMs(nextResetMs);
+      return;
+    }
+
+    setTimelineResetAtMs(existingResetMs);
+  }, [
+    authSession.authenticated,
+    canUseTestMode,
+    conversationReady,
+    isTestModeEnabled,
+    thread
+  ]);
+
+  useEffect(() => {
+    if (!authSession.authenticated || !conversationReady) {
       return;
     }
 
@@ -763,16 +950,16 @@ export function AvaWidgetShell({
       return;
     }
 
-    const latestMessage = activeThread.messages[activeThread.messages.length - 1];
+    const latestMessage = visibleThread.messages[visibleThread.messages.length - 1];
     if (!latestMessage) {
       return;
     }
 
     if (
       latestMessage.kind === "system" &&
-      (activeThread.handoff.state === "pending" ||
-        activeThread.handoff.state === "claimed" ||
-        activeThread.handoff.state === "active")
+      (visibleThread.handoff.state === "pending" ||
+        visibleThread.handoff.state === "claimed" ||
+        visibleThread.handoff.state === "active")
     ) {
       pendingRepOfferMessageIdRef.current = null;
       return;
@@ -785,7 +972,7 @@ export function AvaWidgetShell({
     if (shouldPromptRepRequest(latestMessage.text)) {
       pendingRepOfferMessageIdRef.current = latestMessage.id;
     }
-  }, [authSession.authenticated, conversationReady, activeThread]);
+  }, [authSession.authenticated, conversationReady, visibleThread]);
 
   const openPanel = () => {
     if (closeTimerRef.current !== null) {
@@ -917,13 +1104,17 @@ export function AvaWidgetShell({
             ) : null}
 
             <WidgetTimeline
-              thread={activeThread}
+              thread={visibleThread}
               showRequestModal={showRequestModal}
               requestReason={requestReason}
+              ratingSubmissionRequestId={ratingSubmissionRequestId}
               onRequestReasonChange={setRequestReason}
               onCancelRequest={() => setShowRequestModal(false)}
               onSubmitRequest={() => {
                 void submitHandoffRequest();
+              }}
+              onSubmitHandoffRating={(requestId, rating) => {
+                void submitHandoffRating(requestId, rating);
               }}
             />
 

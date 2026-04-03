@@ -42,7 +42,7 @@ const EMPLOYEE_ROLES = new Set([
   "internal"
 ]);
 const LOCAL_HOST_PATTERN =
-  /^(localhost|127(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|.+\.local)$/i;
+  /^(localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|::1|.+\.local)$/i;
 
 interface AuthSessionSnapshotMessageData {
   source?: string;

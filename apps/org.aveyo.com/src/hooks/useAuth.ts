@@ -4,6 +4,12 @@ import { supabase } from '../lib/supabase'
 import { buildAuthLoginUrl, getPostLoginRedirectUrl } from '../lib/auth/config'
 import { fetchAuthSession, logoutAuthSession } from '../lib/auth/session'
 
+interface SupabaseSessionBridgeErrorPayload {
+  code?: string
+  error?: string
+  expectedProjectRef?: string | null
+}
+
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
@@ -32,6 +38,20 @@ export function useAuth() {
       }).catch(() => null)
 
       if (!tokenResponse?.ok) {
+        const payload = tokenResponse
+          ? ((await tokenResponse.json().catch(() => null)) as SupabaseSessionBridgeErrorPayload | null)
+          : null
+
+        if (payload?.code === 'SUPABASE_TOKEN_PROJECT_MISMATCH') {
+          console.warn(
+            'useAuth: Supabase session cookies appear to be from a different project. Clear stale Supabase cookies and sign in again.',
+            {
+              expectedProjectRef: payload.expectedProjectRef ?? null,
+              reason: payload.error ?? 'Token project mismatch',
+            }
+          )
+        }
+
         return toFallbackUser(sharedSession.payload.user?.id, sharedSession.payload.user?.email)
       }
 

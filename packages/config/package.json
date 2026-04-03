@@ -8,6 +8,12 @@
     "./tsconfig/base.json": "./tsconfig/base.json",
     "./tsconfig/nextjs.json": "./tsconfig/nextjs.json",
     "./runtime/app-urls": "./runtime/app-urls.js",
+    "./runtime/load-central-env": {
+      "types": "./runtime/load-central-env.d.ts",
+      "import": "./runtime/load-central-env.js",
+      "require": "./runtime/load-central-env.cjs",
+      "default": "./runtime/load-central-env.js"
+    },
     "./runtime/platform-nav": {
       "types": "./runtime/platform-nav.d.ts",
       "default": "./runtime/platform-nav.js"

@@ -151,7 +151,8 @@ export function createTicketFromQueueRecord(
     requestedAt: record.requestedAt,
     claimedByAuthUserId: record.claimedByAuthUserId,
     resolvedAt: record.resolvedAt,
-    resolvedByAuthUserId: record.resolvedByAuthUserId
+    resolvedByAuthUserId: record.resolvedByAuthUserId,
+    customerRating: record.customerRating
   };
 }
 

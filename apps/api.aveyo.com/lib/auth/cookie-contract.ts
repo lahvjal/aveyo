@@ -24,22 +24,22 @@ function normalizeHostname(host: string | null): string {
     return "";
   }
 
-  const withoutPort = trimmed.split(":")[0];
+  const withoutPort = trimmed.startsWith("[")
+    ? (trimmed.match(/^\[([^\]]+)\](?::\d+)?$/)?.[1] ?? trimmed)
+    : trimmed.split(":")[0];
   return withoutPort.replace(/^\[|\]$/g, "");
 }
 
-function isLocalhostHost(host: string | null) {
+const LOCAL_HOST_PATTERN =
+  /^(localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|::1|.+\.localhost|.+\.local)$/i;
+
+function isLocalDevHost(host: string | null) {
   const hostname = normalizeHostname(host);
-  return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "::1" ||
-    hostname.endsWith(".localhost")
-  );
+  return LOCAL_HOST_PATTERN.test(hostname);
 }
 
 export function getSessionCookieContract(request?: Request): SessionCookieContract {
-  if (request && isLocalhostHost(request.headers.get("host"))) {
+  if (request && isLocalDevHost(request.headers.get("host"))) {
     return {
       sameSite: "lax",
       secure: false,

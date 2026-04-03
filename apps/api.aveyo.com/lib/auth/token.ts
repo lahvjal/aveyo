@@ -4,10 +4,79 @@ export const ACCESS_TOKEN_COOKIE_NAME = "ava-access-token";
 export const REFRESH_TOKEN_COOKIE_NAME = "ava-refresh-token";
 const directAccessTokenCookieNames = [ACCESS_TOKEN_COOKIE_NAME, "sb-access-token"];
 const directRefreshTokenCookieNames = [REFRESH_TOKEN_COOKIE_NAME, "sb-refresh-token"];
+const SUPABASE_ISSUER_REGEX = /^https?:\/\/([a-z0-9-]+)\.supabase\.co\/auth\/v1\/?$/i;
 
 export interface RequestAuthTokens {
   accessToken?: string;
   refreshToken?: string;
+}
+
+function resolveCurrentSupabaseProjectRef() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) {
+    return null;
+  }
+
+  try {
+    const hostname = new URL(supabaseUrl).hostname;
+    const [projectRef] = hostname.split(".");
+    return projectRef?.trim().toLowerCase() || null;
+  } catch {
+    return null;
+  }
+}
+
+function decodeJwtPayload(accessToken: string): Record<string, unknown> | null {
+  const parts = accessToken.split(".");
+  if (parts.length < 2) {
+    return null;
+  }
+
+  const payloadPart = parts[1];
+  const base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+
+  try {
+    const decoded = atob(padded);
+    const payload = JSON.parse(decoded) as unknown;
+    if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+      return payload as Record<string, unknown>;
+    }
+  } catch {
+    // Ignore malformed tokens and let callers decide fallback behavior.
+  }
+
+  return null;
+}
+
+function resolveProjectRefFromAccessToken(accessToken: string) {
+  const payload = decodeJwtPayload(accessToken);
+  if (!payload) {
+    return null;
+  }
+
+  const ref = payload.ref;
+  if (typeof ref === "string" && ref.trim()) {
+    return ref.trim().toLowerCase();
+  }
+
+  const issuer = payload.iss;
+  if (typeof issuer === "string") {
+    const match = issuer.match(SUPABASE_ISSUER_REGEX);
+    if (match?.[1]) {
+      return match[1].toLowerCase();
+    }
+  }
+
+  return null;
+}
+
+function isExpectedProjectAccessToken(accessToken: string, expectedProjectRef: string | null) {
+  if (!expectedProjectRef) {
+    return true;
+  }
+
+  return resolveProjectRefFromAccessToken(accessToken) === expectedProjectRef;
 }
 
 function parseCookieHeader(cookieHeader: string | null): Record<string, string> {
@@ -83,33 +152,62 @@ function tokensFromStructuredCookie(rawValue: string): RequestAuthTokens {
 }
 
 function getTokensFromCookieRecord(cookies: Record<string, string>): RequestAuthTokens {
+  const expectedProjectRef = resolveCurrentSupabaseProjectRef();
+
   for (const cookieName of directAccessTokenCookieNames) {
     const direct = cookies[cookieName];
     if (direct) {
+      const decodedAccessToken = decodeSupabaseCookieValue(direct);
+      if (!isExpectedProjectAccessToken(decodedAccessToken, expectedProjectRef)) {
+        continue;
+      }
+
       const rawRefreshToken = firstCookieValue(cookies, directRefreshTokenCookieNames);
       return {
-        accessToken: decodeSupabaseCookieValue(direct),
+        accessToken: decodedAccessToken,
         refreshToken: rawRefreshToken ? decodeSupabaseCookieValue(rawRefreshToken) : undefined
       };
     }
   }
 
-  for (const cookieName of directRefreshTokenCookieNames) {
-    const refreshToken = cookies[cookieName];
-    if (refreshToken) {
-      return {
-        refreshToken: decodeSupabaseCookieValue(refreshToken)
-      };
+  if (!expectedProjectRef) {
+    for (const cookieName of directRefreshTokenCookieNames) {
+      const refreshToken = cookies[cookieName];
+      if (refreshToken) {
+        return {
+          refreshToken: decodeSupabaseCookieValue(refreshToken)
+        };
+      }
     }
   }
 
-  for (const [name, value] of Object.entries(cookies)) {
-    if (!name.includes("auth-token")) {
+  const structuredCandidates = Object.entries(cookies).filter(([name]) => name.includes("auth-token"));
+  const orderedStructuredCandidates = expectedProjectRef
+    ? [
+        ...structuredCandidates.filter(([name]) => name.toLowerCase().includes(expectedProjectRef)),
+        ...structuredCandidates.filter(([name]) => !name.toLowerCase().includes(expectedProjectRef))
+      ]
+    : structuredCandidates;
+
+  for (const [, value] of orderedStructuredCandidates) {
+    const fromStructured = tokensFromStructuredCookie(value);
+    if (!fromStructured.accessToken) {
       continue;
     }
-    const fromStructured = tokensFromStructuredCookie(value);
-    if (fromStructured.accessToken || fromStructured.refreshToken) {
-      return fromStructured;
+
+    if (!isExpectedProjectAccessToken(fromStructured.accessToken, expectedProjectRef)) {
+      continue;
+    }
+
+    return fromStructured;
+  }
+
+  if (!expectedProjectRef) {
+    for (const [, value] of orderedStructuredCandidates) {
+      const fromStructured = tokensFromStructuredCookie(value);
+      if (!fromStructured.accessToken && fromStructured.refreshToken) {
+        return fromStructured;
+      }
     }
   }
 

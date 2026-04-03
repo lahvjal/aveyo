@@ -4,23 +4,51 @@ import { InitialChip } from "./initial-chip";
 interface QueueBoardColumnsProps {
   pendingQueue: Ticket[];
   activeQueue: Ticket[];
-  resolvedTodayQueue: Ticket[];
+  selectedActiveTicketId: string | null;
   onClaimChat: (ticketId: string) => void;
-  onOpenChat: (ticketId: string) => void;
+  onSelectActiveChat: (ticketId: string) => void;
+  onSplitChat: (ticketId: string) => void;
 }
 
 function QueueLaneCard(props: {
   ticket: Ticket;
-  lane: "pending" | "active" | "resolved";
+  lane: "pending" | "active";
+  isSelected?: boolean;
   onClaimChat: (ticketId: string) => void;
-  onOpenChat: (ticketId: string) => void;
+  onSelectActiveChat: (ticketId: string) => void;
+  onSplitChat: (ticketId: string) => void;
 }) {
-  const { ticket, lane, onClaimChat, onOpenChat } = props;
+  const { ticket, lane, isSelected = false, onClaimChat, onSelectActiveChat, onSplitChat } = props;
   const secondaryLine =
     ticket.email.trim() && ticket.email.trim() !== ticket.fullName.trim() ? ticket.email : null;
+  const interactiveCard = lane === "active";
+
+  const selectCard = () => {
+    if (!interactiveCard) {
+      return;
+    }
+    onSelectActiveChat(ticket.id);
+  };
 
   return (
-    <article className={`board-queue-card ${lane}`}>
+    <article
+      className={`board-queue-card ${lane}${interactiveCard && isSelected ? " is-selected" : ""}`}
+      onClick={selectCard}
+      onKeyDown={(event) => {
+        if (!interactiveCard) {
+          return;
+        }
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        event.preventDefault();
+        selectCard();
+      }}
+      role={interactiveCard ? "button" : undefined}
+      tabIndex={interactiveCard ? 0 : undefined}
+      aria-pressed={interactiveCard ? isSelected : undefined}
+      aria-label={interactiveCard ? `Select active chat for ${ticket.fullName}` : undefined}
+    >
       <div className="board-queue-identity">
         <InitialChip initials={ticket.initials} tone={ticket.chipTone} />
         <div>
@@ -40,8 +68,15 @@ function QueueLaneCard(props: {
           Claim Chat
         </button>
       ) : (
-        <button type="button" className="board-queue-action open" onClick={() => onOpenChat(ticket.id)}>
-          {lane === "resolved" ? "Open Transcript" : "Open Chat"}
+        <button
+          type="button"
+          className="board-queue-action split"
+          onClick={(event) => {
+            event.stopPropagation();
+            onSplitChat(ticket.id);
+          }}
+        >
+          Split to tab
         </button>
       )}
     </article>
@@ -51,13 +86,25 @@ function QueueLaneCard(props: {
 function QueueLane(props: {
   title: string;
   count: number;
-  lane: "pending" | "active" | "resolved";
+  lane: "pending" | "active";
   emptyCopy: string;
   tickets: Ticket[];
+  selectedActiveTicketId: string | null;
   onClaimChat: (ticketId: string) => void;
-  onOpenChat: (ticketId: string) => void;
+  onSelectActiveChat: (ticketId: string) => void;
+  onSplitChat: (ticketId: string) => void;
 }) {
-  const { title, count, lane, emptyCopy, tickets, onClaimChat, onOpenChat } = props;
+  const {
+    title,
+    count,
+    lane,
+    emptyCopy,
+    tickets,
+    selectedActiveTicketId,
+    onClaimChat,
+    onSelectActiveChat,
+    onSplitChat
+  } = props;
   return (
     <section className={`board-lane ${lane}`}>
       <header className="board-lane-head">
@@ -73,8 +120,10 @@ function QueueLane(props: {
               key={ticket.id}
               ticket={ticket}
               lane={lane}
+              isSelected={lane === "active" && selectedActiveTicketId === ticket.id}
               onClaimChat={onClaimChat}
-              onOpenChat={onOpenChat}
+              onSelectActiveChat={onSelectActiveChat}
+              onSplitChat={onSplitChat}
             />
           ))
         )}
@@ -86,9 +135,10 @@ function QueueLane(props: {
 export function QueueBoardColumns({
   pendingQueue,
   activeQueue,
-  resolvedTodayQueue,
+  selectedActiveTicketId,
   onClaimChat,
-  onOpenChat
+  onSelectActiveChat,
+  onSplitChat
 }: QueueBoardColumnsProps) {
   return (
     <div className="board-columns">
@@ -98,8 +148,10 @@ export function QueueBoardColumns({
         lane="pending"
         tickets={pendingQueue}
         emptyCopy="No pending requests."
+        selectedActiveTicketId={selectedActiveTicketId}
         onClaimChat={onClaimChat}
-        onOpenChat={onOpenChat}
+        onSelectActiveChat={onSelectActiveChat}
+        onSplitChat={onSplitChat}
       />
       <QueueLane
         title="Active"
@@ -107,17 +159,10 @@ export function QueueBoardColumns({
         lane="active"
         tickets={activeQueue}
         emptyCopy="No active chats."
+        selectedActiveTicketId={selectedActiveTicketId}
         onClaimChat={onClaimChat}
-        onOpenChat={onOpenChat}
-      />
-      <QueueLane
-        title="Resolved Today"
-        count={resolvedTodayQueue.length}
-        lane="resolved"
-        tickets={resolvedTodayQueue}
-        emptyCopy="No chats resolved today."
-        onClaimChat={onClaimChat}
-        onOpenChat={onOpenChat}
+        onSelectActiveChat={onSelectActiveChat}
+        onSplitChat={onSplitChat}
       />
     </div>
   );

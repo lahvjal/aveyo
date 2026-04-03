@@ -1,10 +1,15 @@
-import os from "node:os";
-import { loadCentralEnv } from "@ava/config/runtime/load-central-env";
+const os = require("node:os");
+const { loadCentralEnv } = require("@ava/config/runtime/load-central-env");
 
 loadCentralEnv();
 
-function readConfiguredAllowedDevOrigins() {
-  const raw = process.env.NEXT_ALLOWED_DEV_ORIGINS || process.env.ALLOWED_DEV_ORIGINS || "";
+function readConfiguredOrigins() {
+  const raw =
+    process.env.NEXT_ALLOWED_DEV_ORIGINS ||
+    process.env.ALLOWED_DEV_ORIGINS ||
+    process.env.NEXT_PUBLIC_LOCAL_NETWORK_HOST ||
+    "";
+
   return raw
     .split(",")
     .map((value) => value.trim())
@@ -30,12 +35,11 @@ function readLocalInterfaceHosts() {
   return Array.from(hosts);
 }
 
-/** @type {import('next').NextConfig} */
+/** @type {import("next").NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@ava/ui"],
   allowedDevOrigins: Array.from(
-    new Set([...readLocalInterfaceHosts(), ...readConfiguredAllowedDevOrigins()])
+    new Set([...readLocalInterfaceHosts(), ...readConfiguredOrigins()])
   )
 };
 
-export default nextConfig;
+module.exports = nextConfig;

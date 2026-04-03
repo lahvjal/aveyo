@@ -14,9 +14,17 @@ function resolveReturnTo(rawValue) {
   try {
     const parsed = new URL(rawValue);
     const isHttp = parsed.protocol === "http:" || parsed.protocol === "https:";
+    const isPrivateNetworkHost =
+      /^127(?:\.\d{1,3}){3}$/.test(parsed.hostname) ||
+      /^10(?:\.\d{1,3}){3}$/.test(parsed.hostname) ||
+      /^172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}$/.test(parsed.hostname) ||
+      /^192\.168(?:\.\d{1,3}){2}$/.test(parsed.hostname) ||
+      parsed.hostname === "0.0.0.0" ||
+      parsed.hostname === "::1" ||
+      parsed.hostname.endsWith(".local");
     const isAllowedHost =
       parsed.hostname === "localhost" ||
-      parsed.hostname === "127.0.0.1" ||
+      isPrivateNetworkHost ||
       parsed.hostname.endsWith(".aveyo.com");
 
     if (!isHttp || !isAllowedHost) {

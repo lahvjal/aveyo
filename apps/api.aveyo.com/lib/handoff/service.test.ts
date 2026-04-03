@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ServiceError } from "@/lib/service-error";
-import { createHandoffClaimResult, getQueueResult } from "@/lib/handoff/service";
-import { claimHandoff, listQueue, StoreError } from "@/lib/store/mock-store";
+import {
+  createHandoffClaimResult,
+  createHandoffRatingResult,
+  getQueueResult
+} from "@/lib/handoff/service";
+import { claimHandoff, listQueue, StoreError, submitHandoffRating } from "@/lib/store/mock-store";
 
 vi.mock("@/lib/store/mock-store", () => {
   class MockStoreError extends Error {
@@ -18,12 +22,14 @@ vi.mock("@/lib/store/mock-store", () => {
     requestHandoff: vi.fn(),
     claimHandoff: vi.fn(),
     resolveHandoff: vi.fn(),
+    submitHandoffRating: vi.fn(),
     StoreError: MockStoreError
   };
 });
 
 const mockedClaimHandoff = vi.mocked(claimHandoff);
 const mockedListQueue = vi.mocked(listQueue);
+const mockedSubmitHandoffRating = vi.mocked(submitHandoffRating);
 
 describe("createHandoffClaimResult", () => {
   beforeEach(() => {
@@ -70,7 +76,8 @@ describe("getQueueResult", () => {
         claimedAt: null,
         claimedByAuthUserId: null,
         resolvedAt: null,
-        resolvedByAuthUserId: null
+        resolvedByAuthUserId: null,
+        customerRating: null
       },
       {
         requestId: "req-active",
@@ -84,7 +91,8 @@ describe("getQueueResult", () => {
         claimedAt: "2026-01-02T00:02:00.000Z",
         claimedByAuthUserId: "rep-1",
         resolvedAt: null,
-        resolvedByAuthUserId: null
+        resolvedByAuthUserId: null,
+        customerRating: null
       },
       {
         requestId: "req-resolved",
@@ -98,7 +106,8 @@ describe("getQueueResult", () => {
         claimedAt: "2026-01-02T00:03:00.000Z",
         claimedByAuthUserId: "rep-1",
         resolvedAt: "2026-01-02T00:06:00.000Z",
-        resolvedByAuthUserId: "rep-1"
+        resolvedByAuthUserId: "rep-1",
+        customerRating: "thumbs_up"
       }
     ]);
 
@@ -115,6 +124,58 @@ describe("getQueueResult", () => {
     await expect(getQueueResult("rep-1")).rejects.toMatchObject({
       status: 403,
       message: "forbidden"
+    } as Partial<ServiceError>);
+  });
+});
+
+describe("createHandoffRatingResult", () => {
+  beforeEach(() => {
+    mockedSubmitHandoffRating.mockReset();
+  });
+
+  it("returns 400 for missing conversationId", async () => {
+    await expect(
+      createHandoffRatingResult(
+        {
+          rating: "thumbs_up"
+        },
+        "customer-1"
+      )
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "conversationId is required."
+    } as Partial<ServiceError>);
+  });
+
+  it("returns 400 for invalid rating value", async () => {
+    await expect(
+      createHandoffRatingResult(
+        {
+          conversationId: "conv-1",
+          rating: "invalid" as "thumbs_up"
+        },
+        "customer-1"
+      )
+    ).rejects.toMatchObject({
+      status: 400,
+      message: "rating must be thumbs_up or thumbs_down."
+    } as Partial<ServiceError>);
+  });
+
+  it("maps store errors into service errors", async () => {
+    mockedSubmitHandoffRating.mockRejectedValue(new StoreError(409, "No resolved handoff"));
+
+    await expect(
+      createHandoffRatingResult(
+        {
+          conversationId: "conv-1",
+          rating: "thumbs_down"
+        },
+        "customer-1"
+      )
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "No resolved handoff"
     } as Partial<ServiceError>);
   });
 });

@@ -8,6 +8,17 @@ This repository is the canonical monorepo for Aveyo web apps and shared packages
 - `packages/` shared workspace packages
 - `archive/` non-active legacy/partial apps kept for rollback/reference
 
+## Local Environment Variables
+
+All app `next.config` entrypoints load environment variables from the monorepo root.
+
+- Primary local file: `/.env.local`
+- Optional env-specific files: `/.env.development.local`, `/.env.test.local`, `/.env.production.local`
+- Base fallback: `/.env`
+
+If you still have app-level `.env.local` files from older setup, remove or stop using them to avoid confusion. The root env files are now the single source of truth for local app runs.
+When both root and app-level files exist, root values are applied by the shared loader.
+
 ## Active Apps
 
 - `apps/app.aveyo.com` (primary orchestration and platform operations)

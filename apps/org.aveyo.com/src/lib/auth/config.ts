@@ -11,7 +11,8 @@ import {
 import { getLocalAppUrl, trimTrailingSlash } from "@ava/config/runtime/app-urls";
 
 const POST_LOGIN_REDIRECT_URL = "https://app.aveyo.com/";
-const LOCAL_HOST_PATTERN = /^(localhost|127(?:\.\d{1,3}){3}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|.+\.local)$/i;
+const LOCAL_HOST_PATTERN =
+  /^(localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|::1|.+\.local)$/i;
 
 function normalizeUrl(url: string) {
   return trimTrailingSlash(url);

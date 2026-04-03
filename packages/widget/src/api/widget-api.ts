@@ -40,6 +40,10 @@ export interface WidgetApiClient {
     customerName: string;
     reason?: string;
   }) => Promise<{ thread: ConversationThread }>;
+  submitHandoffRating: (body: {
+    conversationId: string;
+    rating: "thumbs_up" | "thumbs_down";
+  }) => Promise<{ thread: ConversationThread }>;
   getRealtimeEvents: (
     afterEventId?: string
   ) => Promise<{ events: RealtimeEvent[]; cursor?: string; cursorStale?: boolean }>;
@@ -161,6 +165,12 @@ export function createWidgetApiClient({
 
     requestHandoff: (body) =>
       requestJson<{ thread: ConversationThread }>(resolvedBaseUrl, "/api/handoff/request", {
+        method: "POST",
+        body: JSON.stringify(body)
+      }),
+
+    submitHandoffRating: (body) =>
+      requestJson<{ thread: ConversationThread }>(resolvedBaseUrl, "/api/handoff/rating", {
         method: "POST",
         body: JSON.stringify(body)
       }),

@@ -36,10 +36,16 @@ function isAllowedLocalDevOrigin(origin: string) {
       return false;
     }
 
-    if (host === "localhost" || host === "0.0.0.0" || host.endsWith(".local")) {
+    if (host === "localhost" || host === "0.0.0.0" || host === "::1" || host.endsWith(".local")) {
       return true;
     }
     if (/^127(?:\.\d{1,3}){3}$/.test(host)) {
+      return true;
+    }
+    if (/^10(?:\.\d{1,3}){3}$/.test(host)) {
+      return true;
+    }
+    if (/^172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}$/.test(host)) {
       return true;
     }
     if (/^192\.168(?:\.\d{1,3}){2}$/.test(host)) {

@@ -206,7 +206,7 @@ body {
 .widget-route-root .system-row {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   color: #111111;
   font-size: 14px;
   font-weight: 700;
@@ -217,6 +217,72 @@ body {
 .widget-route-root .status-check {
   font-size: 14px;
   line-height: 1;
+}
+
+.widget-route-root .system-row.rating {
+  padding: 14px 0 8px;
+}
+
+.widget-route-root .status-check.rating {
+  font-size: 12px;
+}
+
+.widget-route-root .handoff-rating-card {
+  margin: 0 auto 10px;
+  width: fit-content;
+  max-width: min(270px, 84%);
+  display: grid;
+  gap: 20px;
+}
+
+.widget-route-root .handoff-rating-card.inline-status {
+  margin: 0 auto 10px;
+}
+
+.widget-route-root .handoff-rating-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.widget-route-root .handoff-rating-button {
+  min-width: 75px;
+  height: 42px;
+  border-radius: 999px;
+  border: none;
+  background: #f4f4f4;
+  color: #d0d0d0;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.widget-route-root .handoff-rating-icon {
+  display: block;
+  width: 15px;
+  height: 22px;
+}
+
+.widget-route-root .handoff-rating-button.up.is-selected,
+.widget-route-root .handoff-rating-button.down.is-selected {
+  background: #000000;
+}
+
+.widget-route-root .handoff-rating-button.up.is-selected {
+  color: #00a4ff;
+}
+
+.widget-route-root .handoff-rating-button.down.is-selected {
+  color: #d9d9d9;
+}
+
+.widget-route-root .handoff-rating-button:disabled {
+  opacity: 1;
+  cursor: default;
 }
 
 .widget-route-root .request-modal-card {

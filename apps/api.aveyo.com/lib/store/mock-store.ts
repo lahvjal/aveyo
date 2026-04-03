@@ -1,4 +1,12 @@
-import { type ConversationThread, type QueueSnapshot, type RepresentativeProfile, type SystemEvent, type TimelineMessage } from "@ava/chat-domain";
+import {
+  type ConversationThread,
+  type HandoffFeedbackRequest,
+  type HandoffRating,
+  type QueueSnapshot,
+  type RepresentativeProfile,
+  type SystemEvent,
+  type TimelineMessage
+} from "@ava/chat-domain";
 import {
   getMySqlCustomerProjectDetails,
   listMySqlProjectCustomers
@@ -26,6 +34,7 @@ export interface QueueRecord {
   claimedByAuthUserId: string | null;
   resolvedAt: string | null;
   resolvedByAuthUserId: string | null;
+  customerRating: HandoffRating | null;
 }
 
 export interface RealtimeEvent {
@@ -335,6 +344,50 @@ function firstStringValue(values: unknown[]): string | null {
     }
   }
   return null;
+}
+
+function isHandoffRating(value: unknown): value is HandoffRating {
+  return value === "thumbs_up" || value === "thumbs_down";
+}
+
+function parseHandoffFeedbackRequest(value: unknown): HandoffFeedbackRequest | undefined {
+  const payload = asRecord(value);
+  if (!payload) {
+    return undefined;
+  }
+
+  if (payload.type !== "handoff_rating") {
+    return undefined;
+  }
+
+  const requestId = asTrimmedString(payload.requestId);
+  const representativeName = asTrimmedString(payload.representativeName) ?? "your representative";
+  if (!requestId) {
+    return undefined;
+  }
+
+  const submittedRating = isHandoffRating(payload.submittedRating)
+    ? payload.submittedRating
+    : null;
+  return {
+    type: "handoff_rating",
+    requestId,
+    representativeName,
+    submittedRating
+  };
+}
+
+function parseCustomerRatingPayload(value: unknown): HandoffRating | null {
+  const payload = asRecord(value);
+  if (!payload) {
+    return null;
+  }
+
+  if (payload.kind !== "customer_rating") {
+    return null;
+  }
+
+  return isHandoffRating(payload.rating) ? payload.rating : null;
 }
 
 export class StoreError extends Error {
@@ -699,6 +752,47 @@ async function getResolvedActorByRequestIds(requestIds: string[]): Promise<Map<s
   return resolvedByRequestId;
 }
 
+async function getLatestCustomerRatingByRequestIds(
+  requestIds: string[]
+): Promise<Map<string, HandoffRating>> {
+  if (requestIds.length === 0) {
+    return new Map();
+  }
+
+  const supabase = getSupabaseServiceRoleClient();
+  const { data, error } = await supabase
+    .schema("ava")
+    .from("handoff_events")
+    .select("handoff_request_id, payload, created_at")
+    .in("handoff_request_id", requestIds)
+    .eq("event_type", "queue_update")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new StoreError(500, `Unable to load customer ratings: ${error.message}`);
+  }
+
+  const ratingByRequestId = new Map<string, HandoffRating>();
+  for (const row of (data ?? []) as Array<{
+    handoff_request_id: string;
+    payload: Record<string, unknown> | null;
+    created_at: string;
+  }>) {
+    if (ratingByRequestId.has(row.handoff_request_id)) {
+      continue;
+    }
+
+    const rating = parseCustomerRatingPayload(row.payload);
+    if (!rating) {
+      continue;
+    }
+
+    ratingByRequestId.set(row.handoff_request_id, rating);
+  }
+
+  return ratingByRequestId;
+}
+
 function toQueueRecordFromRequest(params: {
   request: HandoffRequestRow;
   conversationId: string;
@@ -707,6 +801,7 @@ function toQueueRecordFromRequest(params: {
   representative?: RepresentativeProfile;
   pendingPosition?: number;
   resolvedByAuthUserId?: string | null;
+  customerRating?: HandoffRating | null;
 }): QueueRecord {
   const {
     request,
@@ -715,7 +810,8 @@ function toQueueRecordFromRequest(params: {
     impersonationByName,
     representative,
     pendingPosition,
-    resolvedByAuthUserId
+    resolvedByAuthUserId,
+    customerRating
   } = params;
   return {
     requestId: request.id,
@@ -735,7 +831,8 @@ function toQueueRecordFromRequest(params: {
     claimedAt: request.claimed_at,
     claimedByAuthUserId: request.claimed_by_auth_user_id,
     resolvedAt: request.resolved_at,
-    resolvedByAuthUserId: resolvedByAuthUserId ?? null
+    resolvedByAuthUserId: resolvedByAuthUserId ?? null,
+    customerRating: customerRating ?? null
   };
 }
 
@@ -758,6 +855,8 @@ function rowToTimelineMessage(
   if (row.sender_kind === "system") {
     const payload = row.payload ?? {};
     const queue = payload.queue;
+    const payloadRecord = asRecord(payload);
+    const feedbackRequest = parseHandoffFeedbackRequest(payloadRecord?.feedbackRequest);
     const representative = row.sender_auth_user_id
       ? supportAgentMap.get(row.sender_auth_user_id)
       : undefined;
@@ -771,7 +870,23 @@ function rowToTimelineMessage(
       text: row.body,
       systemEvent: toSystemEvent(payload.systemEvent),
       representative,
-      queue: (typeof queue === "object" && queue ? (queue as QueueSnapshot) : undefined) ?? undefined
+      queue: (typeof queue === "object" && queue ? (queue as QueueSnapshot) : undefined) ?? undefined,
+      feedbackRequest
+    };
+  }
+
+  if (row.sender_kind === "ava") {
+    const payload = row.payload ?? {};
+    const payloadRecord = asRecord(payload);
+    const feedbackRequest = parseHandoffFeedbackRequest(payloadRecord?.feedbackRequest);
+    return {
+      id: row.id,
+      conversationId: row.conversation_id,
+      createdAt: row.created_at,
+      deliveryState: "sent",
+      kind: "ava",
+      text: row.body,
+      feedbackRequest
     };
   }
 
@@ -1217,6 +1332,9 @@ export async function listQueue(
   const resolvedByRequestId = await getResolvedActorByRequestIds(
     queueRows.map((row) => row.id)
   );
+  const customerRatingByRequestId = await getLatestCustomerRatingByRequestIds(
+    queueRows.map((row) => row.id)
+  );
 
   const records = queueRows.map((row) => {
     const conversation = conversationById.get(row.conversation_id);
@@ -1243,6 +1361,7 @@ export async function listQueue(
       : undefined;
     const resolvedByAuthUserId =
       resolvedByRequestId.get(row.id) ?? row.claimed_by_auth_user_id ?? null;
+    const customerRating = customerRatingByRequestId.get(row.id) ?? null;
 
     return {
       requestId: row.id,
@@ -1262,7 +1381,8 @@ export async function listQueue(
       claimedAt: row.claimed_at,
       claimedByAuthUserId: row.claimed_by_auth_user_id,
       resolvedAt: row.resolved_at,
-      resolvedByAuthUserId
+      resolvedByAuthUserId,
+      customerRating
     };
   });
 
@@ -2074,6 +2194,17 @@ export async function resolveHandoff(
     throw new StoreError(500, `Unable to update conversation state: ${conversationUpdateError.message}`);
   }
 
+  const representativeName =
+    latestRequest?.claimed_by_auth_user_id
+      ? (await getSupportAgentMap([latestRequest.claimed_by_auth_user_id])).get(
+          latestRequest.claimed_by_auth_user_id
+        )?.name ?? "your representative"
+      : "your representative";
+
+  const disconnectMessageText = latestRequest
+    ? `Disconnected from ${representativeName}`
+    : "Disconnected from representative";
+
   const { data: messageRow, error: messageError } = await supabase
     .schema("ava")
     .from("messages")
@@ -2081,7 +2212,7 @@ export async function resolveHandoff(
       conversation_id: params.conversationId,
       sender_kind: "system",
       sender_auth_user_id: actorUserId,
-      body: "Disconnected from representative. Ava resumed.",
+      body: disconnectMessageText,
       payload: {
         systemEvent: "disconnected"
       }
@@ -2093,6 +2224,38 @@ export async function resolveHandoff(
     throw new StoreError(500, `Unable to insert resolve system message: ${messageError.message}`);
   }
 
+  let ratingPromptMessageId: string | null = null;
+  if (latestRequest) {
+    const { data: ratingPromptMessage, error: ratingPromptError } = await supabase
+      .schema("ava")
+      .from("messages")
+      .insert({
+        conversation_id: params.conversationId,
+        sender_kind: "system",
+        sender_auth_user_id: null,
+        body: `Rate your experience with ${representativeName}`,
+        payload: {
+          systemEvent: "queue_update",
+          feedbackRequest: {
+            type: "handoff_rating",
+            requestId: latestRequest.id,
+            representativeName
+          } satisfies HandoffFeedbackRequest
+        }
+      })
+      .select("id")
+      .single();
+
+    if (ratingPromptError) {
+      throw new StoreError(
+        500,
+        `Unable to insert handoff rating status message: ${ratingPromptError.message}`
+      );
+    }
+
+    ratingPromptMessageId = ratingPromptMessage.id;
+  }
+
   if (latestRequest) {
     const { error: eventError } = await supabase.schema("ava").from("handoff_events").insert({
       handoff_request_id: latestRequest.id,
@@ -2101,13 +2264,118 @@ export async function resolveHandoff(
       actor_auth_user_id: actorUserId,
       payload: {
         resolutionNote: params.resolutionNote ?? "",
-        systemMessageId: messageRow.id
+        systemMessageId: messageRow.id,
+        ratingPromptMessageId
       }
     });
 
     if (eventError) {
       throw new StoreError(500, `Unable to insert resolve event: ${eventError.message}`);
     }
+  }
+
+  const thread = await getConversation(params.conversationId, actorUserId);
+  if (!thread) {
+    throw new StoreError(404, "Conversation not found.");
+  }
+
+  return {
+    thread
+  };
+}
+
+export async function submitHandoffRating(
+  params: { conversationId: string; rating: HandoffRating },
+  actorUserId: string
+) {
+  const supportAgent = await isAvaSupportAgent(actorUserId);
+  requireConversationAccess(await getConversationRow(params.conversationId), actorUserId, supportAgent);
+
+  const supabase = getSupabaseServiceRoleClient();
+  const { data: latestRequestRows, error: latestRequestError } = await supabase
+    .schema("ava")
+    .from("handoff_requests")
+    .select(
+      "id, conversation_id, status, reason, requested_at, claimed_at, claimed_by_auth_user_id, resolved_at"
+    )
+    .eq("conversation_id", params.conversationId)
+    .eq("status", "resolved")
+    .order("resolved_at", { ascending: false })
+    .limit(1);
+
+  if (latestRequestError) {
+    throw new StoreError(500, `Unable to load resolved handoff request: ${latestRequestError.message}`);
+  }
+
+  const latestResolvedRequest = (latestRequestRows ?? [])[0] as HandoffRequestRow | undefined;
+  if (!latestResolvedRequest) {
+    throw new StoreError(409, "No resolved handoff was found for this conversation.");
+  }
+
+  const representativeName =
+    latestResolvedRequest.claimed_by_auth_user_id
+      ? (await getSupportAgentMap([latestResolvedRequest.claimed_by_auth_user_id])).get(
+          latestResolvedRequest.claimed_by_auth_user_id
+        )?.name ?? "your representative"
+      : "your representative";
+
+  const { error: ratingEventError } = await supabase.schema("ava").from("handoff_events").insert({
+    handoff_request_id: latestResolvedRequest.id,
+    conversation_id: params.conversationId,
+    event_type: "queue_update",
+    actor_auth_user_id: actorUserId,
+    payload: {
+      kind: "customer_rating",
+      rating: params.rating
+    }
+  });
+
+  if (ratingEventError) {
+    throw new StoreError(500, `Unable to record handoff rating: ${ratingEventError.message}`);
+  }
+
+  const confirmationText =
+    params.rating === "thumbs_up"
+      ? `Thanks for rating your chat with ${representativeName}.`
+      : `Thanks for rating your chat with ${representativeName}. We appreciate your feedback and will improve.`;
+
+  const { error: confirmationMessageError } = await supabase.schema("ava").from("messages").insert({
+    conversation_id: params.conversationId,
+    sender_kind: "ava",
+    sender_auth_user_id: null,
+    body: confirmationText,
+    payload: {
+      feedbackRequest: {
+        type: "handoff_rating",
+        requestId: latestResolvedRequest.id,
+        representativeName,
+        submittedRating: params.rating
+      }
+    }
+  });
+
+  if (confirmationMessageError) {
+    throw new StoreError(
+      500,
+      `Unable to insert handoff rating confirmation message: ${confirmationMessageError.message}`
+    );
+  }
+
+  const updatedAt = nowIso();
+  const { error: conversationUpdateError } = await supabase
+    .schema("ava")
+    .from("conversations")
+    .update({
+      updated_at: updatedAt,
+      last_message_at: updatedAt
+    })
+    .eq("id", params.conversationId);
+
+  if (conversationUpdateError) {
+    throw new StoreError(
+      500,
+      `Unable to update conversation timestamp for rating: ${conversationUpdateError.message}`
+    );
   }
 
   const thread = await getConversation(params.conversationId, actorUserId);

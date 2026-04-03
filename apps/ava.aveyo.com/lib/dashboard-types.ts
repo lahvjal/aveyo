@@ -16,6 +16,7 @@ export interface Ticket {
   claimedByAuthUserId: string | null;
   resolvedAt: string | null;
   resolvedByAuthUserId: string | null;
+  customerRating: "thumbs_up" | "thumbs_down" | null;
 }
 
 export interface HistoryNote {

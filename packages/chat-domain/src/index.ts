@@ -24,6 +24,15 @@ export interface QueueSnapshot {
 
 export type HandoffState = "none" | "pending" | "claimed" | "active" | "resolved";
 
+export type HandoffRating = "thumbs_up" | "thumbs_down";
+
+export interface HandoffFeedbackRequest {
+  type: "handoff_rating";
+  requestId: string;
+  representativeName: string;
+  submittedRating?: HandoffRating | null;
+}
+
 export interface HandoffSnapshot {
   state: HandoffState;
   requestId?: string;
@@ -56,6 +65,7 @@ export type TimelineMessage =
       text: string;
       createdAt: string;
       deliveryState: MessageDeliveryState;
+      feedbackRequest?: HandoffFeedbackRequest;
     }
   | {
       id: string;
@@ -67,6 +77,7 @@ export type TimelineMessage =
       systemEvent?: SystemEvent;
       representative?: RepresentativeProfile;
       queue?: QueueSnapshot;
+      feedbackRequest?: HandoffFeedbackRequest;
     };
 
 export interface ConversationThread {
