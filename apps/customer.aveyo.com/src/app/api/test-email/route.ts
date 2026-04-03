@@ -2,15 +2,19 @@ import { Resend } from 'resend';
 import { NextRequest, NextResponse } from 'next/server';
 import { emailConfig } from '@/lib/config';
 
-// Initialize Resend with API key from environment variables
-// Fallback to empty string if not available, which will be handled in the request
-const resendApiKey = process.env.RESEND_API_KEY || '';
-const resend = new Resend(resendApiKey);
-
 export async function GET(request: NextRequest) {
   try {
     console.log('Testing Resend email service');
-    console.log('API key present:', !!process.env.RESEND_API_KEY);
+    const resendApiKey = process.env.RESEND_API_KEY;
+    const hasApiKey = !!resendApiKey;
+    console.log('API key present:', hasApiKey);
+    if (!hasApiKey) {
+      return NextResponse.json(
+        { success: false, error: 'Resend API key is missing' },
+        { status: 500 }
+      );
+    }
+    const resend = new Resend(resendApiKey!);
     
     // Send a test email using Resend
     // In testing mode, Resend only allows sending to your own verified email

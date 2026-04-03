@@ -2,9 +2,6 @@ import { Resend } from 'resend';
 import { NextRequest, NextResponse } from 'next/server';
 import { getBaseUrl, emailConfig, isDevelopment } from '@/lib/config';
 
-// Initialize Resend with API key from environment variables
-const resend = new Resend(process.env.RESEND_API_KEY || '');
-
 export async function GET(request: NextRequest) {
   try {
     // Check if API key is present
@@ -37,6 +34,7 @@ export async function GET(request: NextRequest) {
     // Test sending an email using the standardized email format from our config
     const fromEmail = emailConfig.fromAddress;
     const recipientEmail = isDevelopment ? 'lahvjalf@aveyo.com' : 'lahvjalf@aveyo.com';
+    const resend = new Resend(process.env.RESEND_API_KEY!);
     
     console.log('Attempting to send diagnostic test email...');
     console.log(`From: ${fromEmail}`);

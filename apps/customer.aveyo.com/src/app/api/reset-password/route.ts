@@ -3,10 +3,6 @@ import { Resend } from 'resend';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthRedirectUrl, getBaseUrl, emailConfig } from '@/lib/config';
 
-// Initialize Resend with API key from environment variables
-// For production, make sure RESEND_API_KEY is properly set in your environment
-const resend = new Resend(process.env.RESEND_API_KEY || '');
-
 // Initialize Supabase admin client with service role key for admin operations
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

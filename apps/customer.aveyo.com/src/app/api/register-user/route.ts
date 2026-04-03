@@ -4,9 +4,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getBaseUrl, getAuthRedirectUrl, emailConfig } from '@/lib/config';
 import { prisma } from '@/lib/mysql/client';
 
-// Initialize Resend with API key from environment variables
-const resend = new Resend(process.env.RESEND_API_KEY || '');
-
 // Initialize Supabase admin client with service role key for admin operations
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
