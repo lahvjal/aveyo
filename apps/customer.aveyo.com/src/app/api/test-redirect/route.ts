@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       NODE_ENV: process.env.NODE_ENV || 'undefined',
       VERCEL_ENV: process.env.VERCEL_ENV || 'undefined',
       NEXT_PUBLIC_VERCEL_ENV: process.env.NEXT_PUBLIC_VERCEL_ENV || 'undefined',
-      NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || 'undefined',
+      NEXT_PUBLIC_CUSTOMER_URL: process.env.NEXT_PUBLIC_CUSTOMER_URL || 'undefined',
       HAS_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
       HAS_SUPABASE_ANON_KEY: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
       HAS_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,

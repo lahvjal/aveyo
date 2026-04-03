@@ -493,8 +493,8 @@ export const isStaging = typeof window !== 'undefined'
  */
 export function getBaseUrl(): string {
   // First check for explicit override
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL;
+  if (process.env.NEXT_PUBLIC_CUSTOMER_URL) {
+    return process.env.NEXT_PUBLIC_CUSTOMER_URL;
   }
   
   // For client-side, use window.location.origin
@@ -563,13 +563,13 @@ SUPABASE_SERVICE_ROLE_KEY=your_existing_service_role_key
 RESEND_API_KEY=your_existing_resend_api_key
 
 # Site Configuration (UPDATE FOR CHATBOT)
-NEXT_PUBLIC_SITE_URL=https://your-chatbot-domain.com
+NEXT_PUBLIC_CUSTOMER_URL=https://your-chatbot-domain.com
 
 # Development Configuration (optional)
 NEXT_PUBLIC_DEV_PORT=3000
 ```
 
-**💡 Pro Tip**: You can literally copy your existing `.env.local` file and just update the `NEXT_PUBLIC_SITE_URL`!
+**💡 Pro Tip**: You can literally copy your existing `.env.local` file and just update the `NEXT_PUBLIC_CUSTOMER_URL`!
 
 ## 📦 Dependencies
 

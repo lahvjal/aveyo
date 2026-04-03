@@ -99,14 +99,14 @@ export const LOCAL_APP_URLS = buildLocalAppUrls(resolveLocalHostname());
 export const APP_URLS_BY_ENV = Object.freeze({
   app: Object.freeze({
     local: LOCAL_APP_URLS.app,
-    dev: "https://app.aveyo.com",
-    staging: "https://app.aveyo.com",
+    dev: "https://app-dev.aveyo.com",
+    staging: "https://app-staging.aveyo.com",
     prod: "https://app.aveyo.com"
   }),
   dashboard: Object.freeze({
     local: LOCAL_APP_URLS.dashboard,
-    dev: "https://app.aveyo.com",
-    staging: "https://app.aveyo.com",
+    dev: "https://app-dev.aveyo.com",
+    staging: "https://app-staging.aveyo.com",
     prod: "https://app.aveyo.com"
   }),
   auth: Object.freeze({

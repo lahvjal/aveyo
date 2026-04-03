@@ -55,9 +55,9 @@ function resolveNetworkAwareConfiguredUrl(value) {
 }
 
 export function getEmployeeAppUrl() {
-  const configured = resolveNetworkAwareConfiguredUrl(process.env.NEXT_PUBLIC_AUTH_EMPLOYEE_APP_URL);
+  const configured = resolveNetworkAwareConfiguredUrl(process.env.NEXT_PUBLIC_PLATFORM_APP_URL);
   if (!configured) {
-    return "https://app.aveyo.com";
+    return "https://app-staging.aveyo.com";
   }
 
   return configured;
@@ -73,7 +73,7 @@ export function getCustomerAppUrl() {
 }
 
 export function getAuthApiBaseUrl() {
-  const configured = resolveNetworkAwareConfiguredUrl(process.env.NEXT_PUBLIC_AUTH_API_BASE_URL);
+  const configured = resolveNetworkAwareConfiguredUrl(process.env.NEXT_PUBLIC_PLATFORM_API_BASE_URL);
   if (!configured) {
     return getLocalAppUrl("api");
   }

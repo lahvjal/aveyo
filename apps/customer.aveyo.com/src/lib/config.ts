@@ -18,8 +18,8 @@ export const isStaging = typeof window !== 'undefined'
  */
 export function getBaseUrl(): string {
   // First check for explicit override
-  if (process.env.NEXT_PUBLIC_SITE_URL) {
-    return process.env.NEXT_PUBLIC_SITE_URL;
+  if (process.env.NEXT_PUBLIC_CUSTOMER_URL) {
+    return process.env.NEXT_PUBLIC_CUSTOMER_URL;
   }
   
   // For client-side, use window.location.origin

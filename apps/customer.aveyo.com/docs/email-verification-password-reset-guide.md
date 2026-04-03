@@ -17,7 +17,7 @@ Ensure these environment variables are set in your MyAveyo app:
 
 ```
 RESEND_API_KEY=your_resend_api_key
-NEXT_PUBLIC_SITE_URL=https://myaveyo.com
+NEXT_PUBLIC_CUSTOMER_URL=https://myaveyo.com
 ```
 
 ### 2. Update App ID Constants

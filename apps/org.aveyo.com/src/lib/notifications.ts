@@ -1,7 +1,7 @@
 import { supabase } from './supabase'
 import type { Profile } from '../types'
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL
+const appUrl = process.env.NEXT_PUBLIC_ORG_APP_URL
 
 // ── Notification email helpers (all sent server-side via edge function) ──────
 

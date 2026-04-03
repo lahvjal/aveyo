@@ -18,6 +18,8 @@ const defaultAllowedOrigins = [
   "http://localhost:4007",
   "http://localhost:4008",
   "https://aveyo.com",
+  "https://app-dev.aveyo.com",
+  "https://app-staging.aveyo.com",
   "https://app.aveyo.com",
   "https://auth.aveyo.com",
   "https://ava.aveyo.com",

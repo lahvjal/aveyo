@@ -35,7 +35,7 @@ export function useResendInvite() {
 
       try {
         // Edge function handles server-side link generation and email dispatch.
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+        const appUrl = process.env.NEXT_PUBLIC_ORG_APP_URL || window.location.origin
 
         // Send invitation email
         console.log('useResendInvite: Sending invitation email')

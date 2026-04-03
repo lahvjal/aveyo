@@ -127,9 +127,9 @@ NEXT_PUBLIC_USE_MYSQL=true
 # ==========================================
 # APP CONFIGURATION
 # ==========================================
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_CUSTOMER_URL=http://localhost:3000
 # or your production URL
-# NEXT_PUBLIC_SITE_URL=https://ava-ai-chatbot.vercel.app
+# NEXT_PUBLIC_CUSTOMER_URL=https://ava-ai-chatbot.vercel.app
 ```
 
 ### Connection String Breakdown

@@ -36,7 +36,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-production-supabase-url.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-production-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-production-service-role-key
 RESEND_API_KEY=your-resend-api-key
-NEXT_PUBLIC_SITE_URL=https://goaveyo.com
+NEXT_PUBLIC_CUSTOMER_URL=https://goaveyo.com
 ```
 
 #### Staging Environment Variables
@@ -45,7 +45,7 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-staging-supabase-url.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your-staging-anon-key
 SUPABASE_SERVICE_ROLE_KEY=your-staging-service-role-key
 RESEND_API_KEY=your-resend-api-key
-NEXT_PUBLIC_SITE_URL=https://staging.goaveyo.com
+NEXT_PUBLIC_CUSTOMER_URL=https://staging.goaveyo.com
 ```
 
 ### 3. Supabase Projects

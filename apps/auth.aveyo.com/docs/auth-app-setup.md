@@ -13,7 +13,7 @@ Required:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_AUTH_RETURN_TO_ALLOWLIST` (comma-separated origins allowed in `?returnTo=`)
-- `NEXT_PUBLIC_AUTH_API_BASE_URL` (API origin that sets/clears cross-subdomain cookies)
+- `NEXT_PUBLIC_PLATFORM_API_BASE_URL` (API origin that sets/clears cross-subdomain cookies)
 
 Optional:
 
@@ -50,7 +50,7 @@ https://auth-<env>.aveyo.com/login?returnTo=<url-encoded-caller-login-url>
 On successful sign-in, auth app calls:
 
 ```text
-POST <NEXT_PUBLIC_AUTH_API_BASE_URL>/api/auth/session/bootstrap
+POST <NEXT_PUBLIC_PLATFORM_API_BASE_URL>/api/auth/session/bootstrap
 ```
 
 with the Supabase `accessToken` and `refreshToken`, then redirects to `returnTo` **without** hash tokens.

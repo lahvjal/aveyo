@@ -53,8 +53,8 @@ function getEmployeeAppUrl() {
     typeof window === "undefined" ? "local" : resolveEnvironment(window.location.hostname);
   const resolved = resolveAppUrl("dashboard", environment);
   return resolvePlatformAppUrl({
-    configuredPlatformAppUrl: process.env.NEXT_PUBLIC_AUTH_EMPLOYEE_APP_URL,
-    fallbackPlatformAppUrl: resolved || "https://app.aveyo.com"
+    configuredPlatformAppUrl: process.env.NEXT_PUBLIC_PLATFORM_APP_URL,
+    fallbackPlatformAppUrl: resolved || "https://app-staging.aveyo.com"
   });
 }
 

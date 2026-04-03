@@ -141,7 +141,7 @@ export function useInviteEmployee() {
         }
 
         // Step 2: Send invitation email (edge function generates magic link server-side)
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin
+        const appUrl = process.env.NEXT_PUBLIC_ORG_APP_URL || window.location.origin
         console.log('useInviteEmployee: Sending invitation email')
         const emailResult = await sendEmployeeInvitationEmail(
           newUserId,
