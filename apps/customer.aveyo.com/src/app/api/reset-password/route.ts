@@ -3,11 +3,14 @@ import { Resend } from 'resend';
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthRedirectUrl, getBaseUrl, emailConfig } from '@/lib/config';
 
-// Initialize Supabase admin client with service role key for admin operations
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+function createSupabaseAdminClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error('Missing Supabase admin environment configuration');
+  }
+  return createClient(supabaseUrl, serviceRoleKey);
+}
 
 // Ensure all errors are caught and returned as proper JSON responses
 export async function POST(request: NextRequest) {
@@ -23,6 +26,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const supabaseAdmin = createSupabaseAdminClient();
     
     // Get the redirect URL for password reset using our centralized config
     const resetRedirectUrl = getAuthRedirectUrl('/reset-password');
