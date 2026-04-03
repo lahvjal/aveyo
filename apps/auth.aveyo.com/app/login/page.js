@@ -16,16 +16,79 @@ function describeAuthError(error, fallback) {
   return fallback;
 }
 
+const LOCAL_HOST_PATTERN =
+  /^(localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|::1|.+\.local)$/i;
+
+function normalizeAllowlistOrigin(value) {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (!raw) {
+    return "";
+  }
+
+  try {
+    return new URL(raw).origin;
+  } catch {
+    return "";
+  }
+}
+
+function getConfiguredReturnToOrigins() {
+  const rawAllowlist = process.env.NEXT_PUBLIC_AUTH_RETURN_TO_ALLOWLIST || "";
+  if (!rawAllowlist.trim()) {
+    return [];
+  }
+
+  const origins = rawAllowlist
+    .split(",")
+    .map((entry) => normalizeAllowlistOrigin(entry))
+    .filter(Boolean);
+  return Array.from(new Set(origins));
+}
+
+function isTrustedAveyoHostname(hostname) {
+  const normalized = typeof hostname === "string" ? hostname.trim().toLowerCase() : "";
+  if (!normalized) {
+    return false;
+  }
+
+  return normalized === "aveyo.com" || normalized.endsWith(".aveyo.com") || LOCAL_HOST_PATTERN.test(normalized);
+}
+
+function resolveTrustedReturnToUrl(value) {
+  const raw = typeof value === "string" ? value.trim() : "";
+  if (!raw) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(raw);
+    if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+      return "";
+    }
+
+    const allowlistedOrigins = getConfiguredReturnToOrigins();
+    if (allowlistedOrigins.length > 0) {
+      return allowlistedOrigins.includes(parsed.origin) ? parsed.toString() : "";
+    }
+
+    return isTrustedAveyoHostname(parsed.hostname) ? parsed.toString() : "";
+  } catch {
+    return "";
+  }
+}
+
 function parseLoginRequestFromWindow() {
   if (typeof window === "undefined") {
     return {
-      logoutRequested: false
+      logoutRequested: false,
+      requestedReturnTo: ""
     };
   }
 
   const params = new URLSearchParams(window.location.search);
   return {
-    logoutRequested: params.get("logout") === "1"
+    logoutRequested: params.get("logout") === "1",
+    requestedReturnTo: resolveTrustedReturnToUrl(params.get("returnTo"))
   };
 }
 
@@ -68,7 +131,14 @@ function readRoleFromSupabaseSession(session) {
   );
 }
 
-function resolveRedirectTarget({ sessionPayload, session }) {
+function resolveRedirectTarget({ sessionPayload, session, requestedReturnTo }) {
+  if (requestedReturnTo) {
+    return {
+      label: "requested destination",
+      url: requestedReturnTo
+    };
+  }
+
   const role = readRoleFromSessionPayload(sessionPayload) || readRoleFromSupabaseSession(session);
   if (role === "customer") {
     return {
@@ -138,6 +208,7 @@ async function bootstrapPlatformCookieSession(session) {
 export default function LoginPage() {
   const [supabase, setSupabase] = useState(null);
   const [logoutRequested, setLogoutRequested] = useState(false);
+  const [requestedReturnTo, setRequestedReturnTo] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -147,8 +218,12 @@ export default function LoginPage() {
   const [statusTone, setStatusTone] = useState("info");
 
   useEffect(() => {
-    const { logoutRequested: shouldLogout } = parseLoginRequestFromWindow();
+    const {
+      logoutRequested: shouldLogout,
+      requestedReturnTo: parsedReturnTo
+    } = parseLoginRequestFromWindow();
     setLogoutRequested(shouldLogout);
+    setRequestedReturnTo(parsedReturnTo);
 
     try {
       setSupabase(getSupabaseBrowserClient());
@@ -190,7 +265,7 @@ export default function LoginPage() {
           if (cancelled) {
             return;
           }
-          const target = resolveRedirectTarget({ sessionPayload, session });
+          const target = resolveRedirectTarget({ sessionPayload, session, requestedReturnTo });
           setStatus(`Session ready. Redirecting to ${target.label}...`);
           window.location.replace(target.url);
           return;
@@ -214,7 +289,7 @@ export default function LoginPage() {
     return () => {
       cancelled = true;
     };
-  }, [supabase, logoutRequested]);
+  }, [supabase, logoutRequested, requestedReturnTo]);
 
   function getActiveSupabaseClient() {
     if (supabase) {
@@ -262,7 +337,7 @@ export default function LoginPage() {
 
       setStatus("Establishing shared cookies...");
       const sessionPayload = await bootstrapPlatformCookieSession(session);
-      const target = resolveRedirectTarget({ sessionPayload, session });
+      const target = resolveRedirectTarget({ sessionPayload, session, requestedReturnTo });
       setStatus(`Session ready. Redirecting to ${target.label}...`);
       window.location.replace(target.url);
     } catch (error) {

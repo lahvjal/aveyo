@@ -10,16 +10,8 @@ import {
 } from "@ava/config/runtime/auth-urls";
 import { getLocalAppUrl, trimTrailingSlash } from "@ava/config/runtime/app-urls";
 
-const POST_LOGIN_REDIRECT_URL = "https://app-staging.aveyo.com/";
-const LOCAL_HOST_PATTERN =
-  /^(localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|::1|.+\.local)$/i;
-
 function normalizeUrl(url: string) {
   return trimTrailingSlash(url);
-}
-
-function isLocalHostname(hostname: string) {
-  return LOCAL_HOST_PATTERN.test(hostname.trim());
 }
 
 function getLocalOrgChartDashboardUrl() {
@@ -42,25 +34,17 @@ export function getPlatformAppUrl() {
 }
 
 export function getPostLoginRedirectUrl() {
-  if (typeof window !== "undefined" && isLocalHostname(window.location.hostname)) {
-    return getLocalOrgChartDashboardUrl();
+  if (typeof window !== "undefined") {
+    const browserOrigin = normalizeUrl(window.location.origin);
+    return `${browserOrigin}/dashboard`;
   }
 
-  const configuredAppUrl = process.env.NEXT_PUBLIC_ORG_APP_URL?.trim();
-  if (configuredAppUrl) {
-    let hostname = "";
-    try {
-      hostname = new URL(configuredAppUrl).hostname;
-    } catch {
-      hostname = "";
-    }
-
-    if (hostname && isLocalHostname(hostname)) {
-      return `${normalizeUrl(configuredAppUrl)}/dashboard`;
-    }
+  const configuredOrgUrl = process.env.NEXT_PUBLIC_ORG_APP_URL?.trim();
+  if (configuredOrgUrl) {
+    return `${normalizeUrl(configuredOrgUrl)}/dashboard`;
   }
 
-  return POST_LOGIN_REDIRECT_URL;
+  return getLocalOrgChartDashboardUrl();
 }
 
 export function getAuthAppUrl() {
