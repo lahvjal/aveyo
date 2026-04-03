@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start -p 4008",
     "lint": "next lint",
+    "pretypecheck": "prisma generate",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "test": "echo \"No tests configured for customer-aveyo-com\"",
     "prisma:generate": "prisma generate"
