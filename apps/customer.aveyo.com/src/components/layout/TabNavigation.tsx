@@ -1,7 +1,6 @@
 // src/components/layout/TabNavigation.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useProjects } from '@/context/ProjectsContext';
@@ -81,16 +80,9 @@ const Tab = ({ href, label, active, badge, onClick, isButton }: TabProps) => {
 export default function TabNavigation() {
   const pathname = usePathname();
   const { actionItems } = useProjects();
-  const [pendingActionsCount, setPendingActionsCount] = useState<number>(0);
-
-  useEffect(() => {
-    // Count pending and overdue items from the context
-    const pendingCount = actionItems.filter((item) => 
-      item.status === 'pending' || item.status === 'overdue'
-    ).length;
-    
-    setPendingActionsCount(pendingCount);
-  }, [actionItems]);
+  const pendingActionsCount = actionItems.filter(
+    (item) => item.status === 'pending' || item.status === 'overdue'
+  ).length;
 
   // Function to open Ava chat
   const openAvaChat = () => {
