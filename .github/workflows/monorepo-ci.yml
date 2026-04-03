@@ -192,36 +192,54 @@ jobs:
     needs:
       - changes
       - customer-quality
-    if: github.event_name == 'push' && github.ref == 'refs/heads/staging' && needs.changes.outputs.customer == 'true' && secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID_STAGING != ''
+    if: github.event_name == 'push' && github.ref == 'refs/heads/staging' && needs.changes.outputs.customer == 'true'
     runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_STAGING }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Deploy customer staging
+        if: ${{ env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != '' }}
         uses: amondnet/vercel-action@v20
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_STAGING }}
+          vercel-token: ${{ env.VERCEL_TOKEN }}
+          vercel-org-id: ${{ env.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ env.VERCEL_PROJECT_ID }}
           vercel-args: "--prod"
           working-directory: ./apps/customer.aveyo.com
+
+      - name: Skip staging deploy when secrets are missing
+        if: ${{ env.VERCEL_TOKEN == '' || env.VERCEL_ORG_ID == '' || env.VERCEL_PROJECT_ID == '' }}
+        run: echo "Skipping customer staging deploy because required Vercel secrets are not configured."
 
   deploy-customer-production:
     needs:
       - changes
       - customer-quality
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.customer == 'true' && secrets.VERCEL_TOKEN != '' && secrets.VERCEL_ORG_ID != '' && secrets.VERCEL_PROJECT_ID_PRODUCTION != ''
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.changes.outputs.customer == 'true'
     runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_PRODUCTION }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Deploy customer production
+        if: ${{ env.VERCEL_TOKEN != '' && env.VERCEL_ORG_ID != '' && env.VERCEL_PROJECT_ID != '' }}
         uses: amondnet/vercel-action@v20
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID_PRODUCTION }}
+          vercel-token: ${{ env.VERCEL_TOKEN }}
+          vercel-org-id: ${{ env.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ env.VERCEL_PROJECT_ID }}
           vercel-args: "--prod"
           working-directory: ./apps/customer.aveyo.com
+
+      - name: Skip production deploy when secrets are missing
+        if: ${{ env.VERCEL_TOKEN == '' || env.VERCEL_ORG_ID == '' || env.VERCEL_PROJECT_ID == '' }}
+        run: echo "Skipping customer production deploy because required Vercel secrets are not configured."
