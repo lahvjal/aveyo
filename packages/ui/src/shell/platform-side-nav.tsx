@@ -180,6 +180,23 @@ function resolveUtilityHref(
   return "";
 }
 
+function resolveProfileHref(
+  runtimeEnvironment: RuntimeEnvironment,
+  sameAppHrefByItemId: Record<string, string>
+): string {
+  const sameAppHref = sameAppHrefByItemId.profile;
+  if (sameAppHref) {
+    return sameAppHref;
+  }
+
+  const orgBaseUrl = trimTrailingSlash(resolveAppUrl("org", runtimeEnvironment));
+  if (orgBaseUrl) {
+    return `${orgBaseUrl}/profile`;
+  }
+
+  return "/profile";
+}
+
 function readRuntimeEnvironment(): RuntimeEnvironment {
   if (typeof window === "undefined") {
     return "local";
@@ -329,6 +346,31 @@ export function PlatformSideNav({
   ));
   const profileAvatarUrl = toAvatarUrl(profile.avatarUrl);
   const profileInitials = profile.initials?.trim() || getInitials(profile.displayName);
+  const profileHref = resolveProfileHref(runtimeEnvironment, sameAppHrefByItemId);
+  const profileTitle = isCollapsed ? `${profile.displayName} (${profile.roleLabel})` : undefined;
+  const profileBody = (
+    <>
+      <span className={classNames.profileAvatar} aria-hidden="true">
+        {profileAvatarUrl ? <img src={profileAvatarUrl} alt="" /> : profileInitials}
+      </span>
+      <span className={classNames.profileCopy}>
+        <strong>{profile.displayName}</strong>
+        <small>{profile.roleLabel}</small>
+      </span>
+    </>
+  );
+  const logoutBody = (
+    <>
+      <span className={classNames.navIcon} aria-hidden="true">
+        <svg viewBox="0 0 20 20" className={styles.logoutIcon}>
+          <path d="M8 3.5H5.5a1.5 1.5 0 0 0-1.5 1.5v10a1.5 1.5 0 0 0 1.5 1.5H8" />
+          <path d="M12 6.5 16 10l-4 3.5" />
+          <path d="M16 10H7" />
+        </svg>
+      </span>
+      <span className={classNames.navLabel}>Logout</span>
+    </>
+  );
 
   return (
     <aside
@@ -461,20 +503,24 @@ export function PlatformSideNav({
           );
         })}
 
+        {renderLink({
+          key: "profile",
+          href: profileHref,
+          className: classNames.profileRow,
+          title: profileTitle,
+          ariaLabel: "Open profile",
+          children: profileBody
+        })}
+
         <button
           type="button"
-          className={classNames.profileRow}
+          className={`${classNames.utilityItem} ${styles.utilityButton}`}
+          title={isCollapsed ? "Logout" : undefined}
+          aria-label="Logout"
           onClick={profile.onClick}
           disabled={profile.disabled}
-          title={isCollapsed ? `${profile.displayName} (${profile.roleLabel})` : undefined}
         >
-          <span className={classNames.profileAvatar} aria-hidden="true">
-            {profileAvatarUrl ? <img src={profileAvatarUrl} alt="" /> : profileInitials}
-          </span>
-          <span className={classNames.profileCopy}>
-            <strong>{profile.displayName}</strong>
-            <small>{profile.roleLabel}</small>
-          </span>
+          {logoutBody}
         </button>
       </div>
     </aside>

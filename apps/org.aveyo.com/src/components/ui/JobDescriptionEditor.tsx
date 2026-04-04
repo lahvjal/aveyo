@@ -21,6 +21,7 @@ export function JobDescriptionEditor({
   minRows = 4,
 }: JobDescriptionEditorProps) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
         bold: false,

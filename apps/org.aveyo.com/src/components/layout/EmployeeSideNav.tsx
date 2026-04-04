@@ -165,6 +165,7 @@ export function EmployeeSideNav() {
       sameAppHrefByItemId={{
         org: "/dashboard",
         operations: "/processes",
+        profile: "/profile",
         manager: "/manager",
         admin: "/admin"
       }}

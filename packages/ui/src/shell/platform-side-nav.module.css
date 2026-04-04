@@ -284,12 +284,38 @@
   margin-top: 4px;
   padding: 10px 14px;
   text-align: left;
+  text-decoration: none;
   width: 100%;
 }
 
 .profileRow:disabled {
   cursor: wait;
   opacity: 0.6;
+}
+
+.utilityButton {
+  appearance: none;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.utilityButton:disabled {
+  cursor: wait;
+}
+
+.logoutIcon {
+  display: block;
+  fill: none;
+  height: 18px;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+  width: 18px;
 }
 
 .profileAvatar {
