@@ -204,18 +204,29 @@ function resolveMobileDashboardTarget(
 ): { item: PlatformPrimaryNavItem; href: string } | null {
   const preferredSameAppIds = ["dashboard", "org", "kpi", "ava"];
   for (const preferredId of preferredSameAppIds) {
-    const candidate = primaryNavItems.find((item) => item.id === preferredId);
-    if (!candidate) {
+    const sameAppHref = sameAppHrefByItemId[preferredId];
+    if (!sameAppHref) {
       continue;
     }
 
-    if (preferredId !== "dashboard" && !sameAppHrefByItemId[preferredId]) {
+    const candidate = primaryNavItems.find((item) => item.id === preferredId);
+    if (!candidate) {
       continue;
     }
 
     const href = resolvePlatformNavHref(candidate, runtimeEnvironment, { sameAppHrefByItemId });
     if (href) {
       return { item: candidate, href };
+    }
+  }
+
+  const dashboardItem = primaryNavItems.find((item) => item.id === "dashboard");
+  if (dashboardItem) {
+    const dashboardHref = resolvePlatformNavHref(dashboardItem, runtimeEnvironment, {
+      sameAppHrefByItemId
+    });
+    if (dashboardHref) {
+      return { item: dashboardItem, href: dashboardHref };
     }
   }
 
