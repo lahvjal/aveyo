@@ -1,10 +1,28 @@
+import { useState } from 'react'
 import { useProfile } from '../hooks/useProfile'
+import { useAuth } from '../hooks/useAuth'
 import { ProfileEditor } from '../components/profile/ProfileEditor'
 import { usePageTitle } from '../hooks/usePageTitle'
+import { Button } from '../components/ui/button'
 
 export default function Profile() {
   usePageTitle('My Profile')
+  const { signOut } = useAuth()
+  const [isSigningOut, setIsSigningOut] = useState(false)
   const { data: profile, isLoading, error } = useProfile()
+
+  const handleSignOut = async () => {
+    if (isSigningOut) {
+      return
+    }
+
+    setIsSigningOut(true)
+    try {
+      await signOut()
+    } finally {
+      setIsSigningOut(false)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -38,7 +56,12 @@ export default function Profile() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <h1 className="text-3xl font-bold mb-6">My Profile</h1>
+      <div className="mb-6 flex items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold">My Profile</h1>
+        <Button type="button" variant="link" onClick={handleSignOut} disabled={isSigningOut}>
+          {isSigningOut ? 'Signing out...' : 'Logout'}
+        </Button>
+      </div>
       <ProfileEditor profile={profile} />
     </div>
   )

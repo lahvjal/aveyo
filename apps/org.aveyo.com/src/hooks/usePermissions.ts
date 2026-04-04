@@ -2,16 +2,17 @@ import { useProfile } from './useProfile'
 import { useProfiles } from './useProfile'
 import { useMemo } from 'react'
 import type { Profile } from '../types'
+import { useAuth } from './useAuth'
 
 export function usePermissions() {
-  const { data: profile, isLoading } = useProfile()
+  const { user, loading: authLoading } = useAuth()
+  const {
+    data: profile,
+    isPending: profilePending,
+    isFetching: profileFetching,
+  } = useProfile(user?.id, { enabled: !authLoading && Boolean(user?.id) })
   const { data: allProfiles } = useProfiles()
-
-  console.log('usePermissions: profile data:', profile)
-  console.log('usePermissions: is_admin value:', profile?.is_admin)
-  console.log('usePermissions: is_manager value:', profile?.is_manager)
-  console.log('usePermissions: returning isAdmin:', profile?.is_admin || false)
-  console.log('usePermissions: returning isManager:', profile?.is_manager || false)
+  const isLoading = authLoading || (Boolean(user?.id) && (profilePending || (profileFetching && !profile)))
 
   // Helper function to get team members (direct and indirect reports)
   const getTeamMembers = useMemo(() => {

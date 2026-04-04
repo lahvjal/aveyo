@@ -197,6 +197,38 @@ function resolveProfileHref(
   return "/profile";
 }
 
+function resolveMobileDashboardTarget(
+  primaryNavItems: PlatformPrimaryNavItem[],
+  runtimeEnvironment: RuntimeEnvironment,
+  sameAppHrefByItemId: Record<string, string>
+): { item: PlatformPrimaryNavItem; href: string } | null {
+  const preferredSameAppIds = ["dashboard", "org", "kpi", "ava"];
+  for (const preferredId of preferredSameAppIds) {
+    const candidate = primaryNavItems.find((item) => item.id === preferredId);
+    if (!candidate) {
+      continue;
+    }
+
+    if (preferredId !== "dashboard" && !sameAppHrefByItemId[preferredId]) {
+      continue;
+    }
+
+    const href = resolvePlatformNavHref(candidate, runtimeEnvironment, { sameAppHrefByItemId });
+    if (href) {
+      return { item: candidate, href };
+    }
+  }
+
+  for (const item of primaryNavItems) {
+    const href = resolvePlatformNavHref(item, runtimeEnvironment, { sameAppHrefByItemId });
+    if (href) {
+      return { item, href };
+    }
+  }
+
+  return null;
+}
+
 function readRuntimeEnvironment(): RuntimeEnvironment {
   if (typeof window === "undefined") {
     return "local";
@@ -304,6 +336,7 @@ export function PlatformSideNav({
   const [isCollapsed, setIsCollapsed] = useState<boolean>(() =>
     readStoredCollapsedState(storageKey, defaultCollapsed)
   );
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     setRuntimeEnvironment(readRuntimeEnvironment());
@@ -316,16 +349,37 @@ export function PlatformSideNav({
     onCollapsedChange?.(isCollapsed);
   }, [storageKey, isCollapsed, onCollapsedChange]);
 
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [pathname]);
+
   const primaryNavItems = PLATFORM_PRIMARY_NAV_ITEMS as PlatformPrimaryNavItem[];
   const configuredUtilityItems = useMemo(
-    () =>
-      utilityItems ??
-      ((PLATFORM_UTILITY_NAV_ITEMS as PlatformPrimaryNavItem[]).map((item) => ({
-        id: item.id,
-        label: item.label,
-        icon: item.icon
-      })) as PlatformUtilityNavItem[]),
+    () => {
+      const resolvedItems =
+        utilityItems ??
+        ((PLATFORM_UTILITY_NAV_ITEMS as PlatformPrimaryNavItem[]).map((item) => ({
+          id: item.id,
+          label: item.label,
+          icon: item.icon
+        })) as PlatformUtilityNavItem[]);
+
+      // Settings is intentionally removed from the shared side-nav.
+      return resolvedItems.filter((item) => item.id !== "settings");
+    },
     [utilityItems]
+  );
+  const visibleUtilityItems = useMemo(
+    () =>
+      configuredUtilityItems.filter((item) =>
+        canShowUtilityItemByRole(item.id, {
+          userType,
+          role,
+          canAccessManagerPanel,
+          canAccessAdminPanel
+        })
+      ),
+    [configuredUtilityItems, userType, role, canAccessManagerPanel, canAccessAdminPanel]
   );
 
   const brandHref =
@@ -347,6 +401,36 @@ export function PlatformSideNav({
   const profileAvatarUrl = toAvatarUrl(profile.avatarUrl);
   const profileInitials = profile.initials?.trim() || getInitials(profile.displayName);
   const profileHref = resolveProfileHref(runtimeEnvironment, sameAppHrefByItemId);
+  const mobileDashboardTarget = resolveMobileDashboardTarget(
+    primaryNavItems,
+    runtimeEnvironment,
+    sameAppHrefByItemId
+  );
+  const mobileDashboardHref = mobileDashboardTarget?.href || "/";
+  const mobileMenuPrimaryItems = primaryNavItems.filter(
+    (item) => item.id !== mobileDashboardTarget?.item.id
+  );
+  const panelUtilityItem =
+    visibleUtilityItems.find((item) => item.id === "admin") ??
+    visibleUtilityItems.find((item) => item.id === "manager") ??
+    null;
+  const panelHref = panelUtilityItem
+    ? resolveUtilityHref(panelUtilityItem, runtimeEnvironment, sameAppHrefByItemId)
+    : "";
+  const panelLabel = panelUtilityItem?.label ?? "Panel";
+  const panelIconSrc = getPlatformNavIconSrc((panelUtilityItem?.icon ?? "admin") as PlatformNavIconKey, {
+    prefix: iconPrefix
+  });
+  const panelIsActive = panelUtilityItem
+    ? (isUtilityItemActive?.(panelUtilityItem, pathname) ??
+      panelUtilityItem.active ??
+      routeMatches(pathname, panelUtilityItem.matchPrefixes))
+    : false;
+  const profileTabActive = routeMatches(pathname, ["/profile"]);
+  const dashboardTabActive =
+    typeof mobileDashboardHref === "string" && mobileDashboardHref.startsWith("/")
+      ? routeMatches(pathname, [mobileDashboardHref === "/" ? "/" : mobileDashboardHref])
+      : false;
   const profileTitle = isCollapsed ? `${profile.displayName} (${profile.roleLabel})` : undefined;
   const profileBody = (
     <>
@@ -438,18 +522,7 @@ export function PlatformSideNav({
       </nav>
 
       <div className={classNames.utilityNav}>
-        {configuredUtilityItems.map((item) => {
-          if (
-            !canShowUtilityItemByRole(item.id, {
-              userType,
-              role,
-              canAccessManagerPanel,
-              canAccessAdminPanel
-            })
-          ) {
-            return null;
-          }
-
+        {visibleUtilityItems.map((item) => {
           const href = resolveUtilityHref(item, runtimeEnvironment, sameAppHrefByItemId);
           const itemIsActive =
             isUtilityItemActive?.(item, pathname) ??
@@ -523,6 +596,152 @@ export function PlatformSideNav({
           {logoutBody}
         </button>
       </div>
+
+      <nav className={styles.mobileTabBar} aria-label="Mobile navigation">
+        {renderLink({
+          key: "mobile-dashboard",
+          href: mobileDashboardHref,
+          className: `${styles.mobileTabLink}${dashboardTabActive ? ` ${styles.mobileTabActive}` : ""}`,
+          ariaLabel: "Open dashboard",
+          children: (
+            <>
+              <span className={styles.mobileTabIcon}>
+                {getPlatformNavIconSrc("dashboard", { prefix: iconPrefix }) ? (
+                  <img
+                    src={getPlatformNavIconSrc("dashboard", { prefix: iconPrefix })}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                ) : null}
+              </span>
+              <span className={styles.mobileTabLabel}>Dashboard</span>
+            </>
+          )
+        })}
+
+        <button
+          type="button"
+          className={`${styles.mobileTabButton}${isMobileMenuOpen ? ` ${styles.mobileTabActive}` : ""}`}
+          aria-label="Open app menu"
+          aria-expanded={isMobileMenuOpen}
+          onClick={() => setIsMobileMenuOpen((value) => !value)}
+        >
+          <span className={styles.mobileTabIcon} aria-hidden="true">
+            <svg viewBox="0 0 20 20" className={styles.mobileMenuIcon}>
+              <path d="M3.5 5.5h13" />
+              <path d="M3.5 10h13" />
+              <path d="M3.5 14.5h13" />
+            </svg>
+          </span>
+          <span className={styles.mobileTabLabel}>Apps</span>
+        </button>
+
+        {panelHref ? (
+          renderLink({
+            key: "mobile-panel",
+            href: panelHref,
+            className: `${styles.mobileTabLink}${panelIsActive ? ` ${styles.mobileTabActive}` : ""}`,
+            ariaLabel: `Open ${panelLabel}`,
+            children: (
+              <>
+                <span className={styles.mobileTabIcon}>
+                  {panelIconSrc ? <img src={panelIconSrc} alt="" aria-hidden="true" /> : null}
+                </span>
+                <span className={styles.mobileTabLabel}>{panelLabel}</span>
+              </>
+            )
+          })
+        ) : (
+          <button
+            type="button"
+            className={`${styles.mobileTabButton} ${styles.mobileTabDisabled}`}
+            aria-label="Panel unavailable"
+            disabled
+          >
+            <span className={styles.mobileTabIcon}>
+              {panelIconSrc ? <img src={panelIconSrc} alt="" aria-hidden="true" /> : null}
+            </span>
+            <span className={styles.mobileTabLabel}>{panelLabel}</span>
+          </button>
+        )}
+
+        {renderLink({
+          key: "mobile-profile",
+          href: profileHref,
+          className: `${styles.mobileTabLink}${profileTabActive ? ` ${styles.mobileTabActive}` : ""}`,
+          ariaLabel: "Open profile",
+          children: (
+            <>
+              <span className={styles.mobileTabAvatar} aria-hidden="true">
+                {profileAvatarUrl ? <img src={profileAvatarUrl} alt="" /> : profileInitials}
+              </span>
+              <span className={styles.mobileTabLabel}>Profile</span>
+            </>
+          )
+        })}
+      </nav>
+
+      {isMobileMenuOpen ? (
+        <div
+          className={styles.mobileMenuOverlay}
+          role="presentation"
+          onClick={() => setIsMobileMenuOpen(false)}
+        >
+          <div
+            className={styles.mobileMenuSheet}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Apps"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className={styles.mobileMenuHeader}>
+              <strong>Apps</strong>
+              <button
+                type="button"
+                className={styles.mobileMenuClose}
+                aria-label="Close app menu"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                <svg viewBox="0 0 20 20" aria-hidden="true">
+                  <path d="M5.5 5.5 14.5 14.5" />
+                  <path d="M14.5 5.5 5.5 14.5" />
+                </svg>
+              </button>
+            </div>
+
+            <div className={styles.mobileMenuList}>
+              {mobileMenuPrimaryItems.map((item) => {
+                const href = resolvePlatformNavHref(item, runtimeEnvironment, {
+                  sameAppHrefByItemId
+                });
+                if (!href) {
+                  return null;
+                }
+
+                const itemIsActive =
+                  isPrimaryItemActive?.(item.id, pathname) ??
+                  routeMatches(pathname, item.id === "dashboard" ? ["/"] : undefined);
+                const iconSrc = getPlatformNavIconSrc(item.icon as PlatformNavIconKey, { prefix: iconPrefix });
+
+                return renderLink({
+                  key: `mobile-menu-${item.id}`,
+                  href,
+                  className: `${styles.mobileMenuItem}${itemIsActive ? ` ${styles.mobileMenuItemActive}` : ""}`,
+                  ariaLabel: item.label,
+                  children: (
+                    <>
+                      <span className={styles.mobileMenuItemIcon}>
+                        {iconSrc ? <img src={iconSrc} alt="" aria-hidden="true" /> : null}
+                      </span>
+                      <span>{item.label}</span>
+                    </>
+                  )
+                });
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
     </aside>
   );
 }

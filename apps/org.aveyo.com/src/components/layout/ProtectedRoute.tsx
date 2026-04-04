@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate } from '../../lib/router-shim'
+import { Navigate, useLocation } from '../../lib/router-shim'
 import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
 import { getPlatformAppUrl } from '../../lib/auth/config'
@@ -11,6 +11,7 @@ interface ProtectedRouteProps {
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading, signOut } = useAuth()
+  const location = useLocation()
   const [isSigningOut, setIsSigningOut] = useState(false)
   const { data: profile, isLoading: profileLoading } = useProfile(user?.id, { enabled: !!user })
 
@@ -43,7 +44,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />
+    const returnTo = `${location.pathname}${location.search}`
+    return <Navigate to={`/login?returnTo=${encodeURIComponent(returnTo)}`} replace />
   }
 
   if (needsOnboarding) {
