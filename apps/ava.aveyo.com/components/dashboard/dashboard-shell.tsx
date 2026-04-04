@@ -551,6 +551,8 @@ export function DashboardShell() {
         renderLink={renderSideNavLink}
         isPrimaryItemActive={(itemId) => itemId === "ava"}
         utilityItems={sideNavUtilityItems}
+        role={authSession.role}
+        userType={authSession.userType}
         onCollapsedChange={setIsNavCollapsed}
         profile={{
           displayName: authSession.user?.name?.trim() || "Ava Agent",

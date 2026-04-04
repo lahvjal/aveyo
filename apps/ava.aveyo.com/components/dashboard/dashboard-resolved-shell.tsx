@@ -247,6 +247,8 @@ export function DashboardResolvedShell() {
         userName={authSession.user?.name}
         userAvatarUrl={agentAvatarUrl}
         userRole={toRoleLabel(authSession.role)}
+        authRole={authSession.role}
+        userType={authSession.userType}
         signOutPending={signOutPending}
         onCollapsedChange={setIsNavCollapsed}
         onSignOut={() => {

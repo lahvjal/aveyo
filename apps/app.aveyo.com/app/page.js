@@ -106,6 +106,7 @@ function renderAppSideNavLink({ key, href, className, title, ariaLabel, children
 function AppPlatformSideNav({
   displayName,
   roleLabel,
+  role,
   avatarUrl,
   initials,
   isSigningOut,
@@ -124,6 +125,7 @@ function AppPlatformSideNav({
       renderLink={renderAppSideNavLink}
       isPrimaryItemActive={(itemId) => itemId === "dashboard"}
       utilityItems={appUtilityNavItems}
+      role={role}
       profile={{
         displayName,
         roleLabel,
@@ -238,6 +240,7 @@ export default function HomePage() {
       <AppPlatformSideNav
         displayName={displayName}
         roleLabel={roleLabel}
+        role={session.role}
         avatarUrl={session.user?.avatarUrl ?? null}
         initials={initials}
         isSigningOut={isSigningOut}

@@ -164,13 +164,18 @@ export function EmployeeSideNav() {
       iconPrefix="/images/"
       sameAppHrefByItemId={{
         org: "/dashboard",
-        operations: "/processes"
+        operations: "/processes",
+        manager: "/manager",
+        admin: "/admin"
       }}
       renderLink={renderLink}
       isPrimaryItemActive={(itemId, currentPathname) =>
         routeMatches(currentPathname, primaryNavMatchPrefixes[itemId])
       }
       utilityItems={visibleUtilityNavItems}
+      userType="employee"
+      canAccessManagerPanel={isManager}
+      canAccessAdminPanel={isAdmin}
       isUtilityItemActive={(item, currentPathname) =>
         routeMatches(currentPathname, item.matchPrefixes)
       }

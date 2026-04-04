@@ -48,6 +48,8 @@ interface AppSideRailProps {
   userName?: string | null;
   userAvatarUrl?: string | null;
   userRole?: string | null;
+  authRole?: string | null;
+  userType?: string | null;
   signOutPending?: boolean;
   onSignOut: () => void;
   onCollapsedChange?: (collapsed: boolean) => void;
@@ -57,6 +59,8 @@ export function AppSideRail({
   userName,
   userAvatarUrl,
   userRole,
+  authRole,
+  userType,
   signOutPending = false,
   onSignOut,
   onCollapsedChange
@@ -76,6 +80,8 @@ export function AppSideRail({
       renderLink={renderLink}
       isPrimaryItemActive={(itemId) => itemId === "ava"}
       utilityItems={utilityNavItems}
+      role={authRole ?? undefined}
+      userType={userType ?? undefined}
       onCollapsedChange={onCollapsedChange}
       profile={{
         displayName,

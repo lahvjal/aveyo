@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { resolveEnvironment } from "@ava/config/runtime/app-urls";
+import { resolveAppUrl, resolveEnvironment, trimTrailingSlash } from "@ava/config/runtime/app-urls";
 import {
   PLATFORM_PRIMARY_NAV_ITEMS,
   PLATFORM_UTILITY_NAV_ITEMS,
@@ -41,6 +41,10 @@ export interface PlatformSideNavProps {
   renderIcon?: PlatformNavIconRenderer;
   onCollapsedChange?: (collapsed: boolean) => void;
   resolveBrandHref?: (environment: RuntimeEnvironment) => string;
+  userType?: string;
+  role?: string;
+  canAccessManagerPanel?: boolean;
+  canAccessAdminPanel?: boolean;
 }
 
 const DEFAULT_PATHNAME = "/";
@@ -59,6 +63,27 @@ const SHARED_CLASS_NAMES: PlatformSideNavClassNames = {
   profileAvatar: styles.profileAvatar,
   profileCopy: styles.profileCopy
 };
+
+const ADMIN_PANEL_ROLE_KEYS = new Set([
+  "admin",
+  "org_admin",
+  "org-admin",
+  "platform_admin",
+  "platform-admin",
+  "super_admin",
+  "super-admin",
+  "superadmin"
+]);
+
+const MANAGER_PANEL_ROLE_KEYS = new Set([
+  "manager",
+  "org_manager",
+  "org-manager",
+  "team_manager",
+  "team-manager",
+  "people_manager",
+  "people-manager"
+]);
 
 function joinClassNames(
   baseClassName: string,
@@ -79,6 +104,80 @@ function routeMatches(pathname: string, prefixes: string[] | undefined): boolean
     return false;
   }
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+function normalizeAccessValue(value: string | undefined): string {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+function canShowUtilityItemByRole(
+  itemId: string,
+  options: {
+    userType?: string;
+    role?: string;
+    canAccessManagerPanel?: boolean;
+    canAccessAdminPanel?: boolean;
+  }
+): boolean {
+  const hasRoleContext = typeof options.role === "string" || typeof options.userType === "string";
+
+  if (itemId === "manager") {
+    if (typeof options.canAccessManagerPanel === "boolean") {
+      return options.canAccessManagerPanel;
+    }
+    if (!hasRoleContext) {
+      return true;
+    }
+
+    const normalizedUserType = normalizeAccessValue(options.userType);
+    if (normalizedUserType && normalizedUserType !== "employee") {
+      return false;
+    }
+
+    const normalizedRole = normalizeAccessValue(options.role);
+    return MANAGER_PANEL_ROLE_KEYS.has(normalizedRole);
+  }
+
+  if (itemId === "admin") {
+    if (typeof options.canAccessAdminPanel === "boolean") {
+      return options.canAccessAdminPanel;
+    }
+    if (!hasRoleContext) {
+      return true;
+    }
+
+    const normalizedUserType = normalizeAccessValue(options.userType);
+    if (normalizedUserType && normalizedUserType !== "employee") {
+      return false;
+    }
+
+    const normalizedRole = normalizeAccessValue(options.role);
+    return ADMIN_PANEL_ROLE_KEYS.has(normalizedRole);
+  }
+
+  return true;
+}
+
+function resolveUtilityHref(
+  item: PlatformUtilityNavItem,
+  runtimeEnvironment: RuntimeEnvironment,
+  sameAppHrefByItemId: Record<string, string>
+): string {
+  const sameAppHref = sameAppHrefByItemId[item.id];
+  if (sameAppHref) {
+    return sameAppHref;
+  }
+
+  if (item.href) {
+    return item.href;
+  }
+
+  if (item.id === "manager" || item.id === "admin") {
+    const orgBaseUrl = trimTrailingSlash(resolveAppUrl("org", runtimeEnvironment));
+    return orgBaseUrl ? `${orgBaseUrl}/${item.id}` : "";
+  }
+
+  return "";
 }
 
 function readRuntimeEnvironment(): RuntimeEnvironment {
@@ -175,7 +274,11 @@ export function PlatformSideNav({
   renderLink = defaultRenderLink,
   renderIcon = defaultRenderIcon,
   onCollapsedChange,
-  resolveBrandHref
+  resolveBrandHref,
+  userType,
+  role,
+  canAccessManagerPanel,
+  canAccessAdminPanel
 }: PlatformSideNavProps) {
   const classNames = SHARED_CLASS_NAMES;
   const [runtimeEnvironment, setRuntimeEnvironment] = useState<RuntimeEnvironment>(
@@ -294,6 +397,18 @@ export function PlatformSideNav({
 
       <div className={classNames.utilityNav}>
         {configuredUtilityItems.map((item) => {
+          if (
+            !canShowUtilityItemByRole(item.id, {
+              userType,
+              role,
+              canAccessManagerPanel,
+              canAccessAdminPanel
+            })
+          ) {
+            return null;
+          }
+
+          const href = resolveUtilityHref(item, runtimeEnvironment, sameAppHrefByItemId);
           const itemIsActive =
             isUtilityItemActive?.(item, pathname) ??
             item.active ??
@@ -313,10 +428,10 @@ export function PlatformSideNav({
             </>
           );
 
-          if (item.href && !item.disabled) {
+          if (href && !item.disabled) {
             return renderLink({
               key: item.id,
-              href: item.href,
+              href,
               className: itemClassName,
               title,
               ariaLabel: item.label,

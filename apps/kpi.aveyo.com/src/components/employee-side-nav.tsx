@@ -102,6 +102,7 @@ export function EmployeeSideNav() {
       renderLink={renderLink}
       isPrimaryItemActive={(itemId) => itemId === "kpi" && Boolean(isKpiRoute)}
       utilityItems={utilityNavItems}
+      role={role}
       iconPrefix="/"
       profile={{
         displayName,
