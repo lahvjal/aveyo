@@ -128,7 +128,7 @@ export default function AerialView() {
               muted
               playsInline
               className="h-full w-full object-cover"
-              src="/video/aerial-vid.mp4"
+              src="https://wg22fhqtugwjii3h.public.blob.vercel-storage.com/video/aerial-vid.mp4"
             />
           </div>
 

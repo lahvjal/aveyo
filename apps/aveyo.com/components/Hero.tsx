@@ -47,7 +47,7 @@ export default function Hero() {
           playsInline
           className="absolute inset-0 w-full h-full object-cover"
         >
-          <source src="/video/hero-vid.mp4" type="video/mp4" />
+          <source src="https://wg22fhqtugwjii3h.public.blob.vercel-storage.com/video/hero-vid.mp4" type="video/mp4" />
         </video>
         {/* Dark radial gradient overlay for text readability */}
         <div 
