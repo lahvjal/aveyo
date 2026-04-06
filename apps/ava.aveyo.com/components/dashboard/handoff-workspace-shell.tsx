@@ -22,6 +22,7 @@ import {
   getRealtimeEventsApi,
   listQueueApi,
   listSupportNotesApi,
+  publishRepresentativeTypingApi,
   resolveHandoffApi,
   type QueueRecord
 } from "@/lib/dashboard-api";
@@ -114,6 +115,9 @@ export function HandoffWorkspaceShell({
   const realtimeCursorRef = useRef<string | undefined>(undefined);
   const realtimeBusyRef = useRef(false);
   const closingTabRef = useRef(false);
+  const representativeTypingSentRef = useRef(false);
+  const representativeTypingConversationRef = useRef<string | null>(null);
+  const representativeTypingLastSentAtMsRef = useRef(0);
 
   const workspaceConversationId = queueRecord?.conversationId ?? initialConversationId ?? null;
   const isConversationLoaded = conversation.id !== seededConversation.id;
@@ -135,6 +139,36 @@ export function HandoffWorkspaceShell({
     return createTicketFromQueueRecord(queueRecord, conversation);
   }, [conversation, queueRecord]);
   const agentAvatarUrl = authSession.user?.avatarUrl ?? null;
+
+  const publishRepresentativeTyping = useCallback(
+    (conversationId: string, isTyping: boolean, force = false) => {
+      if (!authSession.authenticated || !authSession.user) {
+        return;
+      }
+
+      const sameConversation = representativeTypingConversationRef.current === conversationId;
+      const nowMs = Date.now();
+      const underHeartbeatWindow =
+        sameConversation && nowMs - representativeTypingLastSentAtMsRef.current < 2500;
+      if (!force && isTyping && representativeTypingSentRef.current && underHeartbeatWindow) {
+        return;
+      }
+      if (
+        !force &&
+        !isTyping &&
+        (!representativeTypingSentRef.current || !sameConversation)
+      ) {
+        return;
+      }
+
+      representativeTypingConversationRef.current = conversationId;
+      representativeTypingSentRef.current = isTyping;
+      representativeTypingLastSentAtMsRef.current = nowMs;
+
+      void publishRepresentativeTypingApi({ conversationId, isTyping }).catch(() => null);
+    },
+    [authSession.authenticated, authSession.user]
+  );
 
   const refreshWorkspaceData = useCallback(async () => {
     const queueResult = await listQueueApi({ resolvedScope: "all" });
@@ -295,6 +329,43 @@ export function HandoffWorkspaceShell({
   }, [authSession.authenticated, isConversationLoaded, workspaceConversationId]);
 
   useEffect(() => {
+    return () => {
+      const conversationId = representativeTypingConversationRef.current;
+      if (!conversationId || !representativeTypingSentRef.current) {
+        return;
+      }
+      void publishRepresentativeTypingApi({ conversationId, isTyping: false }).catch(() => null);
+    };
+  }, []);
+
+  useEffect(() => {
+    const previousConversationId = representativeTypingConversationRef.current;
+    if (previousConversationId && previousConversationId !== workspaceConversationId) {
+      publishRepresentativeTyping(previousConversationId, false, true);
+      representativeTypingSentRef.current = false;
+    }
+
+    representativeTypingConversationRef.current = workspaceConversationId;
+
+    if (!authSession.authenticated || !workspaceConversationId || !canInteract) {
+      if (previousConversationId && representativeTypingSentRef.current) {
+        publishRepresentativeTyping(previousConversationId, false, true);
+      }
+      representativeTypingSentRef.current = false;
+      return;
+    }
+
+    const hasDraft = Boolean(normalizeDraft(composeNote));
+    publishRepresentativeTyping(workspaceConversationId, hasDraft);
+  }, [
+    authSession.authenticated,
+    canInteract,
+    composeNote,
+    publishRepresentativeTyping,
+    workspaceConversationId
+  ]);
+
+  useEffect(() => {
     if (!authSession.authenticated || !workspaceConversationId || !isConversationLoaded) {
       setCustomerDetails(null);
       setCustomerDetailsLoading(false);
@@ -336,6 +407,8 @@ export function HandoffWorkspaceShell({
     if (!messageText) {
       return;
     }
+
+    publishRepresentativeTyping(workspaceConversationId, false, true);
 
     try {
       const result = await createRepresentativeMessageApi({

@@ -8,6 +8,7 @@ import {
   getConversationCustomerDetails,
   getConversation,
   listConversations,
+  publishTypingEvent,
   StoreError
 } from "@/lib/store/mock-store";
 import { ServiceError } from "@/lib/service-error";
@@ -81,17 +82,39 @@ async function tryGenerateAvaReply(params: {
   conversationId: string;
   actorUserId: string;
 }) {
+  const publishAvaTyping = async (isTyping: boolean) => {
+    try {
+      await publishTypingEvent(
+        {
+          conversationId: params.conversationId,
+          actor: "ava",
+          isTyping
+        },
+        params.actorUserId
+      );
+    } catch {
+      // Keep customer messaging reliable even if typing events fail.
+    }
+  };
+
   const thread = await getConversation(params.conversationId, params.actorUserId);
   if (!thread || !allowsAvaReply(thread.handoff.state)) {
+    await publishAvaTyping(false);
     return;
   }
 
+  await publishAvaTyping(true);
+
   const latestMessage = thread.messages[thread.messages.length - 1];
   if (latestMessage?.kind === "customer" && isHumanAgentRequest(latestMessage.text)) {
-    await appendAvaMessage(
-      params.conversationId,
-      "I understand you want to speak with a customer care agent. Would you like to be connected to a customer care agent now?"
-    );
+    try {
+      await appendAvaMessage(
+        params.conversationId,
+        "I understand you want to speak with a customer care agent. Would you like to be connected to a customer care agent now?"
+      );
+    } finally {
+      await publishAvaTyping(false);
+    }
     return;
   }
 
@@ -115,6 +138,7 @@ async function tryGenerateAvaReply(params: {
     await appendAvaMessage(params.conversationId, replyText);
   } finally {
     clearTimeout(timeoutId);
+    await publishAvaTyping(false);
   }
 }
 
@@ -209,14 +233,13 @@ export async function createMessageResult(body: MessageBody, actorUserId: string
     const message = await appendMessage(body.conversationId, payload, actorUserId);
 
     if (body.kind === "customer") {
-      try {
-        await tryGenerateAvaReply({
-          conversationId: body.conversationId,
-          actorUserId
-        });
-      } catch {
+      // Do not block customer send latency on AI generation.
+      void tryGenerateAvaReply({
+        conversationId: body.conversationId,
+        actorUserId
+      }).catch(() => {
         // Keep customer messaging reliable even if AI generation fails.
-      }
+      });
     }
 
     return { message };

@@ -170,6 +170,7 @@ interface ProfileRow {
   id: string;
   full_name: string | null;
   preferred_name: string | null;
+  profile_photo_url: string | null;
 }
 
 interface ProfileCustomerFallbackRow {
@@ -459,7 +460,7 @@ async function getSupportAgentMap(ids: string[]) {
   const supabase = getSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, full_name, preferred_name")
+    .select("id, full_name, preferred_name, profile_photo_url")
     .in("id", uniqueIds);
 
   if (error) {
@@ -469,7 +470,11 @@ async function getSupportAgentMap(ids: string[]) {
   const result = new Map<string, RepresentativeProfile>();
   for (const row of (data ?? []) as ProfileRow[]) {
     const name = row.preferred_name?.trim() || row.full_name?.trim() || "Representative";
-    result.set(row.id, { id: row.id, name });
+    result.set(row.id, {
+      id: row.id,
+      name,
+      avatarUrl: asTrimmedString(row.profile_photo_url)
+    });
   }
   return result;
 }
@@ -842,6 +847,9 @@ function rowToTimelineMessage(
   supportAgentMap: Map<string, RepresentativeProfile>
 ): TimelineMessage {
   if (row.sender_kind === "support_agent") {
+    const representative = row.sender_auth_user_id
+      ? supportAgentMap.get(row.sender_auth_user_id)
+      : undefined;
     return {
       id: row.id,
       conversationId: row.conversation_id,
@@ -849,6 +857,7 @@ function rowToTimelineMessage(
       deliveryState: "sent",
       kind: "representative",
       representativeId: row.sender_auth_user_id ?? "rep-unknown",
+      representative,
       text: row.body
     };
   }
@@ -2698,7 +2707,7 @@ export async function getAvaConversationContext(
 export async function publishTypingEvent(
   params: {
     conversationId: string;
-    actor: "customer" | "representative";
+    actor: "customer" | "representative" | "ava";
     isTyping: boolean;
   },
   actorUserId: string

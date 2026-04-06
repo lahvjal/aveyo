@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type ConversationThread, type TimelineMessage } from "@ava/chat-domain";
 import { getLocalAppUrl } from "@ava/config/runtime/app-urls";
 import {
   createWidgetApiClient,
   type ImpersonationCustomer,
+  type RealtimeEvent,
   type WidgetApiClient
 } from "../../api/widget-api";
 import { useWidgetAuthSession } from "../../auth/use-widget-auth-session";
@@ -292,8 +293,56 @@ function isRepConfirmationYes(text: string) {
   return hasYesIntent;
 }
 
+type TypingActor = "customer" | "representative" | "ava";
+
 const TIMELINE_RESET_INACTIVITY_MS = 30 * 60 * 1000;
 const TIMELINE_RESET_STORAGE_PREFIX = "ava-widget-timeline-reset-v1:";
+const AVA_TYPING_FALLBACK_MS = 15_000;
+const AVA_TYPING_STOP_GRACE_MS = 3_200;
+const REPRESENTATIVE_TYPING_FALLBACK_MS = 15_000;
+const REPRESENTATIVE_TYPING_STOP_GRACE_MS = 3_200;
+
+function allowsAvaReplyForThread(thread: ConversationThread) {
+  return thread.handoff.state === "none" || thread.handoff.state === "resolved";
+}
+
+function parseTypingPayload(payload: unknown): { actor: TypingActor; isTyping: boolean } | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+  const record = payload as Record<string, unknown>;
+  const actor = record.actor;
+  const isTyping = record.isTyping;
+  if (
+    (actor === "customer" || actor === "representative" || actor === "ava") &&
+    typeof isTyping === "boolean"
+  ) {
+    return {
+      actor,
+      isTyping
+    };
+  }
+  return null;
+}
+
+function getLatestTypingState(
+  events: RealtimeEvent[],
+  conversationId: string,
+  actor: TypingActor
+) {
+  let latestState: boolean | null = null;
+  for (const event of events) {
+    if (event.conversationId !== conversationId || event.type !== "typing") {
+      continue;
+    }
+    const payload = parseTypingPayload(event.payload);
+    if (!payload || payload.actor !== actor) {
+      continue;
+    }
+    latestState = payload.isTyping;
+  }
+  return latestState;
+}
 
 function toTimestampMs(value: string | null | undefined) {
   if (!value) {
@@ -412,13 +461,126 @@ export function AvaWidgetShell({
   const [draft, setDraft] = useState("");
   const [requestError, setRequestError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAvaTyping, setIsAvaTyping] = useState(false);
+  const [isRepresentativeTyping, setIsRepresentativeTyping] = useState(false);
   const [ratingSubmissionRequestId, setRatingSubmissionRequestId] = useState<string | null>(null);
   const [timelineResetAtMs, setTimelineResetAtMs] = useState<number | null>(null);
+  const floatingWidgetRef = useRef<HTMLDivElement | null>(null);
   const closeTimerRef = useRef<number | null>(null);
+  const avaTypingTimeoutRef = useRef<number | null>(null);
+  const avaTypingStopTimeoutRef = useRef<number | null>(null);
+  const representativeTypingTimeoutRef = useRef<number | null>(null);
+  const representativeTypingStopTimeoutRef = useRef<number | null>(null);
   const realtimeCursorRef = useRef<string | undefined>(undefined);
   const realtimeBusyRef = useRef(false);
   const modeStatusNoticeRef = useRef<string | null>(null);
   const pendingRepOfferMessageIdRef = useRef<string | null>(null);
+
+  const clearAvaTypingStopTimeout = useCallback(() => {
+    if (avaTypingStopTimeoutRef.current === null) {
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.clearTimeout(avaTypingStopTimeoutRef.current);
+    }
+    avaTypingStopTimeoutRef.current = null;
+  }, []);
+
+  const clearAvaTypingTimeout = useCallback(() => {
+    if (avaTypingTimeoutRef.current === null) {
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.clearTimeout(avaTypingTimeoutRef.current);
+    }
+    avaTypingTimeoutRef.current = null;
+  }, []);
+
+  const updateAvaTyping = useCallback(
+    (isTyping: boolean) => {
+      setIsAvaTyping(isTyping);
+      clearAvaTypingStopTimeout();
+      clearAvaTypingTimeout();
+      if (!isTyping || typeof window === "undefined") {
+        return;
+      }
+      avaTypingTimeoutRef.current = window.setTimeout(() => {
+        avaTypingTimeoutRef.current = null;
+        setIsAvaTyping(false);
+      }, AVA_TYPING_FALLBACK_MS);
+    },
+    [clearAvaTypingStopTimeout, clearAvaTypingTimeout]
+  );
+
+  const scheduleAvaTypingStop = useCallback(() => {
+    clearAvaTypingStopTimeout();
+    if (typeof window === "undefined") {
+      updateAvaTyping(false);
+      return;
+    }
+    avaTypingStopTimeoutRef.current = window.setTimeout(() => {
+      avaTypingStopTimeoutRef.current = null;
+      updateAvaTyping(false);
+    }, AVA_TYPING_STOP_GRACE_MS);
+  }, [clearAvaTypingStopTimeout, updateAvaTyping]);
+
+  const clearAvaTypingState = useCallback(() => {
+    clearAvaTypingStopTimeout();
+    updateAvaTyping(false);
+  }, [clearAvaTypingStopTimeout, updateAvaTyping]);
+
+  const clearRepresentativeTypingStopTimeout = useCallback(() => {
+    if (representativeTypingStopTimeoutRef.current === null) {
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.clearTimeout(representativeTypingStopTimeoutRef.current);
+    }
+    representativeTypingStopTimeoutRef.current = null;
+  }, []);
+
+  const clearRepresentativeTypingTimeout = useCallback(() => {
+    if (representativeTypingTimeoutRef.current === null) {
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.clearTimeout(representativeTypingTimeoutRef.current);
+    }
+    representativeTypingTimeoutRef.current = null;
+  }, []);
+
+  const updateRepresentativeTyping = useCallback(
+    (isTyping: boolean) => {
+      setIsRepresentativeTyping(isTyping);
+      clearRepresentativeTypingStopTimeout();
+      clearRepresentativeTypingTimeout();
+      if (!isTyping || typeof window === "undefined") {
+        return;
+      }
+      representativeTypingTimeoutRef.current = window.setTimeout(() => {
+        representativeTypingTimeoutRef.current = null;
+        setIsRepresentativeTyping(false);
+      }, REPRESENTATIVE_TYPING_FALLBACK_MS);
+    },
+    [clearRepresentativeTypingStopTimeout, clearRepresentativeTypingTimeout]
+  );
+
+  const scheduleRepresentativeTypingStop = useCallback(() => {
+    clearRepresentativeTypingStopTimeout();
+    if (typeof window === "undefined") {
+      updateRepresentativeTyping(false);
+      return;
+    }
+    representativeTypingStopTimeoutRef.current = window.setTimeout(() => {
+      representativeTypingStopTimeoutRef.current = null;
+      updateRepresentativeTyping(false);
+    }, REPRESENTATIVE_TYPING_STOP_GRACE_MS);
+  }, [clearRepresentativeTypingStopTimeout, updateRepresentativeTyping]);
+
+  const clearRepresentativeTypingState = useCallback(() => {
+    clearRepresentativeTypingStopTimeout();
+    updateRepresentativeTyping(false);
+  }, [clearRepresentativeTypingStopTimeout, updateRepresentativeTyping]);
 
   const canUseTestMode = authSession.authenticated && authSession.userType === "employee";
   const hasActiveImpersonation = activeImpersonation !== null;
@@ -645,6 +807,9 @@ export function AvaWidgetShell({
       });
 
       setThread((current) => appendMessage(current, result.message));
+      if (allowsAvaReplyForThread(thread)) {
+        updateAvaTyping(true);
+      }
       setDraft("");
       setRequestError(null);
     } catch (error) {
@@ -712,8 +877,29 @@ export function AvaWidgetShell({
       if (closeTimerRef.current !== null) {
         window.clearTimeout(closeTimerRef.current);
       }
+      clearAvaTypingStopTimeout();
+      clearAvaTypingTimeout();
+      clearRepresentativeTypingStopTimeout();
+      clearRepresentativeTypingTimeout();
     };
-  }, []);
+  }, [
+    clearAvaTypingStopTimeout,
+    clearAvaTypingTimeout,
+    clearRepresentativeTypingStopTimeout,
+    clearRepresentativeTypingTimeout
+  ]);
+
+  useEffect(() => {
+    clearAvaTypingState();
+    clearRepresentativeTypingState();
+  }, [thread.id, clearAvaTypingState, clearRepresentativeTypingState]);
+
+  useEffect(() => {
+    if (!conversationReady) {
+      clearAvaTypingState();
+      clearRepresentativeTypingState();
+    }
+  }, [conversationReady, clearAvaTypingState, clearRepresentativeTypingState]);
 
   useEffect(() => {
     if (typeof window === "undefined" || window.parent === window) {
@@ -925,16 +1111,44 @@ export function AvaWidgetShell({
         }
 
         realtimeCursorRef.current = result.cursor;
+        const latestAvaTypingState = getLatestTypingState(result.events, conversationId, "ava");
+        const latestRepresentativeTypingState = getLatestTypingState(
+          result.events,
+          conversationId,
+          "representative"
+        );
+        if (latestAvaTypingState !== null) {
+          if (latestAvaTypingState) {
+            updateAvaTyping(true);
+          } else {
+            scheduleAvaTypingStop();
+          }
+        }
+        if (latestRepresentativeTypingState !== null) {
+          if (latestRepresentativeTypingState) {
+            updateRepresentativeTyping(true);
+          } else {
+            scheduleRepresentativeTypingStop();
+          }
+        }
+
         if (result.cursorStale) {
           const refreshed = await api.getConversation(conversationId);
           if (cancelled) {
             return;
           }
           setThread(refreshed.conversation);
+          const latestMessage = refreshed.conversation.messages[refreshed.conversation.messages.length - 1];
+          if (latestMessage?.kind === "ava") {
+            clearAvaTypingState();
+          }
+          if (latestMessage?.kind === "representative") {
+            clearRepresentativeTypingState();
+          }
           return;
         }
         const hasConversationUpdate = result.events.some(
-          (event) => event.conversationId === conversationId
+          (event) => event.conversationId === conversationId && event.type !== "typing"
         );
 
         if (!hasConversationUpdate) {
@@ -946,6 +1160,13 @@ export function AvaWidgetShell({
           return;
         }
         setThread(refreshed.conversation);
+        const latestMessage = refreshed.conversation.messages[refreshed.conversation.messages.length - 1];
+        if (latestMessage?.kind === "ava") {
+          clearAvaTypingState();
+        }
+        if (latestMessage?.kind === "representative") {
+          clearRepresentativeTypingState();
+        }
       } catch (error) {
         if (!cancelled) {
           setRequestError(
@@ -968,7 +1189,18 @@ export function AvaWidgetShell({
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [authSession.authenticated, conversationReady, thread.id, api]);
+  }, [
+    authSession.authenticated,
+    conversationReady,
+    thread.id,
+    api,
+    clearAvaTypingState,
+    clearRepresentativeTypingState,
+    scheduleAvaTypingStop,
+    scheduleRepresentativeTypingStop,
+    updateAvaTyping,
+    updateRepresentativeTyping
+  ]);
 
   useEffect(() => {
     if (!authSession.authenticated || !conversationReady) {
@@ -999,7 +1231,7 @@ export function AvaWidgetShell({
     }
   }, [authSession.authenticated, conversationReady, visibleThread]);
 
-  const openPanel = () => {
+  const openPanel = useCallback(() => {
     if (closeTimerRef.current !== null) {
       window.clearTimeout(closeTimerRef.current);
       closeTimerRef.current = null;
@@ -1009,16 +1241,16 @@ export function AvaWidgetShell({
       setIsPanelVisible(true);
       setIsOpen(true);
     });
-  };
+  }, []);
 
-  const closePanel = () => {
+  const closePanel = useCallback(() => {
     setIsPanelVisible(false);
     setIsOpen(false);
     closeTimerRef.current = window.setTimeout(() => {
       setIsPanelMounted(false);
       closeTimerRef.current = null;
     }, 240);
-  };
+  }, []);
 
   useEffect(() => {
     if (typeof window === "undefined" || window.parent === window) {
@@ -1036,25 +1268,12 @@ export function AvaWidgetShell({
       }
 
       if (payload.open === true) {
-        if (closeTimerRef.current !== null) {
-          window.clearTimeout(closeTimerRef.current);
-          closeTimerRef.current = null;
-        }
-        setIsPanelMounted(true);
-        requestAnimationFrame(() => {
-          setIsPanelVisible(true);
-          setIsOpen(true);
-        });
+        openPanel();
         return;
       }
 
       if (payload.open === false) {
-        setIsPanelVisible(false);
-        setIsOpen(false);
-        closeTimerRef.current = window.setTimeout(() => {
-          setIsPanelMounted(false);
-          closeTimerRef.current = null;
-        }, 240);
+        closePanel();
       }
     };
 
@@ -1062,7 +1281,29 @@ export function AvaWidgetShell({
     return () => {
       window.removeEventListener("message", onHostMessage);
     };
-  }, []);
+  }, [closePanel, openPanel]);
+
+  useEffect(() => {
+    if (embedMode || !isOpen) {
+      return;
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (floatingWidgetRef.current?.contains(target)) {
+        return;
+      }
+      closePanel();
+    };
+
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [embedMode, isOpen, closePanel]);
 
   const togglePanel = () => {
     if (embedMode) {
@@ -1098,7 +1339,7 @@ export function AvaWidgetShell({
 
   return (
     <div className="host-surface">
-      <div className="floating-widget">
+      <div ref={floatingWidgetRef} className="floating-widget">
         {isPanelMounted ? (
           <section
             className={`widget-panel ${isPanelVisible ? "is-open" : "is-closed"}`}
@@ -1130,6 +1371,8 @@ export function AvaWidgetShell({
 
             <WidgetTimeline
               thread={visibleThread}
+              showAvaTyping={isAvaTyping}
+              showRepresentativeTyping={isRepresentativeTyping}
               showRequestModal={showRequestModal}
               requestReason={requestReason}
               ratingSubmissionRequestId={ratingSubmissionRequestId}
@@ -1146,6 +1389,7 @@ export function AvaWidgetShell({
             <WidgetComposer
               disabled={false}
               actionDisabled={composerActionDisabled}
+              sending={isSubmitting}
               showTalkToRep={isTestModeEnabled}
               showTestModeToggle={canUseTestMode}
               testModeEnabled={isTestModeEnabled}

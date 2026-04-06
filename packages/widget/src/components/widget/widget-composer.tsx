@@ -2,6 +2,7 @@ interface WidgetComposerProps {
   draft: string;
   disabled?: boolean;
   actionDisabled?: boolean;
+  sending?: boolean;
   showTalkToRep?: boolean;
   showTestModeToggle?: boolean;
   testModeEnabled?: boolean;
@@ -16,6 +17,7 @@ export function WidgetComposer({
   draft,
   disabled = false,
   actionDisabled = false,
+  sending = false,
   showTalkToRep = false,
   showTestModeToggle = false,
   testModeEnabled = false,
@@ -26,6 +28,11 @@ export function WidgetComposer({
   onTestModeChange
 }: WidgetComposerProps) {
   const showTopRow = showTalkToRep || showTestModeToggle;
+  const hasDraft = draft.trim().length > 0;
+  const sendDisabled = disabled || actionDisabled || sending || !hasDraft;
+  const sendButtonClassName = `composer-send-button${
+    hasDraft && !disabled && !actionDisabled && !sending ? " is-active" : ""
+  }${sending ? " is-loading" : ""}`;
 
   return (
     <div className="widget-bottom">
@@ -95,13 +102,21 @@ export function WidgetComposer({
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
-              onSendDraft();
+              if (!sendDisabled) {
+                onSendDraft();
+              }
             }
           }}
           placeholder="Message"
         />
-        <button onClick={onSendDraft} type="button" aria-label="Send message" disabled={disabled}>
-          ↑
+        <button
+          onClick={onSendDraft}
+          type="button"
+          aria-label={sending ? "Sending message" : "Send message"}
+          disabled={sendDisabled}
+          className={sendButtonClassName}
+        >
+          {sending ? <span className="composer-send-spinner" aria-hidden="true" /> : "↑"}
         </button>
       </div>
     </div>

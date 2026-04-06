@@ -1,10 +1,17 @@
 import { useLayoutEffect, useRef } from "react";
-import { type ConversationThread, type HandoffFeedbackRequest, type HandoffRating, type TimelineMessage } from "@ava/chat-domain";
-import { AvaOrb } from "@ava/ui";
+import {
+  type ConversationThread,
+  type HandoffFeedbackRequest,
+  type HandoffRating,
+  type RepresentativeProfile,
+  type TimelineMessage
+} from "@ava/chat-domain";
 import { HandoffRequestModal } from "./handoff-request-modal";
 
 interface WidgetTimelineProps {
   thread: ConversationThread;
+  showAvaTyping?: boolean;
+  showRepresentativeTyping?: boolean;
   showRequestModal: boolean;
   requestReason: string;
   ratingSubmissionRequestId?: string | null;
@@ -40,8 +47,39 @@ function isSystemRatingRequest(message: TimelineMessage) {
   );
 }
 
+function getRepresentativeProfiles(thread: ConversationThread) {
+  const representativeById = new Map<string, RepresentativeProfile>();
+  if (thread.activeRepresentative?.id) {
+    representativeById.set(thread.activeRepresentative.id, thread.activeRepresentative);
+  }
+
+  for (const message of thread.messages) {
+    if (message.kind === "representative" && message.representative?.id) {
+      representativeById.set(message.representative.id, message.representative);
+      continue;
+    }
+
+    if (message.kind !== "system" || !message.representative?.id) {
+      continue;
+    }
+    representativeById.set(message.representative.id, message.representative);
+  }
+
+  return representativeById;
+}
+
+function getRepresentativeInitial(name: string | undefined) {
+  const value = typeof name === "string" ? name.trim() : "";
+  if (!value) {
+    return "R";
+  }
+  return value[0]?.toUpperCase() ?? "R";
+}
+
 export function WidgetTimeline({
   thread,
+  showAvaTyping = false,
+  showRepresentativeTyping = false,
   showRequestModal,
   requestReason,
   ratingSubmissionRequestId,
@@ -53,6 +91,10 @@ export function WidgetTimeline({
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const latestMessageId = thread.messages[thread.messages.length - 1]?.id ?? "";
   const submittedRatingByRequestId = new Map<string, HandoffRating>();
+  const representativeById = getRepresentativeProfiles(thread);
+  const activeRepresentative = thread.activeRepresentative;
+  const representativeTypingProfile =
+    activeRepresentative ?? representativeById.values().next().value;
 
   for (const message of thread.messages) {
     const feedbackRequest = getFeedbackRequest(message);
@@ -69,7 +111,7 @@ export function WidgetTimeline({
       return;
     }
     container.scrollTop = container.scrollHeight;
-  }, [thread.id, latestMessageId, showRequestModal]);
+  }, [thread.id, latestMessageId, showAvaTyping, showRepresentativeTyping, showRequestModal]);
 
   return (
     <div
@@ -148,6 +190,15 @@ export function WidgetTimeline({
 
         const isCustomer = message.kind === "customer";
         const hasRep = message.kind === "representative";
+        const representativeProfile =
+          hasRep
+            ? message.representative ??
+              (message.representativeId
+                ? representativeById.get(message.representativeId) ?? activeRepresentative
+                : activeRepresentative)
+            : activeRepresentative;
+        const representativeAvatarUrl = representativeProfile?.avatarUrl?.trim() ?? "";
+        const representativeName = representativeProfile?.name;
 
         return (
           <div key={message.id}>
@@ -155,14 +206,20 @@ export function WidgetTimeline({
               {!isCustomer && (
                 <div className="row-avatar">
                   {hasRep ? (
-                    <img
-                      src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=facearea&w=80&h=80"
-                      alt="Representative avatar"
-                      width={25}
-                      height={25}
-                    />
+                    representativeAvatarUrl ? (
+                      <img
+                        src={representativeAvatarUrl}
+                        alt={representativeName ? `${representativeName} avatar` : "Representative avatar"}
+                        width={25}
+                        height={25}
+                      />
+                    ) : (
+                      <span className="row-avatar-fallback" aria-hidden>
+                        {getRepresentativeInitial(representativeName)}
+                      </span>
+                    )
                   ) : (
-                    <AvaOrb size={25} />
+                    <span className="row-avatar-ava" aria-hidden />
                   )}
                 </div>
               )}
@@ -173,6 +230,47 @@ export function WidgetTimeline({
           </div>
         );
       })}
+
+      {showRepresentativeTyping ? (
+        <div className="timeline-row left">
+          <div className="row-avatar">
+            {representativeTypingProfile?.avatarUrl?.trim() ? (
+              <img
+                src={representativeTypingProfile.avatarUrl}
+                alt={
+                  representativeTypingProfile.name
+                    ? `${representativeTypingProfile.name} avatar`
+                    : "Representative avatar"
+                }
+                width={25}
+                height={25}
+              />
+            ) : (
+              <span className="row-avatar-fallback" aria-hidden>
+                {getRepresentativeInitial(representativeTypingProfile?.name)}
+              </span>
+            )}
+          </div>
+          <div className="widget-typing-bubble" aria-label="Representative is typing" aria-live="polite">
+            <span className="widget-typing-dot" />
+            <span className="widget-typing-dot" />
+            <span className="widget-typing-dot" />
+          </div>
+        </div>
+      ) : null}
+
+      {showAvaTyping ? (
+        <div className="timeline-row left">
+          <div className="row-avatar">
+            <span className="row-avatar-ava" aria-hidden />
+          </div>
+          <div className="widget-typing-bubble" aria-label="Ava is typing" aria-live="polite">
+            <span className="widget-typing-dot" />
+            <span className="widget-typing-dot" />
+            <span className="widget-typing-dot" />
+          </div>
+        </div>
+      ) : null}
 
       {showRequestModal ? (
         <HandoffRequestModal

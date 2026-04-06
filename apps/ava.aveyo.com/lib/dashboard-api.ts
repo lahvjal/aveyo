@@ -94,6 +94,20 @@ export function getRealtimeEventsApi(afterEventId?: string) {
   );
 }
 
+export function publishRepresentativeTypingApi(body: {
+  conversationId: string;
+  isTyping: boolean;
+}) {
+  return apiRequest<{ ok: boolean }>("/api/realtime/typing", {
+    method: "POST",
+    body: JSON.stringify({
+      conversationId: body.conversationId,
+      actor: "representative",
+      isTyping: body.isTyping
+    })
+  });
+}
+
 export function listSupportNotesApi(conversationId: string) {
   return apiRequest<{ notes: SupportAgentNote[] }>(
     `/api/conversations/${conversationId}/notes`,

@@ -22,6 +22,7 @@ import {
   getConversationCustomerDetailsApi,
   getRealtimeEventsApi,
   listSupportNotesApi,
+  publishRepresentativeTypingApi,
   resolveHandoffApi,
   listQueueApi,
   type QueueRecord
@@ -110,6 +111,9 @@ export function DashboardBoardShell() {
   const [clockMs, setClockMs] = useState(() => Date.now());
   const realtimeCursorRef = useRef<string | undefined>(undefined);
   const realtimeBusyRef = useRef(false);
+  const representativeTypingSentRef = useRef(false);
+  const representativeTypingConversationRef = useRef<string | null>(null);
+  const representativeTypingLastSentAtMsRef = useRef(0);
 
   const agentAvatarUrl = authSession.user?.avatarUrl ?? null;
   const agentId = authSession.user?.id ?? null;
@@ -181,6 +185,36 @@ export function DashboardBoardShell() {
     return createTicketFromQueueRecord(selectedQueueRecord, conversation, clockMs);
   }, [clockMs, conversation, selectedQueueRecord]);
   const agentInitials = getInitials(authSession.user?.name);
+
+  const publishRepresentativeTyping = useCallback(
+    (conversationId: string, isTyping: boolean, force = false) => {
+      if (!authSession.authenticated || !authSession.user) {
+        return;
+      }
+
+      const sameConversation = representativeTypingConversationRef.current === conversationId;
+      const nowMs = Date.now();
+      const underHeartbeatWindow =
+        sameConversation && nowMs - representativeTypingLastSentAtMsRef.current < 2500;
+      if (!force && isTyping && representativeTypingSentRef.current && underHeartbeatWindow) {
+        return;
+      }
+      if (
+        !force &&
+        !isTyping &&
+        (!representativeTypingSentRef.current || !sameConversation)
+      ) {
+        return;
+      }
+
+      representativeTypingConversationRef.current = conversationId;
+      representativeTypingSentRef.current = isTyping;
+      representativeTypingLastSentAtMsRef.current = nowMs;
+
+      void publishRepresentativeTypingApi({ conversationId, isTyping }).catch(() => null);
+    },
+    [authSession.authenticated, authSession.user]
+  );
 
   const shellHintMessage = useMemo(() => {
     if (operationError) {
@@ -266,6 +300,16 @@ export function DashboardBoardShell() {
   }, [authSession.authenticated, authSession.loading, refreshQueueData, seededConversation]);
 
   useEffect(() => {
+    return () => {
+      const conversationId = representativeTypingConversationRef.current;
+      if (!conversationId || !representativeTypingSentRef.current) {
+        return;
+      }
+      void publishRepresentativeTypingApi({ conversationId, isTyping: false }).catch(() => null);
+    };
+  }, []);
+
+  useEffect(() => {
     if (activeRecords.length === 0) {
       setSelectedActiveRequestId(null);
       return;
@@ -324,6 +368,33 @@ export function DashboardBoardShell() {
       cancelled = true;
     };
   }, [authSession.authenticated, seededConversation, workspaceConversationId]);
+
+  useEffect(() => {
+    const previousConversationId = representativeTypingConversationRef.current;
+    if (previousConversationId && previousConversationId !== workspaceConversationId) {
+      publishRepresentativeTyping(previousConversationId, false, true);
+      representativeTypingSentRef.current = false;
+    }
+
+    representativeTypingConversationRef.current = workspaceConversationId;
+
+    if (!authSession.authenticated || !workspaceConversationId || !canInteract) {
+      if (previousConversationId && representativeTypingSentRef.current) {
+        publishRepresentativeTyping(previousConversationId, false, true);
+      }
+      representativeTypingSentRef.current = false;
+      return;
+    }
+
+    const hasDraft = Boolean(normalizeDraft(composeNote));
+    publishRepresentativeTyping(workspaceConversationId, hasDraft);
+  }, [
+    authSession.authenticated,
+    canInteract,
+    composeNote,
+    publishRepresentativeTyping,
+    workspaceConversationId
+  ]);
 
   useEffect(() => {
     if (!authSession.authenticated || !workspaceConversationId || !isConversationLoaded) {
@@ -570,6 +641,8 @@ export function DashboardBoardShell() {
     if (!messageText) {
       return;
     }
+
+    publishRepresentativeTyping(workspaceConversationId, false, true);
 
     try {
       const result = await createRepresentativeMessageApi({

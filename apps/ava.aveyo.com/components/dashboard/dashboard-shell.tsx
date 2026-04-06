@@ -31,6 +31,7 @@ import {
   listConversationsApi,
   listQueueApi,
   listSupportNotesApi,
+  publishRepresentativeTypingApi,
   resolveHandoffApi,
   type QueueRecord
 } from "@/lib/dashboard-api";
@@ -127,6 +128,9 @@ export function DashboardShell() {
   const [isNavCollapsed, setIsNavCollapsed] = useState(true);
   const realtimeCursorRef = useRef<string | undefined>(undefined);
   const realtimeBusyRef = useRef(false);
+  const representativeTypingSentRef = useRef(false);
+  const representativeTypingConversationRef = useRef<string | null>(null);
+  const representativeTypingLastSentAtMsRef = useRef(0);
 
   const activeRecord = useMemo(() => {
     const selected = activeRequestId
@@ -165,6 +169,9 @@ export function DashboardShell() {
   const isChatEmptyState = conversation.id === seededConversation.id;
   const hasActiveChat = Boolean(activeTicket);
   const hasPendingChats = pendingQueue.length > 0;
+  const composerConversationId =
+    activeRecord?.conversationId ??
+    (conversation.id !== seededConversation.id ? conversation.id : null);
   const agentInitials = getInitials(authSession.user?.name);
   const agentAvatarUrl = authSession.user?.avatarUrl ?? null;
   const shellHintMessage = useMemo(() => {
@@ -243,6 +250,36 @@ export function DashboardShell() {
     [activeRequestId, seededConversation]
   );
 
+  const publishRepresentativeTyping = useCallback(
+    (conversationId: string, isTyping: boolean, force = false) => {
+      if (!authSession.authenticated || !authSession.user) {
+        return;
+      }
+
+      const sameConversation = representativeTypingConversationRef.current === conversationId;
+      const nowMs = Date.now();
+      const underHeartbeatWindow =
+        sameConversation && nowMs - representativeTypingLastSentAtMsRef.current < 2500;
+      if (!force && isTyping && representativeTypingSentRef.current && underHeartbeatWindow) {
+        return;
+      }
+      if (
+        !force &&
+        !isTyping &&
+        (!representativeTypingSentRef.current || !sameConversation)
+      ) {
+        return;
+      }
+
+      representativeTypingConversationRef.current = conversationId;
+      representativeTypingSentRef.current = isTyping;
+      representativeTypingLastSentAtMsRef.current = nowMs;
+
+      void publishRepresentativeTypingApi({ conversationId, isTyping }).catch(() => null);
+    },
+    [authSession.authenticated, authSession.user]
+  );
+
   useEffect(() => {
     realtimeCursorRef.current = undefined;
 
@@ -292,6 +329,37 @@ export function DashboardShell() {
     refreshDashboardData,
     seededConversation
   ]);
+
+  useEffect(() => {
+    return () => {
+      const conversationId = representativeTypingConversationRef.current;
+      if (!conversationId || !representativeTypingSentRef.current) {
+        return;
+      }
+      void publishRepresentativeTypingApi({ conversationId, isTyping: false }).catch(() => null);
+    };
+  }, []);
+
+  useEffect(() => {
+    const previousConversationId = representativeTypingConversationRef.current;
+    if (previousConversationId && previousConversationId !== composerConversationId) {
+      publishRepresentativeTyping(previousConversationId, false, true);
+      representativeTypingSentRef.current = false;
+    }
+
+    representativeTypingConversationRef.current = composerConversationId;
+
+    if (!authSession.authenticated || !composerConversationId) {
+      if (previousConversationId && representativeTypingSentRef.current) {
+        publishRepresentativeTyping(previousConversationId, false, true);
+      }
+      representativeTypingSentRef.current = false;
+      return;
+    }
+
+    const hasDraft = Boolean(normalizeDraft(composeNote));
+    publishRepresentativeTyping(composerConversationId, hasDraft);
+  }, [authSession.authenticated, composerConversationId, composeNote, publishRepresentativeTyping]);
 
   useEffect(() => {
     if (!authSession.authenticated || !isOnline) {
@@ -483,6 +551,8 @@ export function DashboardShell() {
     if (!messageText) {
       return;
     }
+
+    publishRepresentativeTyping(targetConversationId, false, true);
 
     try {
       const result = await createRepresentativeMessageApi({

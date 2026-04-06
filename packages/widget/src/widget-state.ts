@@ -66,6 +66,17 @@ export function normalizeMessageDraft(text: string): string | undefined {
 }
 
 export function appendMessage(thread: ConversationThread, message: TimelineMessage): ConversationThread {
+  const existingIndex = thread.messages.findIndex((current) => current.id === message.id);
+  if (existingIndex >= 0) {
+    const messages = thread.messages.slice();
+    messages[existingIndex] = message;
+    return {
+      ...thread,
+      messages,
+      updatedAt: message.createdAt
+    };
+  }
+
   return {
     ...thread,
     messages: [...thread.messages, message],

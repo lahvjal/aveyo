@@ -57,6 +57,7 @@ export type TimelineMessage =
       createdAt: string;
       deliveryState: MessageDeliveryState;
       representativeId?: string;
+      representative?: RepresentativeProfile;
     }
   | {
       id: string;
