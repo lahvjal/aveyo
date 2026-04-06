@@ -173,10 +173,10 @@ export function resolveEnvironment(hostname) {
   if (!host || LOCAL_HOST_PATTERN.test(host)) {
     return "local";
   }
-  if (host.includes("-dev.")) {
+  if (host.includes("-dev.") || host.startsWith("dev.")) {
     return "dev";
   }
-  if (host.includes("-staging.")) {
+  if (host.includes("-staging.") || host.startsWith("staging.")) {
     return "staging";
   }
   return "prod";

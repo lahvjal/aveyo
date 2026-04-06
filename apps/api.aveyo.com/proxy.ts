@@ -18,12 +18,26 @@ const defaultAllowedOrigins = [
   "http://localhost:4007",
   "http://localhost:4008",
   "https://aveyo.com",
+  "https://dev.aveyo.com",
+  "https://staging.aveyo.com",
   "https://app-dev.aveyo.com",
   "https://app-staging.aveyo.com",
   "https://app.aveyo.com",
+  "https://auth-dev.aveyo.com",
+  "https://auth-staging.aveyo.com",
   "https://auth.aveyo.com",
+  "https://ava-dev.aveyo.com",
+  "https://ava-staging.aveyo.com",
   "https://ava.aveyo.com",
-  "https://customer.aveyo.com"
+  "https://customer-dev.aveyo.com",
+  "https://customer-staging.aveyo.com",
+  "https://customer.aveyo.com",
+  "https://org-dev.aveyo.com",
+  "https://org-staging.aveyo.com",
+  "https://orgchart.aveyo.com",
+  "https://kpi-dev.aveyo.com",
+  "https://kpi-staging.aveyo.com",
+  "https://kpi.aveyo.com"
 ];
 
 function isAllowedLocalDevOrigin(origin: string) {
