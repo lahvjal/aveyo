@@ -138,17 +138,6 @@ function AppPlatformSideNav({
   );
 }
 
-function FloatingGlyph() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        d="M18.6 4.4c-5.4.3-9.6 2.4-12 6.2-1.6 2.7-2.1 5.7-1.8 8.8 2.6.2 5-.3 7.3-1.5 4.3-2.3 6.5-6.2 6.5-11.7v-1.8Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
-}
-
 export default function HomePage() {
   const router = useRouter();
   const session = useAuthSession();
@@ -320,10 +309,6 @@ export default function HomePage() {
           </div>
         </section>
       </section>
-
-      <button type="button" className="floating-action" aria-label="Quick actions">
-        <FloatingGlyph />
-      </button>
     </main>
   );
 }

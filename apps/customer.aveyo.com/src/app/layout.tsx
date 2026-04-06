@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { AuthProvider } from '@/context/AuthContext';
+import AvaWidgetEmbed from '@/components/AvaWidgetEmbed';
 import "./globals.css";
 
 const geistSans = Geist({
@@ -32,6 +33,7 @@ export default function RootLayout({
       >
         <AuthProvider>
           {children}
+          <AvaWidgetEmbed />
         </AuthProvider>
         <Analytics />
         <SpeedInsights />

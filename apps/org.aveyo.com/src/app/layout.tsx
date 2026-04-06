@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "../index.css";
 import { Providers } from "./providers";
+import AvaWidgetEmbed from "@/components/AvaWidgetEmbed";
 
 export const metadata: Metadata = {
   title: "Aveyo OrgChart",
@@ -15,7 +16,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <AvaWidgetEmbed />
+        </Providers>
       </body>
     </html>
   );

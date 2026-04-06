@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AvaWidgetEmbed from "@/components/ava-widget-embed";
 
 export const metadata: Metadata = {
   title: "Ava Rep Dashboard",
@@ -11,7 +12,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        <AvaWidgetEmbed />
+      </body>
     </html>
   );
 }

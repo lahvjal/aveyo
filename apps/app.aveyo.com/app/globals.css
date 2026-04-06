@@ -219,30 +219,6 @@ code {
   width: 10px;
 }
 
-.floating-action {
-  align-items: center;
-  appearance: none;
-  background: linear-gradient(140deg, #7b52ff 0%, #3bc6ff 100%);
-  border: 0;
-  border-radius: 999px;
-  bottom: 20px;
-  box-shadow: 0 16px 28px rgba(61, 123, 255, 0.35);
-  color: #ffffff;
-  cursor: pointer;
-  display: inline-flex;
-  height: 70px;
-  justify-content: center;
-  position: fixed;
-  right: 20px;
-  width: 70px;
-}
-
-.floating-action svg {
-  display: block;
-  height: 28px;
-  width: 28px;
-}
-
 @media (max-width: 1300px) {
   .workspace-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));

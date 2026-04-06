@@ -12,7 +12,6 @@ import { getMilestoneDisplayName, getNextMilestoneDisplayName, sectionDisplayNam
 import { useProjects } from '@/context/ProjectsContext';
 import { useAuth } from '@/context/AuthContext';
 import { analytics } from '@/lib/analytics';
-import { AvaWidgetEmbedBridge, createSignedOutSnapshot } from '@ava/widget';
 
 // Declare AvaAuth interface for TypeScript
 declare global {
@@ -242,24 +241,8 @@ export default function DashboardPage() {
     return user.user_metadata.full_name.split(' ')[0];
   };
 
-  const hostSessionSnapshot = user
-    ? {
-        authenticated: true,
-        role: 'customer',
-        userType: 'customer' as const,
-        user: {
-          id: user.id,
-          email: user.email ?? null,
-          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'Customer',
-          avatarUrl: null
-        }
-      }
-    : createSignedOutSnapshot();
-
   return (
     <>
-      <AvaWidgetEmbedBridge hostSessionSnapshot={hostSessionSnapshot} registerGlobalApi />
-      
       <AppShell>
       <div className="py-4 sm:py-6 px-2">
         <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-1">

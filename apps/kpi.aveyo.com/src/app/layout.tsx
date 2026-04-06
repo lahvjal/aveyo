@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import "./globals.css";
 import AuthProvider from "@/components/auth-provider";
+import AvaWidgetEmbed from "@/components/AvaWidgetEmbed";
 
 export const metadata: Metadata = {
   title: "Aveyo KPI Dashboard",
@@ -18,6 +19,7 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <AuthProvider>
           {children}
+          <AvaWidgetEmbed />
         </AuthProvider>
       </body>
     </html>

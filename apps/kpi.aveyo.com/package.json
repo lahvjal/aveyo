@@ -14,6 +14,7 @@
   "dependencies": {
     "@ava/config": "workspace:*",
     "@ava/ui": "workspace:*",
+    "@ava/widget": "workspace:*",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.88.0",
     "autoprefixer": "^10.4.22",

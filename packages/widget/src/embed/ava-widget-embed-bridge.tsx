@@ -14,6 +14,7 @@ const DEFAULT_CLOSED_IFRAME_SIZE_PX = 150;
 const DEFAULT_OPEN_IFRAME_WIDTH_PX = 480;
 const DEFAULT_OPEN_IFRAME_HEIGHT_PX = 800;
 const DEFAULT_HOST_SESSION_POLL_INTERVAL_MS = 30000;
+const DEFAULT_WIDGET_URL = "https://ava.aveyo.com/embed";
 
 interface LegacyAvaSessionData {
   email?: string;
@@ -102,7 +103,7 @@ export function AvaWidgetEmbedBridge({
   openIframeHeightPx = DEFAULT_OPEN_IFRAME_HEIGHT_PX
 }: AvaWidgetEmbedBridgeProps) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const [resolvedWidgetUrl, setResolvedWidgetUrl] = useState(widgetUrl ?? resolveDefaultWidgetUrl());
+  const [resolvedWidgetUrl, setResolvedWidgetUrl] = useState(widgetUrl ?? DEFAULT_WIDGET_URL);
   const [isWidgetOpen, setIsWidgetOpen] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
   const [polledHostSessionSnapshot, setPolledHostSessionSnapshot] = useState<HostSessionSnapshot | null>(

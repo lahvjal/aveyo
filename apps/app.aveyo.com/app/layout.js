@@ -1,5 +1,5 @@
 import "./globals.css";
-// import AvaWidgetEmbed from "@/components/AvaWidgetEmbed";
+import AvaWidgetEmbed from "./AvaWidgetEmbed";
 
 
 
@@ -11,8 +11,9 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>{children}
-        {/* <AvaWidgetEmbed /> */}
+      <body>
+        {children}
+        <AvaWidgetEmbed />
       </body>
     </html>
   );
