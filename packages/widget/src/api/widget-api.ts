@@ -23,6 +23,7 @@ export interface ImpersonationCustomer {
 export interface WidgetApiClient {
   listConversations: (options?: {
     excludeImpersonation?: boolean;
+    ownOnly?: boolean;
   }) => Promise<{ conversations: ConversationThread[] }>;
   createConversation: (body?: {
     subject?: string;
@@ -125,7 +126,14 @@ export function createWidgetApiClient({
 
   return {
     listConversations: (options) => {
-      const query = options?.excludeImpersonation ? "?excludeImpersonation=1" : "";
+      const params = new URLSearchParams();
+      if (options?.excludeImpersonation) {
+        params.set("excludeImpersonation", "1");
+      }
+      if (options?.ownOnly) {
+        params.set("ownOnly", "1");
+      }
+      const query = params.toString() ? `?${params.toString()}` : "";
       return requestJson<{ conversations: ConversationThread[] }>(
         resolvedBaseUrl,
         `/api/conversations${query}`,

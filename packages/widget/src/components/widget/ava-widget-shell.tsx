@@ -752,7 +752,8 @@ export function AvaWidgetShell({
       try {
         setRequestError(null);
         const listResult = await api.listConversations({
-          excludeImpersonation: canUseTestMode && !isTestModeEnabled
+          excludeImpersonation: canUseTestMode && !isTestModeEnabled,
+          ownOnly: true
         });
         const latestConversation =
           listResult.conversations.length > 0 ? listResult.conversations[0] : null;

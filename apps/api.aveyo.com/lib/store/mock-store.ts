@@ -593,6 +593,7 @@ async function listAccessibleConversationRows(
   isSupportAgent: boolean,
   options?: {
     excludeImpersonation?: boolean;
+    ownOnly?: boolean;
   }
 ) {
   const supabase = getSupabaseServiceRoleClient();
@@ -605,7 +606,7 @@ async function listAccessibleConversationRows(
     .order("updated_at", { ascending: false })
     .limit(200);
 
-  if (!isSupportAgent) {
+  if (!isSupportAgent || options?.ownOnly) {
     query = query.eq("customer_auth_user_id", actorUserId);
   }
 
@@ -1238,6 +1239,7 @@ export async function listConversations(
   actorUserId: string,
   options?: {
     excludeImpersonation?: boolean;
+    ownOnly?: boolean;
   }
 ): Promise<ConversationThread[]> {
   const supportAgent = await isAvaSupportAgent(actorUserId);

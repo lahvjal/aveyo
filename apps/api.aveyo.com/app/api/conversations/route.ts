@@ -14,8 +14,11 @@ export async function GET(request: Request) {
     const excludeImpersonation =
       searchParams.get("excludeImpersonation") === "1" ||
       searchParams.get("excludeImpersonation") === "true";
+    const ownOnly =
+      searchParams.get("ownOnly") === "1" ||
+      searchParams.get("ownOnly") === "true";
     return NextResponse.json(
-      await getConversationsResult(auth.user.id, { excludeImpersonation })
+      await getConversationsResult(auth.user.id, { excludeImpersonation, ownOnly })
     );
   } catch (error) {
     if (error instanceof ServiceError) {

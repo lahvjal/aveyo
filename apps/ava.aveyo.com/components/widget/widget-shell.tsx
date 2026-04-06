@@ -403,7 +403,7 @@ export function WidgetShell({
     const loadConversation = async () => {
       try {
         setRequestError(null);
-        const listResult = await listConversationsApi();
+        const listResult = await listConversationsApi({ ownOnly: true });
         const latestConversation =
           listResult.conversations.length > 0 ? listResult.conversations[0] : null;
 

@@ -68,12 +68,14 @@ export async function getConversationsResult(
   actorUserId: string,
   options?: {
     excludeImpersonation?: boolean;
+    ownOnly?: boolean;
   }
 ) {
   try {
     return {
       conversations: await listConversations(actorUserId, {
-        excludeImpersonation: options?.excludeImpersonation
+        excludeImpersonation: options?.excludeImpersonation,
+        ownOnly: options?.ownOnly
       })
     };
   } catch (error) {

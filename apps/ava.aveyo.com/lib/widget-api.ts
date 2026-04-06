@@ -12,8 +12,16 @@ async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   return authApiRequest<T>(path, init);
 }
 
-export function listConversationsApi() {
-  return apiRequest<{ conversations: ConversationThread[] }>("/api/conversations", {
+export function listConversationsApi(options?: { excludeImpersonation?: boolean; ownOnly?: boolean }) {
+  const params = new URLSearchParams();
+  if (options?.excludeImpersonation) {
+    params.set("excludeImpersonation", "1");
+  }
+  if (options?.ownOnly) {
+    params.set("ownOnly", "1");
+  }
+  const query = params.toString() ? `?${params.toString()}` : "";
+  return apiRequest<{ conversations: ConversationThread[] }>(`/api/conversations${query}`, {
     method: "GET"
   });
 }
