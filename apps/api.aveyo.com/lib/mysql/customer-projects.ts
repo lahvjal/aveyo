@@ -26,6 +26,17 @@ export interface MySqlProjectCustomerCandidate {
   updatedAt: string | null;
 }
 
+export interface MySqlIdentityProjectCandidate {
+  projectId: string;
+  customerId: string | null;
+  email: string | null;
+  customerName: string | null;
+  fullAddress: string | null;
+  projectStatus: string | null;
+  projectTitle: string | null;
+  lastSync: string | null;
+}
+
 interface ProjectDataRow {
   projectId: string | null;
   customerId: string | null;
@@ -42,6 +53,10 @@ interface ProjectCustomerListRow extends ProjectDataRow {
   updatedAt: string | null;
 }
 
+interface IdentityProjectRow extends ProjectDataRow {
+  lastSync: string | null;
+}
+
 interface LookupInput {
   projectRef?: string | null;
   customerId?: string | null;
@@ -51,6 +66,127 @@ interface LookupInput {
 interface ProjectCustomerLookupInput {
   query?: string | null;
   limit?: number;
+}
+
+interface IdentityProjectsLookupInput {
+  customerId?: string | null;
+  email?: string | null;
+  limit?: number;
+}
+
+interface CacheEntry<T> {
+  value: T;
+  expiresAt: number;
+}
+
+const DEFAULT_LOOKUP_CACHE_TTL_MS = 30_000;
+const DEFAULT_CACHE_MAX_ENTRIES = 2000;
+
+const detailsLookupCache = new Map<string, CacheEntry<MySqlCustomerProjectDetails | null>>();
+const projectCustomersLookupCache = new Map<
+  string,
+  CacheEntry<MySqlProjectCustomerCandidate[]>
+>();
+const identityProjectsLookupCache = new Map<
+  string,
+  CacheEntry<MySqlIdentityProjectCandidate[]>
+>();
+
+function parsePositiveIntegerEnv(rawValue: string | undefined, fallback: number) {
+  if (!rawValue) {
+    return fallback;
+  }
+  const parsed = Number.parseInt(rawValue, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return fallback;
+  }
+  return parsed;
+}
+
+const lookupCacheTtlMs = parsePositiveIntegerEnv(
+  process.env.AVA_MYSQL_LOOKUP_CACHE_TTL_MS,
+  DEFAULT_LOOKUP_CACHE_TTL_MS
+);
+const lookupCacheMaxEntries = parsePositiveIntegerEnv(
+  process.env.AVA_MYSQL_LOOKUP_CACHE_MAX_ENTRIES,
+  DEFAULT_CACHE_MAX_ENTRIES
+);
+const mysqlTelemetryEnabled = process.env.AVA_MYSQL_TELEMETRY !== "0";
+
+function logMySqlLookup(event: string, payload: Record<string, unknown>) {
+  if (!mysqlTelemetryEnabled) {
+    return;
+  }
+  console.info(`[ava-mysql] ${event}`, payload);
+}
+
+function getLookupFingerprint(input: {
+  projectRef?: string | null;
+  customerId?: string | null;
+  email?: string | null;
+}) {
+  return {
+    hasProjectRef: Boolean(input.projectRef),
+    hasCustomerId: Boolean(input.customerId),
+    hasEmail: Boolean(input.email)
+  };
+}
+
+function pruneCache<T>(cache: Map<string, CacheEntry<T>>, maxEntries: number) {
+  if (cache.size < maxEntries) {
+    return;
+  }
+
+  const now = Date.now();
+  for (const [key, entry] of cache) {
+    if (entry.expiresAt <= now) {
+      cache.delete(key);
+    }
+  }
+
+  if (cache.size < maxEntries) {
+    return;
+  }
+
+  const keys = Array.from(cache.keys());
+  const overflow = cache.size - maxEntries + 1;
+  for (let index = 0; index < overflow && index < keys.length; index += 1) {
+    const key = keys[index];
+    if (key) {
+      cache.delete(key);
+    }
+  }
+}
+
+function readCacheValue<T>(cache: Map<string, CacheEntry<T>>, key: string) {
+  const cached = cache.get(key);
+  if (!cached) {
+    return {
+      hit: false,
+      value: undefined as T | undefined
+    };
+  }
+
+  if (cached.expiresAt <= Date.now()) {
+    cache.delete(key);
+    return {
+      hit: false,
+      value: undefined as T | undefined
+    };
+  }
+
+  return {
+    hit: true,
+    value: cached.value
+  };
+}
+
+function writeCacheValue<T>(cache: Map<string, CacheEntry<T>>, key: string, value: T) {
+  pruneCache(cache, lookupCacheMaxEntries);
+  cache.set(key, {
+    value,
+    expiresAt: Date.now() + lookupCacheTtlMs
+  });
 }
 
 function normalizeString(value: unknown) {
@@ -83,6 +219,11 @@ function normalizeLimit(value: number | undefined, fallback: number, max: number
 
 function toCaseInsensitiveKey(value: string | null) {
   return value ? value.toLowerCase() : null;
+}
+
+function toCachePart(value: string | null | undefined) {
+  const normalized = normalizeString(value ?? null);
+  return normalized ? normalized.toLowerCase() : "-";
 }
 
 function mapProjectDataRow(
@@ -127,7 +268,7 @@ async function queryProjectData(
       FROM \`project-data\`
       WHERE \`is_deleted\` = 0
         AND ${whereClause}
-      ORDER BY \`data-updated-timestamp\` DESC, \`item_id\` DESC
+      ORDER BY COALESCE(\`data-updated-timestamp\`, \`last-sync\`, \`sent-to-supabase-date\`) DESC, \`item_id\` DESC
       LIMIT 1
     `,
     [value]
@@ -167,10 +308,10 @@ async function queryProjectCustomers(input: {
         \`finance-id\` AS financeId,
         \`project-status\` AS projectStatus,
         \`project-title\` AS projectTitle,
-        CAST(\`data-updated-timestamp\` AS CHAR) AS updatedAt
+        CAST(COALESCE(\`data-updated-timestamp\`, \`last-sync\`, \`sent-to-supabase-date\`) AS CHAR) AS updatedAt
       FROM \`project-data\`
       WHERE ${filters.join("\n        AND ")}
-      ORDER BY \`data-updated-timestamp\` DESC, \`item_id\` DESC
+      ORDER BY COALESCE(\`data-updated-timestamp\`, \`last-sync\`, \`sent-to-supabase-date\`) DESC, \`item_id\` DESC
       LIMIT ?
     `,
     [...values, input.queryLimit]
@@ -179,37 +320,137 @@ async function queryProjectCustomers(input: {
   return rows as ProjectCustomerListRow[];
 }
 
+async function queryIdentityProjects(
+  whereClause: string,
+  value: string,
+  queryLimit: number
+): Promise<IdentityProjectRow[]> {
+  const mysqlPool = getMySqlPool();
+  if (!mysqlPool) {
+    return [];
+  }
+
+  const [rows] = await mysqlPool.query(
+    `
+      SELECT
+        \`project-id\` AS projectId,
+        \`customer-id\` AS customerId,
+        \`customer-name\` AS customerName,
+        \`email\` AS email,
+        \`ph\` AS phone,
+        \`full-address\` AS fullAddress,
+        \`finance-id\` AS financeId,
+        \`project-status\` AS projectStatus,
+        \`project-title\` AS projectTitle,
+        CAST(COALESCE(\`data-updated-timestamp\`, \`last-sync\`, \`sent-to-supabase-date\`) AS CHAR) AS lastSync
+      FROM \`project-data\`
+      WHERE \`is_deleted\` = 0
+        AND COALESCE(TRIM(\`project-id\`), '') <> ''
+        AND ${whereClause}
+      ORDER BY COALESCE(\`data-updated-timestamp\`, \`last-sync\`, \`sent-to-supabase-date\`) DESC, \`item_id\` DESC
+      LIMIT ?
+    `,
+    [value, queryLimit]
+  );
+
+  return rows as IdentityProjectRow[];
+}
+
+function mapIdentityProjects(rows: IdentityProjectRow[], limit: number): MySqlIdentityProjectCandidate[] {
+  const unique = new Map<string, MySqlIdentityProjectCandidate>();
+
+  for (const row of rows) {
+    const projectId = normalizeString(row.projectId);
+    if (!projectId || unique.has(projectId)) {
+      continue;
+    }
+
+    unique.set(projectId, {
+      projectId,
+      customerId: normalizeString(row.customerId),
+      email: normalizeString(row.email),
+      customerName: normalizeString(row.customerName),
+      fullAddress: normalizeString(row.fullAddress),
+      projectStatus: normalizeString(row.projectStatus),
+      projectTitle: normalizeString(row.projectTitle),
+      lastSync: normalizeString(row.lastSync)
+    });
+
+    if (unique.size >= limit) {
+      break;
+    }
+  }
+
+  return Array.from(unique.values());
+}
+
 export async function getMySqlCustomerProjectDetails(input: LookupInput) {
   const projectRef = normalizeString(input.projectRef);
+  const customerId = normalizeString(input.customerId);
+  const email = normalizeString(input.email);
+
+  const cacheKey = `details:${toCachePart(projectRef)}:${toCachePart(customerId)}:${toCachePart(email)}`;
+  const cached = readCacheValue(detailsLookupCache, cacheKey);
+  if (cached.hit) {
+    logMySqlLookup("get-customer-project-details", {
+      cacheHit: true,
+      ...getLookupFingerprint({ projectRef, customerId, email })
+    });
+    return cached.value ?? undefined;
+  }
+
+  const startedAt = Date.now();
+  let result: MySqlCustomerProjectDetails | undefined;
+
   if (projectRef) {
     const projectMatch = await queryProjectData("\`project-id\` = ?", projectRef);
     if (projectMatch) {
-      return mapProjectDataRow(projectMatch, "project-id");
+      result = mapProjectDataRow(projectMatch, "project-id");
     }
   }
 
-  const customerId = normalizeString(input.customerId);
-  if (customerId) {
+  if (!result && customerId) {
     const customerIdMatch = await queryProjectData("\`customer-id\` = ?", customerId);
     if (customerIdMatch) {
-      return mapProjectDataRow(customerIdMatch, "customer-id");
+      result = mapProjectDataRow(customerIdMatch, "customer-id");
     }
   }
 
-  const email = normalizeString(input.email);
-  if (email) {
+  if (!result && email) {
     const emailMatch = await queryProjectData("LOWER(\`email\`) = LOWER(?)", email);
     if (emailMatch) {
-      return mapProjectDataRow(emailMatch, "email");
+      result = mapProjectDataRow(emailMatch, "email");
     }
   }
 
-  return undefined;
+  writeCacheValue(detailsLookupCache, cacheKey, result ?? null);
+  logMySqlLookup("get-customer-project-details", {
+    cacheHit: false,
+    durationMs: Date.now() - startedAt,
+    matchedBy: result?.matchedBy ?? null,
+    found: Boolean(result),
+    ...getLookupFingerprint({ projectRef, customerId, email })
+  });
+
+  return result;
 }
 
 export async function listMySqlProjectCustomers(input: ProjectCustomerLookupInput = {}) {
   const normalizedQuery = normalizeSearchQuery(input.query);
   const limit = normalizeLimit(input.limit, 25, 100);
+  const cacheKey = `project-customers:${toCachePart(normalizedQuery ?? null)}:${limit}`;
+  const cached = readCacheValue(projectCustomersLookupCache, cacheKey);
+  if (cached.hit) {
+    logMySqlLookup("list-project-customers", {
+      cacheHit: true,
+      queryProvided: Boolean(normalizedQuery),
+      limit,
+      candidateCount: cached.value?.length ?? 0
+    });
+    return cached.value ?? [];
+  }
+
+  const startedAt = Date.now();
   const queryLimit = normalizeLimit(limit * 8, 200, 800);
   const rows = await queryProjectCustomers({
     query: normalizedQuery,
@@ -249,5 +490,74 @@ export async function listMySqlProjectCustomers(input: ProjectCustomerLookupInpu
     }
   }
 
-  return Array.from(unique.values());
+  const result = Array.from(unique.values());
+  writeCacheValue(projectCustomersLookupCache, cacheKey, result);
+  logMySqlLookup("list-project-customers", {
+    cacheHit: false,
+    durationMs: Date.now() - startedAt,
+    queryProvided: Boolean(normalizedQuery),
+    limit,
+    candidateCount: result.length
+  });
+
+  return result;
+}
+
+export async function listMySqlIdentityProjects(input: IdentityProjectsLookupInput = {}) {
+  const limit = normalizeLimit(input.limit, 10, 50);
+  const normalizedCustomerId = normalizeString(input.customerId);
+  const normalizedEmail = normalizeString(input.email);
+  const cacheKey = `identity-projects:${toCachePart(normalizedCustomerId)}:${toCachePart(normalizedEmail)}:${limit}`;
+  const cached = readCacheValue(identityProjectsLookupCache, cacheKey);
+  if (cached.hit) {
+    logMySqlLookup("list-identity-projects", {
+      cacheHit: true,
+      limit,
+      candidateCount: cached.value?.length ?? 0,
+      ...getLookupFingerprint({
+        customerId: normalizedCustomerId,
+        email: normalizedEmail
+      })
+    });
+    return cached.value ?? [];
+  }
+
+  const startedAt = Date.now();
+  const queryLimit = normalizeLimit(limit * 12, 200, 1200);
+  let result: MySqlIdentityProjectCandidate[] = [];
+
+  if (normalizedCustomerId) {
+    const customerRows = await queryIdentityProjects(
+      "\`customer-id\` = ?",
+      normalizedCustomerId,
+      queryLimit
+    );
+    const mappedCustomerRows = mapIdentityProjects(customerRows, limit);
+    if (mappedCustomerRows.length > 0) {
+      result = mappedCustomerRows;
+    }
+  }
+
+  if (result.length === 0 && normalizedEmail) {
+    const emailRows = await queryIdentityProjects(
+      "LOWER(\`email\`) = LOWER(?)",
+      normalizedEmail,
+      queryLimit
+    );
+    result = mapIdentityProjects(emailRows, limit);
+  }
+
+  writeCacheValue(identityProjectsLookupCache, cacheKey, result);
+  logMySqlLookup("list-identity-projects", {
+    cacheHit: false,
+    durationMs: Date.now() - startedAt,
+    limit,
+    candidateCount: result.length,
+    ...getLookupFingerprint({
+      customerId: normalizedCustomerId,
+      email: normalizedEmail
+    })
+  });
+
+  return result;
 }

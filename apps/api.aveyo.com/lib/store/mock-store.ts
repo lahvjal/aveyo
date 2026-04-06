@@ -9,8 +9,10 @@ import {
 } from "@ava/chat-domain";
 import {
   getMySqlCustomerProjectDetails,
+  listMySqlIdentityProjects,
   listMySqlProjectCustomers
 } from "@/lib/mysql/customer-projects";
+import { getMySqlCustomerProjectContextSnapshot } from "@/lib/mysql/customer-project-context";
 import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 type AppendableMessageInput =
@@ -118,6 +120,7 @@ interface ConversationRow {
   handoff_state: "none" | "pending" | "claimed" | "active" | "resolved";
   active_support_agent_auth_user_id: string | null;
   channel?: string | null;
+  project_ref?: string | null;
   updated_at: string;
 }
 
@@ -204,6 +207,12 @@ interface CustomerProfileDetailsRow {
   phone: string | null;
   project_customer_id: string | null;
   metadata: Record<string, unknown> | null;
+}
+
+interface CustomerIdentityFallback {
+  email: string | null;
+  fullName: string | null;
+  phone: string | null;
 }
 
 interface ResolvedCustomerProjectDetails {
@@ -347,6 +356,46 @@ function firstStringValue(values: unknown[]): string | null {
   return null;
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function findUniqueProjectRefMention(text: string, projectRefs: string[]) {
+  if (!projectRefs.length) {
+    return undefined;
+  }
+
+  const matches = new Set<string>();
+  for (const projectRef of projectRefs) {
+    const normalizedProjectRef = asTrimmedString(projectRef);
+    if (!normalizedProjectRef) {
+      continue;
+    }
+
+    const pattern = new RegExp(
+      `(?:^|[^A-Za-z0-9])#?${escapeRegExp(normalizedProjectRef)}(?:[^A-Za-z0-9]|$)`,
+      "i"
+    );
+    if (pattern.test(text)) {
+      matches.add(normalizedProjectRef);
+    }
+  }
+
+  if (matches.size !== 1) {
+    return undefined;
+  }
+  return Array.from(matches)[0];
+}
+
+const projectSelectionTelemetryEnabled = process.env.AVA_PROJECT_SELECTION_TELEMETRY !== "0";
+
+function logProjectSelectionTelemetry(event: string, payload: Record<string, unknown>) {
+  if (!projectSelectionTelemetryEnabled) {
+    return;
+  }
+  console.info(`[ava-project-selection] ${event}`, payload);
+}
+
 function isHandoffRating(value: unknown): value is HandoffRating {
   return value === "thumbs_up" || value === "thumbs_down";
 }
@@ -427,7 +476,9 @@ async function getConversationRow(conversationId: string) {
   const { data, error } = await supabase
     .schema("ava")
     .from("conversations")
-    .select("id, customer_auth_user_id, handoff_state, active_support_agent_auth_user_id, updated_at")
+    .select(
+      "id, customer_auth_user_id, handoff_state, active_support_agent_auth_user_id, updated_at, channel, project_ref"
+    )
     .eq("id", conversationId)
     .single();
 
@@ -1694,14 +1745,49 @@ export async function appendMessage(
     throw new StoreError(500, "Unable to append message.");
   }
 
+  let conversationProjectRefForUpdate: string | undefined;
+  if (message.kind === "customer") {
+    try {
+      conversationProjectRefForUpdate = await resolveConversationProjectRefForCustomerMessage({
+        conversationId,
+        currentConversationProjectRef: asTrimmedString(conversation.project_ref) ?? null,
+        messageText: message.text
+      });
+    } catch (error) {
+      logProjectSelectionTelemetry("resolve-project-ref-error", {
+        conversationId,
+        messageKind: message.kind,
+        error: error instanceof Error ? error.message : "unknown-error"
+      });
+      conversationProjectRefForUpdate = undefined;
+    }
+  }
+
   const updatedAt = nowIso();
+  const conversationUpdatePayload: {
+    updated_at: string;
+    last_message_at: string;
+    project_ref?: string;
+  } = {
+    updated_at: updatedAt,
+    last_message_at: updatedAt
+  };
+  if (
+    conversationProjectRefForUpdate &&
+    conversationProjectRefForUpdate !== asTrimmedString(conversation.project_ref)
+  ) {
+    conversationUpdatePayload.project_ref = conversationProjectRefForUpdate;
+    logProjectSelectionTelemetry("pin-project-ref", {
+      conversationId,
+      previousProjectRef: asTrimmedString(conversation.project_ref) ?? null,
+      pinnedProjectRef: conversationProjectRefForUpdate
+    });
+  }
+
   const { error: updateError } = await supabase
     .schema("ava")
     .from("conversations")
-    .update({
-      updated_at: updatedAt,
-      last_message_at: updatedAt
-    })
+    .update(conversationUpdatePayload)
     .eq("id", conversationId);
 
   if (updateError) {
@@ -2518,13 +2604,78 @@ async function getCustomerProfileDetails(conversation: ConversationDetailsRow) {
   return ((data ?? [])[0] ?? undefined) as CustomerProfileDetailsRow | undefined;
 }
 
+async function getCustomerIdentityFallback(authUserId: string): Promise<CustomerIdentityFallback> {
+  const supabase = getSupabaseServiceRoleClient();
+  let email: string | null = null;
+  let fullName: string | null = null;
+  let phone: string | null = null;
+
+  try {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .eq("id", authUserId)
+      .maybeSingle();
+
+    if (!error && data) {
+      const profile = data as ProfileCustomerFallbackRow;
+      email = asTrimmedString(profile.email) ?? null;
+      fullName = asTrimmedString(profile.full_name) ?? null;
+    }
+  } catch {
+    // Best-effort fallback only.
+  }
+
+  if (email) {
+    return {
+      email,
+      fullName,
+      phone
+    };
+  }
+
+  try {
+    const { data, error } = await supabase.auth.admin.getUserById(authUserId);
+    if (!error && data.user) {
+      const userMetadata = asRecord(data.user.user_metadata);
+      const appMetadata = asRecord(data.user.app_metadata);
+      email = asTrimmedString(data.user.email) ?? null;
+      fullName =
+        fullName ??
+        firstStringValue([
+          userMetadata?.full_name,
+          userMetadata?.name,
+          userMetadata?.display_name,
+          appMetadata?.full_name,
+          appMetadata?.name
+        ]);
+      phone =
+        phone ??
+        firstStringValue([
+          userMetadata?.phone,
+          userMetadata?.phone_number,
+          appMetadata?.phone,
+          appMetadata?.phone_number
+        ]);
+    }
+  } catch {
+    // Best-effort fallback only.
+  }
+
+  return {
+    email,
+    fullName,
+    phone
+  };
+}
+
 async function getConversationDetailsRow(conversationId: string) {
   const supabase = getSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .schema("ava")
     .from("conversations")
     .select(
-      "id, customer_auth_user_id, handoff_state, active_support_agent_auth_user_id, updated_at, customer_profile_id, project_ref"
+      "id, customer_auth_user_id, handoff_state, active_support_agent_auth_user_id, updated_at, channel, customer_profile_id, project_ref"
     )
     .eq("id", conversationId)
     .single();
@@ -2536,10 +2687,127 @@ async function getConversationDetailsRow(conversationId: string) {
   return (data ?? undefined) as ConversationDetailsRow | undefined;
 }
 
+async function resolveConversationProjectRefForCustomerMessage(params: {
+  conversationId: string;
+  currentConversationProjectRef: string | null;
+  messageText: string;
+}) {
+  const startedAt = Date.now();
+  const conversation = await getConversationDetailsRow(params.conversationId);
+  if (!conversation) {
+    logProjectSelectionTelemetry("resolve-project-ref", {
+      conversationId: params.conversationId,
+      durationMs: Date.now() - startedAt,
+      resolutionReason: "conversation-not-found",
+      resolvedProjectRef: params.currentConversationProjectRef ?? null
+    });
+    return params.currentConversationProjectRef ?? undefined;
+  }
+  if (conversation.channel === "agent_impersonation") {
+    const resolvedProjectRef =
+      params.currentConversationProjectRef ??
+      asTrimmedString(conversation.project_ref) ??
+      undefined;
+    logProjectSelectionTelemetry("resolve-project-ref", {
+      conversationId: params.conversationId,
+      durationMs: Date.now() - startedAt,
+      resolutionReason: "impersonation-channel",
+      resolvedProjectRef: resolvedProjectRef ?? null
+    });
+    return resolvedProjectRef;
+  }
+
+  const customerProfile = await getCustomerProfileDetails(conversation);
+  const customerId = asTrimmedString(customerProfile?.project_customer_id) ?? null;
+  const customerEmailFromProfile = asTrimmedString(customerProfile?.email) ?? null;
+  const fallbackIdentity = customerEmailFromProfile
+    ? undefined
+    : await getCustomerIdentityFallback(conversation.customer_auth_user_id);
+  const customerEmail = customerEmailFromProfile ?? fallbackIdentity?.email ?? null;
+
+  const candidates = await listMySqlIdentityProjects({
+    customerId,
+    email: customerEmail,
+    limit: 8
+  });
+  const candidateProjectRefs = candidates.map((candidate) => candidate.projectId);
+  const mentionedProjectRef = findUniqueProjectRefMention(params.messageText, candidateProjectRefs);
+
+  const currentProjectRef =
+    params.currentConversationProjectRef ??
+    asTrimmedString(conversation.project_ref) ??
+    undefined;
+
+  let resolvedProjectRef: string | undefined;
+  let resolutionReason:
+    | "switch-by-message-mention"
+    | "keep-existing-pin"
+    | "auto-pin-single-candidate"
+    | "pin-by-message-mention"
+    | "requires-selection"
+    | "no-candidates";
+
+  if (currentProjectRef) {
+    if (mentionedProjectRef && mentionedProjectRef !== currentProjectRef) {
+      resolvedProjectRef = mentionedProjectRef;
+      resolutionReason = "switch-by-message-mention";
+    } else {
+      resolvedProjectRef = currentProjectRef;
+      resolutionReason = "keep-existing-pin";
+    }
+  } else if (candidates.length === 1) {
+    resolvedProjectRef = candidates[0]?.projectId;
+    resolutionReason = "auto-pin-single-candidate";
+  } else if (mentionedProjectRef) {
+    resolvedProjectRef = mentionedProjectRef;
+    resolutionReason = "pin-by-message-mention";
+  } else {
+    resolvedProjectRef = undefined;
+    resolutionReason = candidates.length > 1 ? "requires-selection" : "no-candidates";
+  }
+
+  logProjectSelectionTelemetry("resolve-project-ref", {
+    conversationId: params.conversationId,
+    durationMs: Date.now() - startedAt,
+    candidateCount: candidates.length,
+    currentProjectRef: currentProjectRef ?? null,
+    mentionedProjectRef: mentionedProjectRef ?? null,
+    resolvedProjectRef: resolvedProjectRef ?? null,
+    resolutionReason
+  });
+
+  return resolvedProjectRef;
+}
+
 async function resolveCustomerProjectDetails(
   conversation: ConversationDetailsRow,
   customerProfile: CustomerProfileDetailsRow | undefined
 ): Promise<ResolvedCustomerProjectDetails> {
+  const allowAuthIdentityFallback = conversation.channel !== "agent_impersonation";
+  const conversationPinnedProjectRef = asTrimmedString(conversation.project_ref) ?? null;
+  const customerProfileCustomerId = asTrimmedString(customerProfile?.project_customer_id) ?? null;
+  const customerProfileFullName = asTrimmedString(customerProfile?.full_name) ?? null;
+  const customerProfileEmail = asTrimmedString(customerProfile?.email) ?? null;
+  const customerProfilePhone = asTrimmedString(customerProfile?.phone) ?? null;
+  const shouldLoadFallbackIdentity =
+    allowAuthIdentityFallback &&
+    (!customerProfileFullName || !customerProfileEmail || !customerProfilePhone);
+  const fallbackIdentity = shouldLoadFallbackIdentity
+    ? await getCustomerIdentityFallback(conversation.customer_auth_user_id)
+    : undefined;
+  const mysqlLookupEmail =
+    customerProfileEmail ?? (allowAuthIdentityFallback ? fallbackIdentity?.email ?? null : null);
+  let identityProjectCandidates: Awaited<ReturnType<typeof listMySqlIdentityProjects>> = [];
+  try {
+    identityProjectCandidates = await listMySqlIdentityProjects({
+      customerId: customerProfileCustomerId,
+      email: mysqlLookupEmail,
+      limit: 5
+    });
+  } catch {
+    identityProjectCandidates = [];
+  }
+
   const metadata = asRecord(customerProfile?.metadata) ?? {};
   const projectMetadata = asRecord(metadata.project) ?? {};
 
@@ -2589,18 +2857,31 @@ async function resolveCustomerProjectDetails(
   try {
     mysqlProjectData = await getMySqlCustomerProjectDetails({
       projectRef,
-      customerId: customerProfile?.project_customer_id,
-      email: customerProfile?.email
+      customerId: customerProfileCustomerId,
+      email: mysqlLookupEmail
     });
   } catch {
     mysqlProjectData = undefined;
   }
 
-  const customerId = customerProfile?.project_customer_id ?? mysqlProjectData?.customerId ?? null;
+  let mysqlContextSnapshot: Awaited<
+    ReturnType<typeof getMySqlCustomerProjectContextSnapshot>
+  > | undefined;
+  try {
+    mysqlContextSnapshot = await getMySqlCustomerProjectContextSnapshot({
+      projectRef: projectRef ?? mysqlProjectData?.projectId ?? null,
+      customerId: customerProfileCustomerId,
+      email: mysqlLookupEmail
+    });
+  } catch {
+    mysqlContextSnapshot = undefined;
+  }
+
+  const customerId = customerProfileCustomerId ?? mysqlProjectData?.customerId ?? null;
   const customerFullName =
-    asTrimmedString(customerProfile?.full_name) ?? mysqlProjectData?.customerName ?? null;
-  const customerEmail = asTrimmedString(customerProfile?.email) ?? mysqlProjectData?.email ?? null;
-  const customerPhone = asTrimmedString(customerProfile?.phone) ?? mysqlProjectData?.phone ?? null;
+    customerProfileFullName ?? mysqlProjectData?.customerName ?? fallbackIdentity?.fullName ?? null;
+  const customerEmail = customerProfileEmail ?? mysqlProjectData?.email ?? fallbackIdentity?.email ?? null;
+  const customerPhone = customerProfilePhone ?? mysqlProjectData?.phone ?? fallbackIdentity?.phone ?? null;
   const customerAddress = address ?? mysqlProjectData?.fullAddress ?? null;
   const customerFin = fin ?? mysqlProjectData?.financeId ?? null;
   const resolvedProjectRef = projectRef ?? mysqlProjectData?.projectId ?? null;
@@ -2615,6 +2896,35 @@ async function resolveCustomerProjectDetails(
       matchedBy: mysqlProjectData.matchedBy,
       projectTitle: mysqlProjectData.projectTitle
     };
+  }
+  if (mysqlContextSnapshot) {
+    responseMetadata.mysql_context_snapshot_phase1 = mysqlContextSnapshot;
+  }
+  const requiresProjectSelection =
+    !conversationPinnedProjectRef &&
+    identityProjectCandidates.length > 1 &&
+    conversation.channel !== "agent_impersonation";
+  if (identityProjectCandidates.length > 0) {
+    responseMetadata.project_selection_phase2 = {
+      selectedProjectRef: resolvedProjectRef,
+      requiresSelection: requiresProjectSelection,
+      candidateCount: identityProjectCandidates.length,
+      candidates: identityProjectCandidates.map((candidate) => ({
+        projectRef: candidate.projectId,
+        projectStatus: candidate.projectStatus,
+        siteAddress: candidate.fullAddress,
+        projectTitle: candidate.projectTitle,
+        selected: candidate.projectId === resolvedProjectRef
+      }))
+    };
+  }
+  if (requiresProjectSelection) {
+    logProjectSelectionTelemetry("project-selection-required", {
+      conversationId: conversation.id,
+      candidateCount: identityProjectCandidates.length,
+      selectedProjectRef: resolvedProjectRef,
+      channel: conversation.channel ?? "widget"
+    });
   }
 
   return {

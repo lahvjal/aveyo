@@ -33,10 +33,38 @@ function getOpenAiClient() {
   return cachedOpenAiClient;
 }
 
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as Record<string, unknown>;
+}
+
+function getPhaseOneProjectSnapshot(metadata: Record<string, unknown>) {
+  const snapshot = asRecord(metadata.mysql_context_snapshot_phase1);
+  if (!snapshot) {
+    return undefined;
+  }
+
+  return snapshot;
+}
+
+function getPhaseTwoProjectSelection(metadata: Record<string, unknown>) {
+  const selection = asRecord(metadata.project_selection_phase2);
+  if (!selection) {
+    return undefined;
+  }
+
+  return selection;
+}
+
 function buildContextSystemMessage(context: AvaReplyContext | undefined) {
   if (!context) {
     return undefined;
   }
+
+  const projectSnapshot = getPhaseOneProjectSnapshot(context.project.metadata);
+  const projectSelection = getPhaseTwoProjectSelection(context.project.metadata);
 
   const promptContext = {
     handoffState: context.handoffState,
@@ -51,7 +79,9 @@ function buildContextSystemMessage(context: AvaReplyContext | undefined) {
     project: {
       reference: context.project.projectRef,
       status: context.project.projectStatus,
-      siteAddress: context.project.siteAddress
+      siteAddress: context.project.siteAddress,
+      dataSnapshot: projectSnapshot,
+      selection: projectSelection
     }
   };
 
@@ -60,6 +90,9 @@ function buildContextSystemMessage(context: AvaReplyContext | undefined) {
     content:
       "Known customer/project context for this chat (may be incomplete):\n" +
       `${JSON.stringify(promptContext, null, 2)}\n` +
+      "If project.dataSnapshot exists, treat it as the latest CRM snapshot for this customer/project. " +
+      "If project.selection.requiresSelection is true, ask the customer to confirm the project " +
+      "using one of the listed project references before giving project-specific details. " +
       "Use this context when relevant. If a required value is missing or null, say you do not have it " +
       "and offer to connect the customer with customer care."
   };

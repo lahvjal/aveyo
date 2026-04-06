@@ -4,6 +4,7 @@
 
 See `docs/session-authority-contract.md` for the canonical platform session contract.
 See `docs/endpoint-centralization-gates.md` for endpoint centralization criteria.
+See `docs/ava-mysql-phase3-runbook.md` for Ava MySQL retrieval hardening and index guidance.
 
 ## Relationship to `ava26`
 
