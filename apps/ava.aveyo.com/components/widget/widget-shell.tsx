@@ -132,6 +132,9 @@ const AVA_TYPING_FALLBACK_MS = 15_000;
 const AVA_TYPING_STOP_GRACE_MS = 3_200;
 const REPRESENTATIVE_TYPING_FALLBACK_MS = 15_000;
 const REPRESENTATIVE_TYPING_STOP_GRACE_MS = 3_200;
+const HANDOFF_QUEUE_STATUS_DELAY_MS = 5_000;
+const HANDOFF_QUEUE_STATUS_TEXT =
+  "An agent is looking into your account. You will be connected soon.";
 
 function allowsAvaReplyForThread(thread: ConversationThread) {
   return thread.handoff.state === "none" || thread.handoff.state === "resolved";
@@ -213,6 +216,7 @@ export function WidgetShell({
   const avaTypingStopTimeoutRef = useRef<number | null>(null);
   const representativeTypingTimeoutRef = useRef<number | null>(null);
   const representativeTypingStopTimeoutRef = useRef<number | null>(null);
+  const handoffQueueStatusTimeoutRef = useRef<number | null>(null);
   const realtimeCursorRef = useRef<string | undefined>(undefined);
   const realtimeBusyRef = useRef(false);
 
@@ -321,6 +325,51 @@ export function WidgetShell({
     clearRepresentativeTypingStopTimeout();
     updateRepresentativeTyping(false);
   }, [clearRepresentativeTypingStopTimeout, updateRepresentativeTyping]);
+
+  const clearHandoffQueueStatusTimeout = useCallback(() => {
+    if (handoffQueueStatusTimeoutRef.current === null) {
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.clearTimeout(handoffQueueStatusTimeoutRef.current);
+    }
+    handoffQueueStatusTimeoutRef.current = null;
+  }, []);
+
+  const scheduleHandoffQueueStatusMessage = useCallback(
+    (conversationId: string) => {
+      clearHandoffQueueStatusTimeout();
+      if (typeof window === "undefined") {
+        return;
+      }
+
+      handoffQueueStatusTimeoutRef.current = window.setTimeout(() => {
+        handoffQueueStatusTimeoutRef.current = null;
+        setThread((current) => {
+          if (current.id !== conversationId) {
+            return current;
+          }
+
+          if (current.handoff.state !== "pending" && current.handoff.state !== "claimed") {
+            return current;
+          }
+
+          const hasQueueStatusMessage = current.messages.some(
+            (message) => message.kind === "system" && message.text === HANDOFF_QUEUE_STATUS_TEXT
+          );
+          if (hasQueueStatusMessage) {
+            return current;
+          }
+
+          return appendMessage(
+            current,
+            createSystemStatusMessage(current.id, HANDOFF_QUEUE_STATUS_TEXT)
+          );
+        });
+      }, HANDOFF_QUEUE_STATUS_DELAY_MS);
+    },
+    [clearHandoffQueueStatusTimeout]
+  );
 
   const canUseTestMode = authSession.authenticated && authSession.userType === "employee";
   const hasActiveImpersonation = activeImpersonation !== null;
@@ -500,6 +549,7 @@ export function WidgetShell({
       });
 
       setThread(result.thread);
+      scheduleHandoffQueueStatusMessage(result.thread.id);
       setShowRequestModal(false);
       setRequestReason("");
       setRequestError(null);
@@ -521,12 +571,14 @@ export function WidgetShell({
       clearAvaTypingTimeout();
       clearRepresentativeTypingStopTimeout();
       clearRepresentativeTypingTimeout();
+      clearHandoffQueueStatusTimeout();
     };
   }, [
     clearAvaTypingStopTimeout,
     clearAvaTypingTimeout,
     clearRepresentativeTypingStopTimeout,
-    clearRepresentativeTypingTimeout
+    clearRepresentativeTypingTimeout,
+    clearHandoffQueueStatusTimeout
   ]);
 
   useEffect(() => {
