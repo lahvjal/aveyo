@@ -226,6 +226,15 @@ function shouldPromptRepRequest(text: string) {
 
   const mentionsRepActionPhrase =
     normalized.includes("talk to a rep") ||
+    normalized.includes("request form") ||
+    normalized.includes("open the form") ||
+    normalized.includes("show the form") ||
+    normalized.includes("customer care") ||
+    normalized.includes("support team") ||
+    normalized.includes("support agent") ||
+    normalized.includes("representative") ||
+    normalized.includes("live agent") ||
+    normalized.includes("human agent") ||
     (normalized.includes("connect") &&
       (normalized.includes("representative") ||
         normalized.includes("support agent") ||
@@ -243,37 +252,44 @@ function shouldPromptRepRequest(text: string) {
     normalized.includes("if you would like") ||
     normalized.includes("let me know if") ||
     normalized.includes("please confirm") ||
-    normalized.includes("confirm by saying") ||
-    normalized.includes("reply with talk to a rep") ||
-    normalized.includes("type talk to a rep") ||
-    (normalized.includes("say") && normalized.includes("talk to a rep"))
+    normalized.includes("can i") ||
+    normalized.includes("could i") ||
+    normalized.endsWith("?")
   );
 }
 
 function isRepConfirmationYes(text: string) {
-  const normalized = text.trim().toLowerCase().replace(/[.!?]/g, "").replace(/\s+/g, " ");
+  const normalized = text
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s']/g, " ")
+    .replace(/\s+/g, " ");
   if (!normalized) {
     return false;
   }
 
-  const yesPhrases = [
-    "yes",
-    "yes please",
-    "y",
-    "yeah",
-    "yep",
-    "sure",
-    "ok",
-    "okay",
-    "please do",
-    "do it",
-    "connect me",
-    "connect me to a rep",
-    "talk to a rep",
-    "agent please",
-    "that would be great"
+  const yesPatterns = [
+    /\b(yes|yeah|yep|yup)\b/,
+    /\b(sure|ok|okay|alright|sounds good)\b/,
+    /\b(go ahead|please do|do it|that works|that would help)\b/,
+    /\b(connect|open|show|start)\b.*\b(form|request|rep|representative|agent|customer care)\b/,
+    /\b(talk|speak|chat)\b.*\b(rep|representative|agent|customer care|human)\b/,
+    /\b(i want|i'd like|i would like)\b.*\b(rep|representative|agent|customer care|human)\b/,
+    /\b(call me|have someone call|reach out|contact me)\b/
   ];
-  return yesPhrases.some((phrase) => normalized === phrase || normalized.startsWith(`${phrase} `));
+  const noPatterns = [
+    /\b(no|nope|nah)\b/,
+    /\b(not now|not yet|maybe later|later)\b/,
+    /\b(no thanks|don't|do not|never mind|nevermind|cancel)\b/,
+    /\b(i'm good|im good|all good)\b/
+  ];
+
+  const hasYesIntent = yesPatterns.some((pattern) => pattern.test(normalized));
+  const hasNoIntent = noPatterns.some((pattern) => pattern.test(normalized));
+  if (hasNoIntent && !hasYesIntent) {
+    return false;
+  }
+  return hasYesIntent;
 }
 
 const TIMELINE_RESET_INACTIVITY_MS = 30 * 60 * 1000;
