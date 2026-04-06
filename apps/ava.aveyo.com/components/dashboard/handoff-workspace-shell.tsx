@@ -26,6 +26,7 @@ import {
   resolveHandoffApi,
   type QueueRecord
 } from "@/lib/dashboard-api";
+import { useAvaReplySuggestion } from "@/lib/dashboard-ava-suggestion";
 import { publishDashboardSyncEvent, subscribeDashboardSyncEvents } from "@/lib/dashboard-sync";
 import { type CustomerPanelDetails, type HistoryNote, type Ticket } from "@/lib/dashboard-types";
 import { AppSideRail } from "@/components/app-side-rail";
@@ -132,6 +133,15 @@ export function HandoffWorkspaceShell({
       ? "This handoff has already been resolved."
       : undefined;
   const agentInitials = getInitials(authSession.user?.name);
+  const avaSuggestion = useAvaReplySuggestion({
+    conversation,
+    conversationId: workspaceConversationId,
+    enabled:
+      authSession.authenticated &&
+      Boolean(workspaceConversationId) &&
+      isConversationLoaded &&
+      canInteract
+  });
   const activeTicket = useMemo<Ticket | null>(() => {
     if (!queueRecord) {
       return null;
@@ -568,12 +578,23 @@ export function HandoffWorkspaceShell({
               composerLocked={!canInteract}
               composerLockedReason={interactionLockReason}
               composeNote={composeNote}
+              showAvaSuggestion={avaSuggestion.hasPendingCustomerQuestion}
+              avaSuggestionText={avaSuggestion.suggestionText}
+              avaSuggestionLoading={avaSuggestion.isLoading}
+              avaSuggestionError={avaSuggestion.error}
               agentInitials={agentInitials}
               agentAvatarUrl={agentAvatarUrl}
               onComposeNoteChange={setComposeNote}
               onSendMessage={() => {
                 void sendRepMessage();
               }}
+              onUseAvaSuggestion={() => {
+                if (!avaSuggestion.suggestionText) {
+                  return;
+                }
+                setComposeNote(avaSuggestion.suggestionText);
+              }}
+              onRefreshAvaSuggestion={avaSuggestion.refreshSuggestion}
             />
 
             <DetailColumn

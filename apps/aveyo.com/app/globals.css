@@ -206,10 +206,49 @@ body {
   margin: 0;
   padding: 10px 14px;
   font-size: 14px;
-  line-height: 1.25;
+  line-height: 1.4;
   border-radius: 20px;
-  max-width: min(270px, 84%);
+  max-width: min(304px, 88%);
   white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.widget-route-root .widget-message-text {
+  display: block;
+}
+
+.widget-route-root .widget-message-line {
+  display: block;
+}
+
+.widget-route-root .widget-message-line + .widget-message-line {
+  margin-top: 3px;
+}
+
+.widget-route-root .widget-message-line.spacer {
+  height: 8px;
+  margin-top: 0;
+}
+
+.widget-route-root .widget-message-line.heading {
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+.widget-route-root .widget-message-line.item {
+  position: relative;
+  padding-left: 12px;
+}
+
+.widget-route-root .widget-message-line.item::before {
+  content: "\2022";
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.widget-route-root .widget-message-item-label {
+  font-weight: 700;
 }
 
 .widget-route-root .widget-bubble.incoming {

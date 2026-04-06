@@ -35,6 +35,7 @@ import {
   resolveHandoffApi,
   type QueueRecord
 } from "@/lib/dashboard-api";
+import { useAvaReplySuggestion } from "@/lib/dashboard-ava-suggestion";
 import { type CustomerPanelDetails, type HistoryNote, type Ticket } from "@/lib/dashboard-types";
 import { AvaSecondaryNav } from "@/components/ava-secondary-nav";
 import { ChatColumn } from "./chat-column";
@@ -190,6 +191,15 @@ export function DashboardShell() {
 
     return "No active conversations right now. New requests will appear in the pending queue.";
   }, [hasActiveChat, hasPendingChats, isOnline, operationError, pendingQueue.length]);
+  const avaSuggestion = useAvaReplySuggestion({
+    conversation,
+    conversationId: composerConversationId,
+    enabled:
+      authSession.authenticated &&
+      Boolean(composerConversationId) &&
+      !isChatEmptyState &&
+      hasActiveChat
+  });
 
   const refreshDashboardData = useCallback(
     async (options?: { preferredConversationId?: string }) => {
@@ -667,10 +677,21 @@ export function DashboardShell() {
             isOnline={isOnline}
             isEmptyState={isChatEmptyState}
             composeNote={composeNote}
+            showAvaSuggestion={avaSuggestion.hasPendingCustomerQuestion}
+            avaSuggestionText={avaSuggestion.suggestionText}
+            avaSuggestionLoading={avaSuggestion.isLoading}
+            avaSuggestionError={avaSuggestion.error}
             agentInitials={agentInitials}
             agentAvatarUrl={agentAvatarUrl}
             onComposeNoteChange={setComposeNote}
             onSendMessage={sendRepMessage}
+            onUseAvaSuggestion={() => {
+              if (!avaSuggestion.suggestionText) {
+                return;
+              }
+              setComposeNote(avaSuggestion.suggestionText);
+            }}
+            onRefreshAvaSuggestion={avaSuggestion.refreshSuggestion}
           />
 
           <DetailColumn

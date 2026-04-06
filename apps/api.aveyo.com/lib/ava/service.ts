@@ -93,8 +93,9 @@ function buildContextSystemMessage(context: AvaReplyContext | undefined) {
       "If project.dataSnapshot exists, treat it as the latest CRM snapshot for this customer/project. " +
       "If project.selection.requiresSelection is true, ask the customer to confirm the project " +
       "using one of the listed project references before giving project-specific details. " +
-      "Use this context when relevant. If a required value is missing or null, say you do not have it " +
-      "and offer to connect the customer with customer care."
+      "Use this context when relevant. If a non-critical value is missing or null, continue with the best available answer. " +
+      "Only offer to connect the customer with customer care if the customer asks for a human " +
+      "or if a critical missing value prevents answering their request."
   };
 }
 
@@ -115,8 +116,14 @@ function buildPromptMessages(
       role: "system",
       content:
         "You are Ava, Aveyo's support assistant. Be concise, practical, and warm. " +
-        "Use plain language. If account-specific data is unavailable, say so clearly " +
+        "Use plain language. Format answers for a plain-text chat bubble (no markdown renderer). " +
+        "Do not use markdown syntax like **bold**, headers, or backticks. " +
+        "When presenting project information, use short section titles and dash bullets with 'Label: value' lines in the same inline message. " +
+        "If account-specific data is unavailable, say so clearly " +
         "and suggest handing off to a customer care agent only when truly needed. " +
+        "Prioritize solving the question with the data you do have before offering escalation. " +
+        "Do not add generic lines that suggest contacting customer care at the end of otherwise complete answers. " +
+        "Only offer customer care when the customer asks for a human, or when critical missing data prevents you from answering the request. " +
         "Prioritize answering as many customer questions as possible before escalating. " +
         "If a human handoff is needed, first ask whether they want to speak with a customer care agent " +
         "using natural language. " +
@@ -137,6 +144,73 @@ function buildPromptMessages(
   return [...baseMessages, ...history];
 }
 
+function buildRepresentativeDraftPromptMessages(
+  thread: ConversationThread,
+  context?: AvaReplyContext
+): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+  const history = thread.messages
+    .filter(
+      (message) =>
+        message.kind === "customer" || message.kind === "ava" || message.kind === "representative"
+    )
+    .slice(-14)
+    .map<OpenAI.Chat.Completions.ChatCompletionMessageParam>((message) => ({
+      role: message.kind === "customer" ? "user" : "assistant",
+      content: message.text
+    }));
+
+  const baseMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    {
+      role: "system",
+      content:
+        "You are Ava's internal copilot for Aveyo support representatives. " +
+        "Draft a customer-ready message the representative can send as-is or edit. " +
+        "Use plain language in plain text (no markdown syntax like **bold**, headers, or backticks). " +
+        "Use available customer/project context to provide a concrete, data-filled answer when possible. " +
+        "If data is missing, be transparent and provide the best next step without mentioning customer care handoff flows. " +
+        "Write in first person as the representative, not as Ava. " +
+        "Return only the draft message body."
+    }
+  ];
+
+  const contextMessage = buildContextSystemMessage(context);
+  if (contextMessage) {
+    baseMessages.push(contextMessage);
+  }
+
+  return [...baseMessages, ...history];
+}
+
+function stripMarkdownDecorators(value: string) {
+  return value
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "");
+}
+
+function normalizeReplyLine(line: string) {
+  const trimmedRight = line.replace(/\s+$/g, "");
+  if (!trimmedRight.trim()) {
+    return "";
+  }
+
+  const normalizedDash = trimmedRight.replace(/^[\u2013\u2014]\s+/, "- ");
+  const bulletMatch = normalizedDash.match(/^(\s*)([-*\u2022])\s+(.*)$/);
+  if (!bulletMatch) {
+    return normalizedDash;
+  }
+
+  const [, leadingWhitespace, , content] = bulletMatch;
+  return `${leadingWhitespace}- ${content.trim()}`;
+}
+
+function formatInlinePlainTextReply(content: string) {
+  const withoutMarkdown = stripMarkdownDecorators(content).replace(/\r\n?/g, "\n");
+  const normalizedLines = withoutMarkdown.split("\n").map((line) => normalizeReplyLine(line));
+  return normalizedLines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
 function normalizeAssistantContent(
   content: OpenAI.Chat.Completions.ChatCompletion["choices"][number]["message"]["content"]
 ) {
@@ -144,7 +218,7 @@ function normalizeAssistantContent(
     return undefined;
   }
 
-  const normalized = content.trim();
+  const normalized = formatInlinePlainTextReply(content);
   return normalized || undefined;
 }
 
@@ -164,6 +238,29 @@ export async function generateAvaReplyText(
       temperature: 0.4,
       max_tokens: 220,
       messages: buildPromptMessages(thread, context)
+    },
+    { signal }
+  );
+
+  return normalizeAssistantContent(completion.choices[0]?.message?.content);
+}
+
+export async function generateRepresentativeReplySuggestionText(
+  thread: ConversationThread,
+  context?: AvaReplyContext,
+  signal?: AbortSignal
+) {
+  const openAiClient = getOpenAiClient();
+  if (!openAiClient) {
+    return undefined;
+  }
+
+  const completion = await openAiClient.chat.completions.create(
+    {
+      model: "gpt-4o-mini",
+      temperature: 0.35,
+      max_tokens: 240,
+      messages: buildRepresentativeDraftPromptMessages(thread, context)
     },
     { signal }
   );

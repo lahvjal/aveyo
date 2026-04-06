@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { type ReactNode, useLayoutEffect, useRef } from "react";
 import {
   type ConversationThread,
   type HandoffFeedbackRequest,
@@ -74,6 +74,68 @@ function getRepresentativeInitial(name: string | undefined) {
     return "R";
   }
   return value[0]?.toUpperCase() ?? "R";
+}
+
+function stripInlineMarkdown(value: string) {
+  return value
+    .replace(/\*\*(.*?)\*\*/g, "$1")
+    .replace(/__(.*?)__/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "");
+}
+
+function renderInlineMessageText(text: string, formatStructuredLines: boolean): ReactNode {
+  if (!formatStructuredLines) {
+    return text;
+  }
+
+  const normalizedText = stripInlineMarkdown(text).replace(/\r\n?/g, "\n");
+  const lines = normalizedText.split("\n");
+  return (
+    <span className="widget-message-text">
+      {lines.map((rawLine, index) => {
+        const line = rawLine.trimEnd();
+        if (!line.trim()) {
+          return <span key={`line-${index}`} className="widget-message-line spacer" />;
+        }
+
+        const sectionMatch = line.match(/^([A-Za-z][A-Za-z0-9/&()\- ]{2,60}):$/);
+        if (sectionMatch) {
+          return (
+            <span key={`line-${index}`} className="widget-message-line heading">
+              {sectionMatch[1]}
+            </span>
+          );
+        }
+
+        const bulletMatch = line.match(/^[-*\u2022]\s+(.*)$/);
+        if (bulletMatch) {
+          const itemText = bulletMatch[1].trim();
+          const labelMatch = itemText.match(/^([^:]{2,48}):\s*(.+)$/);
+          if (labelMatch) {
+            return (
+              <span key={`line-${index}`} className="widget-message-line item">
+                <span className="widget-message-item-label">{labelMatch[1]}:</span>{" "}
+                {labelMatch[2]}
+              </span>
+            );
+          }
+
+          return (
+            <span key={`line-${index}`} className="widget-message-line item">
+              {itemText}
+            </span>
+          );
+        }
+
+        return (
+          <span key={`line-${index}`} className="widget-message-line">
+            {line}
+          </span>
+        );
+      })}
+    </span>
+  );
 }
 
 export function WidgetTimeline({
@@ -199,6 +261,7 @@ export function WidgetTimeline({
             : activeRepresentative;
         const representativeAvatarUrl = representativeProfile?.avatarUrl?.trim() ?? "";
         const representativeName = representativeProfile?.name;
+        const shouldFormatStructuredText = message.kind === "ava";
 
         return (
           <div key={message.id}>
@@ -224,7 +287,7 @@ export function WidgetTimeline({
                 </div>
               )}
               <p className={`widget-bubble ${isCustomer ? "outgoing" : "incoming"}`}>
-                {message.text}
+                {renderInlineMessageText(message.text, shouldFormatStructuredText)}
               </p>
             </div>
           </div>

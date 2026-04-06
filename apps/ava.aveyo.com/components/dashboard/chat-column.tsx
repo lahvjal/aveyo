@@ -13,10 +13,16 @@ interface ChatColumnProps {
   composerLocked?: boolean;
   composerLockedReason?: string;
   composeNote: string;
+  showAvaSuggestion?: boolean;
+  avaSuggestionText?: string | null;
+  avaSuggestionLoading?: boolean;
+  avaSuggestionError?: string | null;
   agentInitials: string;
   agentAvatarUrl?: string | null;
   onComposeNoteChange: (value: string) => void;
   onSendMessage: () => void;
+  onUseAvaSuggestion?: () => void;
+  onRefreshAvaSuggestion?: () => void;
 }
 
 export function ChatColumn({
@@ -29,10 +35,16 @@ export function ChatColumn({
   composerLocked = false,
   composerLockedReason,
   composeNote,
+  showAvaSuggestion = false,
+  avaSuggestionText,
+  avaSuggestionLoading = false,
+  avaSuggestionError,
   agentInitials,
   agentAvatarUrl,
   onComposeNoteChange,
-  onSendMessage
+  onSendMessage,
+  onUseAvaSuggestion,
+  onRefreshAvaSuggestion
 }: ChatColumnProps) {
   const composerDisabled = isEmptyState || composerLocked;
   const emptyStateEyebrow = !isOnline
@@ -61,6 +73,7 @@ export function ChatColumn({
     : hasActiveChat
       ? "Press Enter to send. Shift+Enter for a new line."
       : "Select a conversation to send messages.";
+  const showSuggestionCard = !composerDisabled && showAvaSuggestion;
 
   return (
     <section className="chat-column">
@@ -127,6 +140,44 @@ export function ChatColumn({
       )}
 
       <div className={`chat-note-compose${composerDisabled ? " is-disabled" : ""}`}>
+        {showSuggestionCard ? (
+          <div className="chat-ava-suggestion" aria-live="polite">
+            <div className="chat-ava-suggestion-header">
+              <AvaOrb size={16} />
+              <strong>Ava suggested reply</strong>
+            </div>
+
+            {avaSuggestionLoading ? (
+              <p className="chat-ava-suggestion-state">Drafting a response using project data...</p>
+            ) : avaSuggestionError ? (
+              <p className="chat-ava-suggestion-error">{avaSuggestionError}</p>
+            ) : avaSuggestionText ? (
+              <p className="chat-ava-suggestion-body">{avaSuggestionText}</p>
+            ) : (
+              <p className="chat-ava-suggestion-state">No draft available yet for this question.</p>
+            )}
+
+            <div className="chat-ava-suggestion-actions">
+              <button
+                type="button"
+                className="chat-ava-suggestion-action secondary"
+                onClick={onRefreshAvaSuggestion}
+                disabled={avaSuggestionLoading}
+              >
+                Refresh
+              </button>
+              <button
+                type="button"
+                className="chat-ava-suggestion-action primary"
+                onClick={onUseAvaSuggestion}
+                disabled={avaSuggestionLoading || !avaSuggestionText}
+              >
+                Use draft
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         <textarea
           value={composeNote}
           disabled={composerDisabled}
@@ -147,6 +198,7 @@ export function ChatColumn({
         />
         <button
           type="button"
+          className="chat-send-button"
           onClick={onSendMessage}
           aria-label="Send message"
           disabled={composerDisabled}

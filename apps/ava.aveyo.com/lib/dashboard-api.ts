@@ -135,3 +135,17 @@ export function getConversationCustomerDetailsApi(conversationId: string) {
     }
   );
 }
+
+export interface RepresentativeReplySuggestionResult {
+  suggestion: string | null;
+  sourceCustomerMessageId: string | null;
+}
+
+export function getRepresentativeReplySuggestionApi(conversationId: string) {
+  return apiRequest<RepresentativeReplySuggestionResult>(
+    `/api/conversations/${conversationId}/reply-suggestion`,
+    {
+      method: "GET"
+    }
+  );
+}

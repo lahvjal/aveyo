@@ -27,6 +27,7 @@ import {
   listQueueApi,
   type QueueRecord
 } from "@/lib/dashboard-api";
+import { useAvaReplySuggestion } from "@/lib/dashboard-ava-suggestion";
 import { publishDashboardSyncEvent, subscribeDashboardSyncEvents } from "@/lib/dashboard-sync";
 import { type CustomerPanelDetails, type HistoryNote, type Ticket } from "@/lib/dashboard-types";
 import { AppSideRail } from "@/components/app-side-rail";
@@ -185,6 +186,15 @@ export function DashboardBoardShell() {
     return createTicketFromQueueRecord(selectedQueueRecord, conversation, clockMs);
   }, [clockMs, conversation, selectedQueueRecord]);
   const agentInitials = getInitials(authSession.user?.name);
+  const avaSuggestion = useAvaReplySuggestion({
+    conversation,
+    conversationId: workspaceConversationId,
+    enabled:
+      authSession.authenticated &&
+      Boolean(workspaceConversationId) &&
+      isConversationLoaded &&
+      canInteract
+  });
 
   const publishRepresentativeTyping = useCallback(
     (conversationId: string, isTyping: boolean, force = false) => {
@@ -843,12 +853,23 @@ export function DashboardBoardShell() {
                   composerLocked={!canInteract}
                   composerLockedReason={interactionLockReason}
                   composeNote={composeNote}
+                  showAvaSuggestion={avaSuggestion.hasPendingCustomerQuestion}
+                  avaSuggestionText={avaSuggestion.suggestionText}
+                  avaSuggestionLoading={avaSuggestion.isLoading}
+                  avaSuggestionError={avaSuggestion.error}
                   agentInitials={agentInitials}
                   agentAvatarUrl={agentAvatarUrl}
                   onComposeNoteChange={setComposeNote}
                   onSendMessage={() => {
                     void sendRepMessage();
                   }}
+                  onUseAvaSuggestion={() => {
+                    if (!avaSuggestion.suggestionText) {
+                      return;
+                    }
+                    setComposeNote(avaSuggestion.suggestionText);
+                  }}
+                  onRefreshAvaSuggestion={avaSuggestion.refreshSuggestion}
                 />
 
                 <DetailColumn
