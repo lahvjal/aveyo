@@ -32,12 +32,66 @@ function allowsAvaReply(
   return handoffState === "none" || handoffState === "resolved";
 }
 
+function normalizeIntentText(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^\w\s']/g, " ")
+    .replace(/\s+/g, " ");
+}
+
+function isHumanAgentRequest(text: string) {
+  const normalized = normalizeIntentText(text);
+  if (!normalized) {
+    return false;
+  }
+
+  const directPhrases = [
+    "talk to a person",
+    "talk to a human",
+    "talk to a rep",
+    "talk to an agent",
+    "talk to customer care",
+    "speak to a person",
+    "speak to a human",
+    "speak to a rep",
+    "speak to an agent",
+    "connect me to customer care",
+    "connect me with customer care",
+    "connect me to a rep",
+    "connect me to an agent",
+    "human please",
+    "agent please",
+    "representative please",
+    "real person"
+  ];
+  if (directPhrases.some((phrase) => normalized.includes(phrase))) {
+    return true;
+  }
+
+  return (
+    /\b(talk|speak|chat|connect|contact|transfer|escalate)\b.*\b(rep|representative|agent|human|person|customer care)\b/.test(
+      normalized
+    ) ||
+    /\b(rep|representative|agent|human|person|customer care)\b.*\b(now|please)\b/.test(normalized)
+  );
+}
+
 async function tryGenerateAvaReply(params: {
   conversationId: string;
   actorUserId: string;
 }) {
   const thread = await getConversation(params.conversationId, params.actorUserId);
   if (!thread || !allowsAvaReply(thread.handoff.state)) {
+    return;
+  }
+
+  const latestMessage = thread.messages[thread.messages.length - 1];
+  if (latestMessage?.kind === "customer" && isHumanAgentRequest(latestMessage.text)) {
+    await appendAvaMessage(
+      params.conversationId,
+      "I understand you want to speak with a customer care agent. Would you like to be connected to a customer care agent now?"
+    );
     return;
   }
 

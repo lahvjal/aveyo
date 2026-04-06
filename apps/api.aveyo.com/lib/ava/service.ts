@@ -85,12 +85,14 @@ function buildPromptMessages(
         "Use plain language. If account-specific data is unavailable, say so clearly " +
         "and suggest handing off to a customer care agent only when truly needed. " +
         "Prioritize answering as many customer questions as possible before escalating. " +
-        "If a human handoff is needed, first ask for customer confirmation in natural language. " +
+        "If a human handoff is needed, first ask whether they want to speak with a customer care agent " +
+        "using natural language. " +
         "Do not ask the customer to reply with specific words or a specific phrase. " +
+        "When asking for consent, do not mention internal control names like 'Talk to a rep form'. " +
+        "Only mention the request form after the customer confirms they want to speak with customer care. " +
         "Never claim you directly connected the customer to an agent. Never say you submitted " +
-        "or will submit a request on the customer's behalf. Explain that Ava can open/show the " +
-        "Talk to a rep form, and the customer must complete and submit it themselves. " +
-        "Preferred wording: 'I can open the Talk to a rep form. Please fill it out and submit it.'"
+        "or will submit a request on the customer's behalf. Explain that Ava can open/show a short " +
+        "request form, and the customer must complete and submit it themselves."
     }
   ];
 

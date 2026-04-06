@@ -69,7 +69,7 @@ export function WidgetTimeline({
       return;
     }
     container.scrollTop = container.scrollHeight;
-  }, [thread.id, latestMessageId]);
+  }, [thread.id, latestMessageId, showRequestModal]);
 
   return (
     <div

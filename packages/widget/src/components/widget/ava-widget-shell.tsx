@@ -603,6 +603,9 @@ export function AvaWidgetShell({
     if (authSession.authenticated && pendingRepOfferMessageIdRef.current) {
       if (isRepConfirmationYes(messageText)) {
         pendingRepOfferMessageIdRef.current = null;
+        setThread((current) =>
+          appendMessage(current, createLocalTimelineMessage(current.id, "customer", messageText))
+        );
         setDraft("");
         setRequestError(null);
         setShowRequestModal(true);
