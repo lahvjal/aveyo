@@ -241,7 +241,12 @@ function shouldPromptRepRequest(text: string) {
     normalized.includes("should i") ||
     normalized.includes("if you'd like") ||
     normalized.includes("if you would like") ||
-    normalized.includes("let me know if")
+    normalized.includes("let me know if") ||
+    normalized.includes("please confirm") ||
+    normalized.includes("confirm by saying") ||
+    normalized.includes("reply with talk to a rep") ||
+    normalized.includes("type talk to a rep") ||
+    (normalized.includes("say") && normalized.includes("talk to a rep"))
   );
 }
 
