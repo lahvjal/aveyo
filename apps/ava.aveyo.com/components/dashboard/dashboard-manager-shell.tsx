@@ -347,6 +347,7 @@ export function DashboardManagerShell() {
     "--manager-containment-progress": `${Math.max(0, Math.min(100, containmentPercent))}%`,
     "--manager-containment-color": containmentTone
   } as CSSProperties;
+  const isInitialLoading = loading && overview === null;
 
   const applyRange = useCallback(
     (nextRange: ManagerDateRangeState) => {
@@ -533,17 +534,11 @@ export function DashboardManagerShell() {
           </div>
         </div>
 
-        {loading ? (
-          <p className="rep-shell-hint" role="status">
-            Loading manager insights...
-          </p>
-        ) : null}
-
         <div className="manager-command-grid">
           <article className="manager-command-card containment">
             <div className="manager-containment-ring" style={containmentProgressStyle}>
               <div className="manager-containment-ring-inner">
-                <strong>{containmentPercent}%</strong>
+                <strong>{isInitialLoading ? "—" : `${containmentPercent}%`}</strong>
                 <span>containment</span>
               </div>
             </div>
@@ -551,44 +546,72 @@ export function DashboardManagerShell() {
               <h3>AI Containment Rate</h3>
               <p>Chats fully resolved by AI without agent handoff.</p>
               <small>
-                {aiResolvedCount} AI resolved / {handoffStatusCounts.agentResolved} Agent resolved
+                {isInitialLoading ? (
+                  <span className="manager-skeleton-line hint" />
+                ) : (
+                  `${aiResolvedCount} AI resolved / ${handoffStatusCounts.agentResolved} Agent resolved`
+                )}
               </small>
-              <span className={`manager-containment-state ${containmentStateBand}`}>
-                • {containmentStateLabel}
-              </span>
+              {!isInitialLoading ? (
+                <span className={`manager-containment-state ${containmentStateBand}`}>
+                  • {containmentStateLabel}
+                </span>
+              ) : null}
             </div>
           </article>
 
           <article className="manager-command-card">
             <p className="manager-command-label">Total Chats</p>
-            <strong>{totalChatsCount}</strong>
-            <small>Active + completed</small>
+            <strong>
+              {isInitialLoading ? <span className="manager-skeleton-line value" /> : totalChatsCount}
+            </strong>
+            <small>{isInitialLoading ? <span className="manager-skeleton-line hint" /> : "Active + completed"}</small>
           </article>
           <article className="manager-command-card">
             <p className="manager-command-label">AI Handling</p>
-            <strong>{aiHandlingCount}</strong>
-            <small>In progress now</small>
+            <strong>
+              {isInitialLoading ? <span className="manager-skeleton-line value" /> : aiHandlingCount}
+            </strong>
+            <small>{isInitialLoading ? <span className="manager-skeleton-line hint" /> : "In progress now"}</small>
           </article>
           <article className="manager-command-card">
             <p className="manager-command-label">AI Resolved</p>
-            <strong>{aiResolvedCount}</strong>
-            <small>No agent needed</small>
+            <strong>
+              {isInitialLoading ? <span className="manager-skeleton-line value" /> : aiResolvedCount}
+            </strong>
+            <small>{isInitialLoading ? <span className="manager-skeleton-line hint" /> : "No agent needed"}</small>
           </article>
           <article className="manager-command-card">
             <p className="manager-command-label">Pending Handoff</p>
-            <strong>{handoffStatusCounts.pending}</strong>
-            <small>Waiting for agent</small>
+            <strong>
+              {isInitialLoading ? <span className="manager-skeleton-line value" /> : handoffStatusCounts.pending}
+            </strong>
+            <small>{isInitialLoading ? <span className="manager-skeleton-line hint" /> : "Waiting for agent"}</small>
           </article>
           <article className="manager-command-card">
             <p className="manager-command-label">With Agent</p>
-            <strong>{handoffStatusCounts.withAgent}</strong>
-            <small>{agents.filter((agent) => agent.status === "online").length} agents online</small>
+            <strong>
+              {isInitialLoading ? <span className="manager-skeleton-line value" /> : handoffStatusCounts.withAgent}
+            </strong>
+            <small>
+              {isInitialLoading ? (
+                <span className="manager-skeleton-line hint" />
+              ) : (
+                `${agents.filter((agent) => agent.status === "online").length} agents online`
+              )}
+            </small>
           </article>
           <article className="manager-command-card">
             <p className="manager-command-label">Agent Resolved</p>
-            <strong>{handoffStatusCounts.agentResolved}</strong>
+            <strong>
+              {isInitialLoading ? <span className="manager-skeleton-line value" /> : handoffStatusCounts.agentResolved}
+            </strong>
             <small>
-              👍 {positiveRatings} · 👎 {negativeRatings}
+              {isInitialLoading ? (
+                <span className="manager-skeleton-line hint" />
+              ) : (
+                `👍 ${positiveRatings} · 👎 ${negativeRatings}`
+              )}
             </small>
           </article>
         </div>
@@ -597,7 +620,9 @@ export function DashboardManagerShell() {
           <section className="manager-sentiment-card">
             <header>
               <strong>Customer Sentiment</strong>
-              <small>{moodCounts.escalated} at-risk w/ AI</small>
+              <small>
+                {isInitialLoading ? <span className="manager-skeleton-line hint" /> : `${moodCounts.escalated} at-risk w/ AI`}
+              </small>
             </header>
             <div className="manager-sentiment-track">
               <span className="calm" style={{ width: `${moodPercents.calm}%` }} />
@@ -605,20 +630,34 @@ export function DashboardManagerShell() {
               <span className="escalated" style={{ width: `${moodPercents.escalated}%` }} />
             </div>
             <p className="manager-sentiment-legend">
-              <span className="calm">● {moodCounts.calm} Calm ({moodPercents.calm}%)</span>
-              <span className="frustrated">
-                ● {moodCounts.frustrated} Frustrated ({moodPercents.frustrated}%)
-              </span>
-              <span className="escalated">
-                ● {moodCounts.escalated} Escalated ({moodPercents.escalated}%)
-              </span>
+              {isInitialLoading ? (
+                <span className="manager-skeleton-line legend" />
+              ) : (
+                <>
+                  <span className="calm">● {moodCounts.calm} Calm ({moodPercents.calm}%)</span>
+                  <span className="frustrated">
+                    ● {moodCounts.frustrated} Frustrated ({moodPercents.frustrated}%)
+                  </span>
+                  <span className="escalated">
+                    ● {moodCounts.escalated} Escalated ({moodPercents.escalated}%)
+                  </span>
+                </>
+              )}
             </p>
           </section>
 
           <section className="manager-satisfaction-card">
             <header>
               <strong>Agent Satisfaction</strong>
-              <small>{totalRated > 0 ? `${formatPercent(positiveRatingRatio)} positive` : "No ratings yet"}</small>
+              <small>
+                {isInitialLoading ? (
+                  <span className="manager-skeleton-line hint" />
+                ) : totalRated > 0 ? (
+                  `${formatPercent(positiveRatingRatio)} positive`
+                ) : (
+                  "No ratings yet"
+                )}
+              </small>
             </header>
             <div className="manager-satisfaction-track">
               <div
@@ -627,7 +666,13 @@ export function DashboardManagerShell() {
               />
             </div>
             <p>
-              👍 {positiveRatings} positive <span>👎 {negativeRatings} negative</span>
+              {isInitialLoading ? (
+                <span className="manager-skeleton-line legend" />
+              ) : (
+                <>
+                  👍 {positiveRatings} positive <span>👎 {negativeRatings} negative</span>
+                </>
+              )}
             </p>
           </section>
         </div>
@@ -666,11 +711,19 @@ export function DashboardManagerShell() {
 
                     <div className="manager-pipeline-list">
                       {lane.items.length === 0 ? (
+                      isInitialLoading ? (
+                        <>
+                          <article className="manager-chat-card skeleton" />
+                          <article className="manager-chat-card skeleton" />
+                          <article className="manager-chat-card skeleton" />
+                        </>
+                      ) : (
                         <p className="manager-pipeline-empty">
                           {lane.id === "ai_handling"
                             ? "No AI-only chat cards in handoff feed."
                             : "No chats in this lane."}
                         </p>
+                      )
                       ) : (
                         lane.items.map((handoff) => {
                           const customerMood = getMoodFromSensitivityBand(handoff.customerSensitivityBand);

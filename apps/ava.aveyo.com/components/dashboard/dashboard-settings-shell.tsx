@@ -148,6 +148,7 @@ export function DashboardSettingsShell() {
     }
     return `${Math.floor(deltaHours / 24)}d ago`;
   };
+  const isInitialLoading = loading && !configDraft && agents.length === 0;
 
   return (
     <div className={`rep-shell${isNavCollapsed ? " primary-collapsed" : ""}`}>
@@ -179,12 +180,6 @@ export function DashboardSettingsShell() {
           </div>
         </header>
 
-        {loading ? (
-          <p className="rep-shell-hint" role="status">
-            Loading settings...
-          </p>
-        ) : null}
-
         <div className="manager-settings-grid">
           <section className="manager-panel">
             <header className="manager-panel-header">
@@ -192,7 +187,13 @@ export function DashboardSettingsShell() {
               <small>Last 7 days</small>
             </header>
             <div className="manager-agent-list">
-              {agents.length === 0 ? (
+              {isInitialLoading ? (
+                <>
+                  <article className="manager-agent-list-item skeleton" />
+                  <article className="manager-agent-list-item skeleton" />
+                  <article className="manager-agent-list-item skeleton" />
+                </>
+              ) : agents.length === 0 ? (
                 <p className="rep-shell-hint">No agent activity found for this date range.</p>
               ) : (
                 agents.map((agent) => (
@@ -386,7 +387,14 @@ export function DashboardSettingsShell() {
                 </div>
               </div>
             ) : (
-              <p className="rep-shell-hint">Loading configuration...</p>
+              <div className="manager-config-grid skeleton">
+                <div className="manager-skeleton-line field" />
+                <div className="manager-skeleton-line field" />
+                <div className="manager-skeleton-line field" />
+                <div className="manager-skeleton-line field" />
+                <div className="manager-skeleton-line field" />
+                <div className="manager-skeleton-line field" />
+              </div>
             )}
           </section>
         </div>
