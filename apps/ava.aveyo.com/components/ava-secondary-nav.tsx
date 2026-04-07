@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 
-type SecondaryRoute = "dashboard" | "resolved";
+type SecondaryRoute = "dashboard" | "resolved" | "manager" | "settings";
 
 interface AvaSecondaryNavProps {
   activeRoute: SecondaryRoute;
@@ -10,7 +10,9 @@ interface AvaSecondaryNavProps {
 
 const secondaryNavItems: Array<{ id: SecondaryRoute; label: string; href: string }> = [
   { id: "dashboard", label: "Dashboard", href: "/" },
-  { id: "resolved", label: "Resolved", href: "/resolved" }
+  { id: "resolved", label: "Resolved", href: "/resolved" },
+  { id: "manager", label: "Manager", href: "/manager" },
+  { id: "settings", label: "Settings", href: "/settings" }
 ];
 
 export function AvaSecondaryNav({ activeRoute }: AvaSecondaryNavProps) {
