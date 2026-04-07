@@ -878,7 +878,6 @@ async function buildManagerHandoffs(
     const conversation = conversationById.get(row.conversation_id);
     const conversationMessages = messagesByConversation.get(row.conversation_id) ?? [];
     const claimedAtMs = parseIsoToMs(row.claimed_at);
-    const requestedAtMs = parseIsoToMs(row.requested_at);
     const resolvedAtMs = parseIsoToMs(row.resolved_at);
     const firstReplyMessage = conversationMessages.find(
       (message) =>
