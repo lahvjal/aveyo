@@ -6,12 +6,14 @@ import {
 import {
   appendAvaMessage,
   appendMessage,
+  closeConversationSession,
   createConversation,
   getAvaConversationContext,
   getConversationCustomerDetails,
   getConversation,
   listConversations,
   publishTypingEvent,
+  runCustomerSessionIdleAutomation,
   StoreError
 } from "@/lib/store/mock-store";
 import { ServiceError } from "@/lib/service-error";
@@ -224,6 +226,51 @@ function containsEscalationOffer(text: string) {
   );
 }
 
+function isPostHandoffRatingHelpCheckPrompt(text: string) {
+  const normalized = normalizeIntentText(text);
+  if (!normalized) {
+    return false;
+  }
+  return (
+    normalized.includes("thanks for rating your chat with") &&
+    normalized.includes("do you need any more help")
+  );
+}
+
+function isNoMoreHelpResponse(text: string) {
+  const normalized = normalizeIntentText(text);
+  if (!normalized) {
+    return false;
+  }
+
+  const explicitNoPatterns = [
+    /^no$/,
+    /^nope$/,
+    /^nah$/,
+    /^no thanks$/,
+    /^no thank you$/,
+    /^no i am good$/,
+    /^no im good$/,
+    /^that'?s all$/,
+    /^thats all$/,
+    /^nothing else$/,
+    /^nothing else thanks$/,
+    /^all good$/,
+    /^i am good$/,
+    /^im good$/,
+    /^no that'?s it$/,
+    /^no thats it$/,
+    /^no more help$/,
+    /^not right now$/
+  ];
+
+  if (explicitNoPatterns.some((pattern) => pattern.test(normalized))) {
+    return true;
+  }
+
+  return normalized.startsWith("no ") && !normalized.includes("yes");
+}
+
 function stripEscalationOfferFromReply(replyText: string) {
   const paragraphs = replyText
     .split(/\n\s*\n/)
@@ -290,6 +337,32 @@ async function tryGenerateAvaReply(params: {
   await publishAvaTyping(true);
 
   const latestMessage = thread.messages[thread.messages.length - 1];
+  const previousAvaMessage =
+    latestMessage?.kind === "customer"
+      ? [...thread.messages]
+          .slice(0, -1)
+          .reverse()
+          .find((message) => message.kind === "ava")
+      : undefined;
+
+  if (
+    latestMessage?.kind === "customer" &&
+    previousAvaMessage &&
+    isPostHandoffRatingHelpCheckPrompt(previousAvaMessage.text) &&
+    isNoMoreHelpResponse(latestMessage.text)
+  ) {
+    try {
+      await appendAvaMessage(
+        params.conversationId,
+        "If there's nothing else, I will close this chat. Thanks."
+      );
+      await closeConversationSession(params.conversationId);
+    } finally {
+      await publishAvaTyping(false);
+    }
+    return;
+  }
+
   if (latestMessage?.kind === "customer" && isHumanAgentRequest(latestMessage.text)) {
     try {
       await appendAvaMessage(
@@ -351,6 +424,12 @@ export async function getConversationsResult(
   }
 ) {
   try {
+    try {
+      await runCustomerSessionIdleAutomation(actorUserId);
+    } catch (automationError) {
+      console.error("Session idle automation check failed", automationError);
+    }
+
     return {
       conversations: await listConversations(actorUserId, {
         excludeImpersonation: options?.excludeImpersonation,
@@ -385,6 +464,12 @@ export async function createConversationResult(
 }
 
 export async function getConversationResult(conversationId: string, actorUserId: string) {
+  try {
+    await runCustomerSessionIdleAutomation(actorUserId);
+  } catch (automationError) {
+    console.error("Session idle automation check failed", automationError);
+  }
+
   const conversation = await getConversation(conversationId, actorUserId);
   if (!conversation) {
     throw new ServiceError(404, "Conversation not found.");

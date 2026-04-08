@@ -295,7 +295,11 @@ function isRepConfirmationYes(text: string) {
 
 type TypingActor = "customer" | "representative" | "ava";
 
-const TIMELINE_RESET_INACTIVITY_MS = 30 * 60 * 1000;
+// The inactivity timeout (in milliseconds) before the conversation timeline is reset.
+// Currently set to 30 minutes (30 * 60 * 1000 ms).
+// To change this duration, simply adjust the multiplier values.
+// For example, for a 10-minute timeout, use: 10 * 60 * 1000
+const TIMELINE_RESET_INACTIVITY_MS = 1 * 20 * 1000;
 const TIMELINE_RESET_STORAGE_PREFIX = "ava-widget-timeline-reset-v1:";
 const AVA_TYPING_FALLBACK_MS = 15_000;
 const AVA_TYPING_STOP_GRACE_MS = 3_200;
@@ -849,14 +853,48 @@ export function AvaWidgetShell({
 
     setIsSubmitting(true);
     try {
-      const result = await api.createCustomerMessage({
-        conversationId: thread.id,
-        text: messageText,
-        clientMessageId: generateClientMessageId()
-      });
+      const openFreshConversation = async () => {
+        const created = await api.createConversation({
+          greetingText: greetingName
+            ? toPersonalizedGreetingText(greetingName)
+            : "Hi! How can I help you today?"
+        });
+        return created.conversation;
+      };
+      const sendCustomerMessage = async (conversationId: string) =>
+        api.createCustomerMessage({
+          conversationId,
+          text: messageText,
+          clientMessageId: generateClientMessageId()
+        });
 
-      setThread((current) => appendMessage(current, result.message));
-      if (allowsAvaReplyForThread(thread)) {
+      let targetThread = thread;
+      if (thread.handoff.state === "resolved") {
+        targetThread = await openFreshConversation();
+      }
+
+      let result;
+      try {
+        result = await sendCustomerMessage(targetThread.id);
+      } catch (sendError) {
+        const sendErrorMessage = sendError instanceof Error ? sendError.message : "";
+        const shouldRetryOnNewConversation =
+          /conversation is closed|start a new chat session/i.test(sendErrorMessage);
+        if (!shouldRetryOnNewConversation) {
+          throw sendError;
+        }
+
+        targetThread = await openFreshConversation();
+        result = await sendCustomerMessage(targetThread.id);
+      }
+
+      setThread((current) => {
+        if (current.id === targetThread.id) {
+          return appendMessage(current, result.message);
+        }
+        return appendMessage(targetThread, result.message);
+      });
+      if (allowsAvaReplyForThread(targetThread)) {
         updateAvaTyping(true);
       }
       setDraft("");
@@ -1017,20 +1055,17 @@ export function AvaWidgetShell({
           excludeImpersonation: canUseTestMode && !isTestModeEnabled,
           ownOnly: true
         });
-        const latestConversation =
-          listResult.conversations.length > 0 ? listResult.conversations[0] : null;
-        let conversation = latestConversation;
+        const latestOpenConversation =
+          listResult.conversations.find((conversationItem) => conversationItem.handoff.state !== "resolved") ??
+          null;
+        let conversation = latestOpenConversation;
         if (!conversation) {
-          try {
-            const created = await api.createConversation({
-              greetingText: greetingName
-                ? toPersonalizedGreetingText(greetingName)
-                : "Hi! How can I help you today?"
-            });
-            conversation = created.conversation;
-          } catch {
-            conversation = latestConversation;
-          }
+          const created = await api.createConversation({
+            greetingText: greetingName
+              ? toPersonalizedGreetingText(greetingName)
+              : "Hi! How can I help you today?"
+          });
+          conversation = created.conversation;
         }
         if (!conversation) {
           throw new Error("Unable to load your conversation.");

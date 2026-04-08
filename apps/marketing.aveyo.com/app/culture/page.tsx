@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { MarketingShell } from "@/components/marketing-shell";
 import { isAdminRole } from "@/lib/auth/roles";
 import { useRequireAuth } from "@/lib/auth/use-require-auth";
 import { readCultureEvents, type CultureEvent } from "@/lib/culture-events";
 
-export default function CulturePage() {
+function CulturePageContent() {
   const session = useRequireAuth();
   const searchParams = useSearchParams();
   const [events, setEvents] = useState<CultureEvent[]>([]);
@@ -73,5 +73,13 @@ export default function CulturePage() {
         </div>
       </div>
     </MarketingShell>
+  );
+}
+
+export default function CulturePage() {
+  return (
+    <Suspense fallback={<main className="loading-shell">Loading culture page...</main>}>
+      <CulturePageContent />
+    </Suspense>
   );
 }

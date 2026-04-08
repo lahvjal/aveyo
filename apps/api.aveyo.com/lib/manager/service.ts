@@ -4,6 +4,9 @@ import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { type ManagerDateRange } from "./date-range";
 
 type QueueStatus = "pending" | "claimed" | "active" | "resolved";
+type ConversationStatus = "open" | "pending_handoff" | "active_handoff" | "resolved" | "closed";
+type HandoffState = "none" | "pending" | "claimed" | "active" | "resolved";
+type ManagerPipelineStatus = QueueStatus | "open";
 type HandoffEventType = "requested" | "claimed" | "activated" | "resolved" | "cancelled" | "queue_update";
 type MessageSenderKind = "customer" | "ava" | "support_agent" | "system";
 type CustomerRating = "thumbs_up" | "thumbs_down";
@@ -60,12 +63,15 @@ export interface ManagerHandoffRecord {
   requestId: string;
   conversationId: string;
   customerName: string;
-  status: QueueStatus;
+  customerAvatarUrl: string | null;
+  status: ManagerPipelineStatus;
   requestedAt: string;
   claimedAt: string | null;
   resolvedAt: string | null;
   assignedAgentId: string | null;
   assignedAgentName: string | null;
+  assignedAgentAvatarUrl: string | null;
+  isEnded: boolean;
   customerRating: CustomerRating | null;
   firstReplyAt: string | null;
   firstReplySeconds: number | null;
@@ -153,9 +159,14 @@ interface HandoffRequestRow {
 interface ConversationRow {
   id: string;
   customer_auth_user_id: string;
+  status: ConversationStatus;
+  handoff_state: HandoffState;
   channel: string | null;
   subject: string | null;
   active_support_agent_auth_user_id: string | null;
+  created_at: string;
+  updated_at: string;
+  last_message_at: string | null;
 }
 
 interface MessageRow {
@@ -197,6 +208,8 @@ const CUSTOMER_FRUSTRATION_KEYWORDS = [
   "still waiting",
   "taking too long"
 ];
+const LIVE_CUSTOMER_SENTIMENT_WINDOW = 8;
+const LIVE_CUSTOMER_SENTIMENT_RECENT_WINDOW = 3;
 
 const DEFAULT_MANAGER_CONFIG: ManagerConfig = {
   timezone: "America/Chicago",
@@ -347,7 +360,39 @@ async function fetchHandoffRequests() {
   if (error) {
     throw new ServiceError(500, `Unable to load handoff requests: ${error.message}`);
   }
-  return (data ?? []) as HandoffRequestRow[];
+  const handoffRequests = (data ?? []) as HandoffRequestRow[];
+  if (handoffRequests.length === 0) {
+    return [];
+  }
+
+  const conversationById = await fetchConversationsByIds(
+    Array.from(new Set(handoffRequests.map((request) => request.conversation_id)))
+  );
+  const seenOpenCustomerIds = new Set<string>();
+
+  return handoffRequests.filter((request) => {
+    const isOpenStatus =
+      request.status === "pending" || request.status === "claimed" || request.status === "active";
+    if (!isOpenStatus) {
+      return true;
+    }
+
+    const conversation = conversationById.get(request.conversation_id);
+    if (!conversation || conversation.channel === "agent_impersonation") {
+      return true;
+    }
+
+    const customerId = conversation.customer_auth_user_id;
+    if (!customerId) {
+      return true;
+    }
+
+    if (seenOpenCustomerIds.has(customerId)) {
+      return false;
+    }
+    seenOpenCustomerIds.add(customerId);
+    return true;
+  });
 }
 
 async function fetchConversationsByIds(conversationIds: string[]) {
@@ -359,7 +404,9 @@ async function fetchConversationsByIds(conversationIds: string[]) {
   const { data, error } = await supabase
     .schema("ava")
     .from("conversations")
-    .select("id, customer_auth_user_id, channel, subject, active_support_agent_auth_user_id")
+    .select(
+      "id, customer_auth_user_id, status, handoff_state, channel, subject, active_support_agent_auth_user_id, created_at, updated_at, last_message_at"
+    )
     .in("id", conversationIds);
 
   if (error) {
@@ -371,6 +418,37 @@ async function fetchConversationsByIds(conversationIds: string[]) {
     result.set(row.id, row);
   }
   return result;
+}
+
+async function fetchOpenAiConversations() {
+  const supabase = getSupabaseServiceRoleClient();
+  const { data, error } = await supabase
+    .schema("ava")
+    .from("conversations")
+    .select(
+      "id, customer_auth_user_id, status, handoff_state, channel, subject, active_support_agent_auth_user_id, created_at, updated_at, last_message_at"
+    )
+    .eq("status", "open")
+    .eq("handoff_state", "none")
+    .neq("channel", "agent_impersonation")
+    .order("updated_at", { ascending: false })
+    .limit(500);
+
+  if (error) {
+    throw new ServiceError(500, `Unable to load open AI conversations: ${error.message}`);
+  }
+
+  const rows = (data ?? []) as ConversationRow[];
+  const seenCustomerIds = new Set<string>();
+  const deduped: ConversationRow[] = [];
+  for (const row of rows) {
+    if (!row.customer_auth_user_id || seenCustomerIds.has(row.customer_auth_user_id)) {
+      continue;
+    }
+    seenCustomerIds.add(row.customer_auth_user_id);
+    deduped.push(row);
+  }
+  return deduped.slice(0, MAX_ACTIVITY_ROWS);
 }
 
 async function fetchMessagesInRange(range: ManagerDateRange) {
@@ -511,21 +589,51 @@ function computeCustomerSensitivity(params: {
   staleMinutes: number | null;
   rating: CustomerRating | null;
 }) {
-  let score = 18;
-  const frustrationMatches = params.customerMessages.reduce((count, message) => {
+  let score = 16;
+  const sortedCustomerMessages = [...params.customerMessages].sort((left, right) =>
+    left.created_at.localeCompare(right.created_at)
+  );
+  const recentCustomerMessages = sortedCustomerMessages.slice(-LIVE_CUSTOMER_SENTIMENT_WINDOW);
+
+  let frustrationSignal = 0;
+  for (let index = 0; index < recentCustomerMessages.length; index += 1) {
+    const message = recentCustomerMessages[index];
+    if (!message) {
+      continue;
+    }
     const normalized = normalizeIntentText(message.body);
     const hasKeyword = CUSTOMER_FRUSTRATION_KEYWORDS.some((keyword) => normalized.includes(keyword));
-    return hasKeyword ? count + 1 : count;
-  }, 0);
+    if (!hasKeyword) {
+      continue;
+    }
+    const isVeryRecent =
+      index >= Math.max(0, recentCustomerMessages.length - LIVE_CUSTOMER_SENTIMENT_RECENT_WINDOW);
+    frustrationSignal += isVeryRecent ? 2 : 1;
+  }
 
-  score += Math.min(30, frustrationMatches * 12);
-  const questionCount = params.customerMessages.reduce(
+  score += Math.min(36, frustrationSignal * 7);
+  const recentQuestionCount = recentCustomerMessages.reduce(
     (count, message) => count + (message.body.includes("?") ? 1 : 0),
     0
   );
-  if (questionCount >= 2) {
-    score += 15;
+  if (recentQuestionCount >= 2) {
+    score += 10;
   }
+  if (recentQuestionCount >= 4) {
+    score += 6;
+  }
+
+  const latestCustomerMessage = recentCustomerMessages[recentCustomerMessages.length - 1];
+  if (latestCustomerMessage) {
+    const normalizedLatest = normalizeIntentText(latestCustomerMessage.body);
+    const latestHasFrustrationKeyword = CUSTOMER_FRUSTRATION_KEYWORDS.some((keyword) =>
+      normalizedLatest.includes(keyword)
+    );
+    if (latestHasFrustrationKeyword) {
+      score += 10;
+    }
+  }
+
   if (params.staleMinutes !== null && params.staleMinutes >= 10) {
     score += Math.min(25, Math.floor(params.staleMinutes));
   }
@@ -827,9 +935,23 @@ async function buildManagerAgents(
 async function buildManagerHandoffs(
   range: ManagerDateRange
 ): Promise<ManagerHandoffsResult> {
-  const handoffRequests = await fetchHandoffRequests();
+  const [handoffRequests, openAiConversations] = await Promise.all([
+    fetchHandoffRequests(),
+    fetchOpenAiConversations()
+  ]);
   const events = await fetchHandoffEventsByRequestIds(handoffRequests.map((row) => row.id));
   const { resolvedByRequest, ratingByRequest } = getLatestEventMaps(events);
+  const openHandoffConversationIds = new Set(
+    handoffRequests
+      .filter((row) => row.status === "pending" || row.status === "claimed" || row.status === "active")
+      .map((row) => row.conversation_id)
+  );
+  const openHandoffConversations = await fetchConversationsByIds(Array.from(openHandoffConversationIds));
+  const openHandoffCustomerIds = new Set(
+    Array.from(openHandoffConversations.values())
+      .map((conversation) => conversation.customer_auth_user_id)
+      .filter(Boolean)
+  );
 
   const filtered = handoffRequests.filter((row) => {
     const requestedAtMs = parseIsoToMs(row.requested_at);
@@ -842,7 +964,19 @@ async function buildManagerHandoffs(
   });
 
   const topRows = filtered.slice(0, MAX_ACTIVITY_ROWS);
-  const conversationIds = Array.from(new Set(topRows.map((row) => row.conversation_id)));
+  const handoffConversationIds = new Set(topRows.map((row) => row.conversation_id));
+  const aiOnlyConversations = openAiConversations.filter(
+    (conversation) =>
+      !handoffConversationIds.has(conversation.id) &&
+      !openHandoffConversationIds.has(conversation.id) &&
+      !openHandoffCustomerIds.has(conversation.customer_auth_user_id)
+  );
+  const conversationIds = Array.from(
+    new Set([
+      ...topRows.map((row) => row.conversation_id),
+      ...aiOnlyConversations.map((conversation) => conversation.id)
+    ])
+  );
   const [conversationById, messages] = await Promise.all([
     fetchConversationsByIds(conversationIds),
     fetchMessagesByConversationIds(conversationIds)
@@ -872,9 +1006,14 @@ async function buildManagerHandoffs(
     list.push(message);
     messagesByConversation.set(message.conversation_id, list);
   }
+  const startedAiOnlyConversations = aiOnlyConversations.filter((conversation) => {
+    const conversationMessages = messagesByConversation.get(conversation.id) ?? [];
+    // A real AI session starts when the customer sends the first message.
+    return conversationMessages.some((message) => message.sender_kind === "customer");
+  });
 
   const nowMs = Date.now();
-  const handoffs = topRows.map<ManagerHandoffRecord>((row) => {
+  const handoffRecords = topRows.map<ManagerHandoffRecord>((row) => {
     const conversation = conversationById.get(row.conversation_id);
     const conversationMessages = messagesByConversation.get(row.conversation_id) ?? [];
     const claimedAtMs = parseIsoToMs(row.claimed_at);
@@ -886,7 +1025,17 @@ async function buildManagerHandoffs(
         (parseIsoToMs(message.created_at) ?? 0) >= claimedAtMs
     );
     const lastMessage = conversationMessages[conversationMessages.length - 1];
-    const lastMessageAtMs = parseIsoToMs(lastMessage?.created_at);
+    const lastRelevantMessage =
+      resolvedAtMs !== null
+        ? [...conversationMessages]
+            .reverse()
+            .find((message) => {
+              const messageAtMs = parseIsoToMs(message.created_at);
+              return messageAtMs !== null && messageAtMs <= resolvedAtMs;
+            }) ?? null
+        : null;
+    const lastVisibleMessage = lastRelevantMessage ?? lastMessage;
+    const lastMessageAtMs = parseIsoToMs(lastVisibleMessage?.created_at);
     const staleMinutes =
       row.status === "active" || row.status === "claimed"
         ? (() => {
@@ -919,6 +1068,7 @@ async function buildManagerHandoffs(
     const customerProfile = conversation
       ? customerProfiles.get(conversation.customer_auth_user_id)
       : undefined;
+    const resolvedProfile = resolvedActor ? agentProfiles.get(resolvedActor) : undefined;
 
     const customerFallbackName = customerProfile?.full_name?.trim() || customerProfile?.email?.trim() || "Customer";
     const customerName = parseCustomerName(conversation?.subject, customerFallbackName);
@@ -935,6 +1085,7 @@ async function buildManagerHandoffs(
       requestId: row.id,
       conversationId: row.conversation_id,
       customerName,
+      customerAvatarUrl: customerProfile?.profile_photo_url?.trim() || null,
       status: row.status === "cancelled" ? "resolved" : row.status,
       requestedAt: row.requested_at,
       claimedAt: row.claimed_at,
@@ -943,13 +1094,16 @@ async function buildManagerHandoffs(
       assignedAgentName: assignedAgentId
         ? getProfileDisplayName(assignedProfile)
         : resolvedActor
-          ? getProfileDisplayName(agentProfiles.get(resolvedActor))
+          ? getProfileDisplayName(resolvedProfile)
           : null,
+      assignedAgentAvatarUrl:
+        assignedProfile?.profile_photo_url?.trim() || resolvedProfile?.profile_photo_url?.trim() || null,
+      isEnded: conversation?.status === "closed",
       customerRating: rating,
       firstReplyAt: firstReplyMessage?.created_at ?? null,
       firstReplySeconds,
       resolutionSeconds,
-      lastMessageAt: lastMessage?.created_at ?? null,
+      lastMessageAt: lastVisibleMessage?.created_at ?? row.resolved_at ?? null,
       staleMinutes,
       slowFirstReply,
       needsAttention,
@@ -959,6 +1113,73 @@ async function buildManagerHandoffs(
       agentSensitivityBand: sensitivityBand(agentSensitivityScore)
     };
   });
+
+  const aiHandlingRecords = startedAiOnlyConversations.map<ManagerHandoffRecord>((conversation) => {
+    const normalizedConversation = conversationById.get(conversation.id) ?? conversation;
+    const conversationMessages = messagesByConversation.get(normalizedConversation.id) ?? [];
+    const lastMessage = conversationMessages[conversationMessages.length - 1];
+    const fallbackLastMessageAt =
+      normalizedConversation.last_message_at ??
+      normalizedConversation.updated_at ??
+      normalizedConversation.created_at;
+    const lastMessageAt = lastMessage?.created_at ?? fallbackLastMessageAt ?? null;
+    const lastMessageAtMs = parseIsoToMs(lastMessageAt);
+    const staleMinutes =
+      lastMessageAtMs === null ? null : Math.max(0, Math.floor((nowMs - lastMessageAtMs) / 60000));
+    const customerMessages = conversationMessages.filter((message) => message.sender_kind === "customer");
+    const customerProfile = customerProfiles.get(normalizedConversation.customer_auth_user_id);
+    const customerFallbackName =
+      customerProfile?.full_name?.trim() || customerProfile?.email?.trim() || "Customer";
+    const customerName = parseCustomerName(normalizedConversation.subject, customerFallbackName);
+    const customerSensitivityScore = computeCustomerSensitivity({
+      customerMessages,
+      staleMinutes,
+      rating: null
+    });
+    const agentSensitivityScore = computeAgentSensitivity({
+      firstReplySeconds: null,
+      staleMinutes,
+      rating: null,
+      slowFirstReplyMinutes: managerConfigState.config.thresholds.slowFirstReplyMinutes,
+      stalledConversationMinutes: managerConfigState.config.thresholds.stalledConversationMinutes
+    });
+    const needsAttention =
+      staleMinutes !== null &&
+      staleMinutes >= managerConfigState.config.thresholds.stalledConversationMinutes;
+
+    return {
+      requestId: `conversation-${normalizedConversation.id}`,
+      conversationId: normalizedConversation.id,
+      customerName,
+      customerAvatarUrl: customerProfile?.profile_photo_url?.trim() || null,
+      status: "open",
+      requestedAt:
+        normalizedConversation.created_at ??
+        normalizedConversation.updated_at ??
+        lastMessageAt ??
+        new Date().toISOString(),
+      claimedAt: null,
+      resolvedAt: null,
+      assignedAgentId: null,
+      assignedAgentName: null,
+      assignedAgentAvatarUrl: null,
+      isEnded: false,
+      customerRating: null,
+      firstReplyAt: null,
+      firstReplySeconds: null,
+      resolutionSeconds: null,
+      lastMessageAt,
+      staleMinutes,
+      slowFirstReply: false,
+      needsAttention,
+      customerSensitivityScore,
+      customerSensitivityBand: sensitivityBand(customerSensitivityScore),
+      agentSensitivityScore,
+      agentSensitivityBand: sensitivityBand(agentSensitivityScore)
+    };
+  });
+
+  const handoffs = [...handoffRecords, ...aiHandlingRecords];
 
   return {
     range: getRangePayload(range),

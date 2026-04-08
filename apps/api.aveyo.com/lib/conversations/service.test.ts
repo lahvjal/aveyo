@@ -16,12 +16,14 @@ vi.mock("@/lib/store/mock-store", () => {
   return {
     appendAvaMessage: vi.fn(),
     appendMessage: vi.fn(),
+    closeConversationSession: vi.fn(),
     createConversation: vi.fn(),
     getAvaConversationContext: vi.fn(),
     getConversationCustomerDetails: vi.fn(),
     getConversation: vi.fn(),
     listConversations: vi.fn(),
     publishTypingEvent: vi.fn(),
+    runCustomerSessionIdleAutomation: vi.fn(),
     StoreError: MockStoreError
   };
 });

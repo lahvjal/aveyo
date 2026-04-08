@@ -12,6 +12,7 @@ import {
   getManagerAgentsApi,
   getManagerHandoffsApi,
   getManagerOverviewApi,
+  getRealtimeEventsApi,
   type ManagerAgentRecord,
   type ManagerHandoffRecord,
   type ManagerOverviewResult
@@ -44,6 +45,38 @@ function toRoleLabel(role: string | null | undefined) {
 type ManagerMoodFilter = "all" | "calm" | "frustrated" | "escalated";
 type PipelineLaneId = "ai_handling" | "pending" | "with_agent" | "resolved";
 
+function getPipelineLaneForHandoff(handoff: ManagerHandoffRecord): PipelineLaneId {
+  const rawStatus =
+    typeof handoff.status === "string" ? handoff.status.trim().toLowerCase() : "";
+  const hasResolvedSignal = Boolean(handoff.resolvedAt);
+  const hasAssignedAgentSignal = Boolean(
+    handoff.assignedAgentId || handoff.assignedAgentName || handoff.claimedAt
+  );
+
+  if (hasResolvedSignal) {
+    return "resolved";
+  }
+
+  if (rawStatus === "resolved") {
+    // Some rows arrive with stale "resolved" status before resolvedAt is set.
+    return hasAssignedAgentSignal ? "with_agent" : "pending";
+  }
+
+  if (rawStatus === "active" || rawStatus === "claimed" || hasAssignedAgentSignal) {
+    return "with_agent";
+  }
+
+  if (rawStatus === "open") {
+    return "ai_handling";
+  }
+
+  if (rawStatus === "pending" || rawStatus === "requested") {
+    return "pending";
+  }
+
+  return "ai_handling";
+}
+
 function getMoodFromSensitivityBand(band: "low" | "medium" | "high"): Exclude<ManagerMoodFilter, "all"> {
   if (band === "high") {
     return "escalated";
@@ -62,6 +95,41 @@ function formatMoodLabel(mood: Exclude<ManagerMoodFilter, "all">) {
     return "Frustrated";
   }
   return "Calm";
+}
+
+type ManagerCardStatus = "open" | "pending" | "claimed" | "active" | "resolved" | "ended";
+
+function getManagerCardStatus(handoff: ManagerHandoffRecord): ManagerCardStatus {
+  if (handoff.isEnded) {
+    return "ended";
+  }
+  return handoff.status;
+}
+
+function formatManagerCardStatus(status: ManagerCardStatus) {
+  if (status === "ended") {
+    return "Ended";
+  }
+  if (status === "resolved") {
+    return "Resolved";
+  }
+  if (status === "active" || status === "claimed") {
+    return "With agent";
+  }
+  if (status === "pending") {
+    return "Pending handoff";
+  }
+  return "AI handling";
+}
+
+function formatAgentSatisfaction(rating: ManagerHandoffRecord["customerRating"]) {
+  if (rating === "thumbs_up") {
+    return "Agent satisfaction: Thumbs up";
+  }
+  if (rating === "thumbs_down") {
+    return "Agent satisfaction: Thumbs down";
+  }
+  return "Agent satisfaction: Not rated";
 }
 
 function getHandoffSortTime(iso: string | null) {
@@ -108,6 +176,8 @@ export function DashboardManagerShell() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const previewTimelineRef = useRef<HTMLDivElement | null>(null);
+  const realtimeCursorRef = useRef<string | undefined>(undefined);
+  const realtimeBusyRef = useRef(false);
 
   const activeRange = useMemo(() => {
     return parseManagerDateRangeFromSearchParams(new URLSearchParams(searchParams.toString()));
@@ -132,8 +202,11 @@ export function DashboardManagerShell() {
         };
   }, [activeRange]);
 
-  const refreshManagerData = useCallback(async () => {
-    setLoading(true);
+  const refreshManagerData = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent ?? false;
+    if (!silent) {
+      setLoading(true);
+    }
     setError(null);
     try {
       const [overviewResult, agentsResult, handoffsResult] = await Promise.all([
@@ -151,7 +224,9 @@ export function DashboardManagerShell() {
           : "Unable to load manager insights."
       );
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   }, [rangeQuery]);
 
@@ -159,22 +234,45 @@ export function DashboardManagerShell() {
     void refreshManagerData();
   }, [refreshManagerData]);
 
+  useEffect(() => {
+    if (!authSession.authenticated) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) {
+        return;
+      }
+      void refreshManagerData({ silent: true });
+    }, 15000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [authSession.authenticated, refreshManagerData]);
+
   const handoffStatusCounts = useMemo(() => {
     const counts = {
+      aiHandling: 0,
       pending: 0,
       withAgent: 0,
       agentResolved: 0
     };
     for (const handoff of handoffs) {
-      if (handoff.status === "pending") {
+      const lane = getPipelineLaneForHandoff(handoff);
+      if (lane === "ai_handling") {
+        counts.aiHandling += 1;
+        continue;
+      }
+      if (lane === "pending") {
         counts.pending += 1;
         continue;
       }
-      if (handoff.status === "active" || handoff.status === "claimed") {
+      if (lane === "with_agent") {
         counts.withAgent += 1;
         continue;
       }
-      if (handoff.status === "resolved") {
+      if (lane === "resolved") {
         counts.agentResolved += 1;
       }
     }
@@ -188,14 +286,7 @@ export function DashboardManagerShell() {
     0,
     Math.round((overview?.metrics.containmentRate ?? 0) * totalChatsCount)
   );
-  const aiHandlingCount = Math.max(
-    0,
-    totalChatsCount -
-      aiResolvedCount -
-      handoffStatusCounts.pending -
-      handoffStatusCounts.withAgent -
-      handoffStatusCounts.agentResolved
-  );
+  const aiHandlingCount = handoffStatusCounts.aiHandling;
   const moodCounts = useMemo(() => {
     const counts = {
       calm: 0,
@@ -234,19 +325,8 @@ export function DashboardManagerShell() {
     };
 
     for (const handoff of moodFilteredHandoffs) {
-      if (handoff.status === "resolved") {
-        byLane.resolved.push(handoff);
-        continue;
-      }
-      if (handoff.status === "pending") {
-        byLane.pending.push(handoff);
-        continue;
-      }
-      if (handoff.assignedAgentId || handoff.assignedAgentName) {
-        byLane.with_agent.push(handoff);
-        continue;
-      }
-      byLane.ai_handling.push(handoff);
+      const lane = getPipelineLaneForHandoff(handoff);
+      byLane[lane].push(handoff);
     }
 
     for (const lane of Object.values(byLane)) {
@@ -264,6 +344,7 @@ export function DashboardManagerShell() {
     () => handoffs.find((handoff) => handoff.requestId === selectedRequestId) ?? null,
     [handoffs, selectedRequestId]
   );
+  const selectedConversationId = selectedHandoff?.conversationId ?? null;
   const selectedCustomerInitials = useMemo(
     () => getNameInitials(selectedHandoff?.customerName, "CU"),
     [selectedHandoff]
@@ -287,6 +368,92 @@ export function DashboardManagerShell() {
   }, []);
 
   useEffect(() => {
+    realtimeCursorRef.current = undefined;
+
+    if (!authSession.authenticated) {
+      return;
+    }
+
+    let cancelled = false;
+    const pollRealtime = async () => {
+      if (realtimeBusyRef.current) {
+        return;
+      }
+
+      realtimeBusyRef.current = true;
+      try {
+        const result = await getRealtimeEventsApi(realtimeCursorRef.current);
+        if (cancelled) {
+          return;
+        }
+
+        realtimeCursorRef.current = result.cursor;
+        const hasPipelineVisibleEvent =
+          result.cursorStale ||
+          result.events.some((event) => {
+            if (event.type === "typing") {
+              return false;
+            }
+            if (event.type === "message_created") {
+              // Required so brand-new AI-only chats appear without waiting for a handoff event.
+              return true;
+            }
+            if (
+              event.type === "handoff_requested" ||
+              event.type === "handoff_claimed" ||
+              event.type === "handoff_resolved"
+            ) {
+              return true;
+            }
+            return false;
+          });
+
+        if (hasPipelineVisibleEvent) {
+          await refreshManagerData({ silent: true });
+        }
+
+        if (selectedConversationId) {
+          const selectedConversationChanged =
+            result.cursorStale ||
+            result.events.some(
+              (event) =>
+                event.conversationId === selectedConversationId && event.type !== "typing"
+            );
+          if (selectedConversationChanged) {
+            await loadConversationPreview(selectedConversationId);
+          }
+        }
+      } catch (pollError) {
+        if (!cancelled) {
+          setError(
+            pollError instanceof Error && pollError.message
+              ? pollError.message
+              : "Realtime updates are temporarily unavailable."
+          );
+        }
+      } finally {
+        realtimeBusyRef.current = false;
+      }
+    };
+
+    void pollRealtime();
+    const intervalId = window.setInterval(() => {
+      void pollRealtime();
+    }, 2500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [
+    authSession.authenticated,
+    loadConversationPreview,
+    rangeQuery,
+    refreshManagerData,
+    selectedConversationId
+  ]);
+
+  useEffect(() => {
     if (!selectedHandoff) {
       setPreviewConversation(null);
       setPreviewError(null);
@@ -296,7 +463,7 @@ export function DashboardManagerShell() {
   }, [loadConversationPreview, selectedHandoff]);
 
   useEffect(() => {
-    if (!selectedHandoff || selectedHandoff.status === "resolved") {
+    if (!selectedHandoff || getPipelineLaneForHandoff(selectedHandoff) === "resolved") {
       return;
     }
     const intervalId = window.setInterval(() => {
@@ -703,10 +870,7 @@ export function DashboardManagerShell() {
           <div className={`manager-pipeline-layout${selectedHandoff ? " has-preview" : ""}`}>
             <div className="manager-pipeline-grid">
               {pipelineLanes.map((lane) => {
-                const laneCount =
-                  lane.id === "ai_handling" && moodFilter === "all"
-                    ? Math.max(lane.count, aiHandlingCount)
-                    : lane.count;
+                const laneCount = lane.count;
 
                 return (
                   <section key={lane.id} className={`manager-pipeline-lane ${lane.id}`}>
@@ -733,11 +897,19 @@ export function DashboardManagerShell() {
                       ) : (
                         lane.items.map((handoff) => {
                           const customerMood = getMoodFromSensitivityBand(handoff.customerSensitivityBand);
+                          const handoffLane = getPipelineLaneForHandoff(handoff);
+                          const cardStatus = getManagerCardStatus(handoff);
                           const healthLabel = handoff.needsAttention
                             ? "Needs attention"
                             : handoff.slowFirstReply
                               ? "Slow first reply"
                               : null;
+                          const agentLabel =
+                            handoffLane === "pending"
+                              ? "Awaiting agent"
+                              : handoff.assignedAgentName || "AI Chatbot";
+                          const showAgentProfile =
+                            Boolean(handoff.assignedAgentName) || Boolean(handoff.assignedAgentAvatarUrl);
 
                           return (
                             <article
@@ -756,9 +928,17 @@ export function DashboardManagerShell() {
                               }}
                             >
                               <div className="manager-chat-head">
-                                <div>
-                                  <h4>{handoff.customerName}</h4>
-                                  <p>Request {handoff.requestId.slice(0, 8)}</p>
+                                <div className="manager-chat-identity">
+                                  <InitialChip
+                                    initials={getNameInitials(handoff.customerName, "CU")}
+                                    avatarUrl={handoff.customerAvatarUrl}
+                                    tone="sand"
+                                    size={28}
+                                  />
+                                  <div>
+                                    <h4>{handoff.customerName}</h4>
+                                    <p>Request {handoff.requestId.slice(0, 8)}</p>
+                                  </div>
                                 </div>
                                 <span className={`manager-mood-pill ${customerMood}`}>
                                   {formatMoodLabel(customerMood)}
@@ -766,12 +946,29 @@ export function DashboardManagerShell() {
                               </div>
 
                               <div className="manager-chat-meta">
-                                <span>
-                                  {handoff.status === "pending"
-                                    ? "Awaiting agent"
-                                    : handoff.assignedAgentName || "AI Chatbot"}
+                                <span className="manager-chat-agent">
+                                  {showAgentProfile ? (
+                                    <InitialChip
+                                      initials={getNameInitials(handoff.assignedAgentName, "AG")}
+                                      avatarUrl={handoff.assignedAgentAvatarUrl}
+                                      tone="sand"
+                                      size={20}
+                                    />
+                                  ) : (
+                                    <AvaOrb size={20} />
+                                  )}
+                                  <span>{agentLabel}</span>
                                 </span>
                                 <span>{formatAgo(handoff.lastMessageAt)}</span>
+                              </div>
+
+                              <div className="manager-chat-meta">
+                                <span className="manager-chat-satisfaction">
+                                  {formatAgentSatisfaction(handoff.customerRating)}
+                                </span>
+                                <span className={`manager-chat-status ${cardStatus}`}>
+                                  {formatManagerCardStatus(cardStatus)}
+                                </span>
                               </div>
 
                               {healthLabel ? <p className="manager-chat-health-note">{healthLabel}</p> : null}
@@ -791,7 +988,7 @@ export function DashboardManagerShell() {
                   <div>
                     <h3>{selectedHandoff.customerName}</h3>
                     <p>
-                      {selectedHandoff.status === "resolved"
+                      {getPipelineLaneForHandoff(selectedHandoff) === "resolved"
                         ? "Resolved transcript"
                         : "Live chat preview (updates automatically)"}
                     </p>

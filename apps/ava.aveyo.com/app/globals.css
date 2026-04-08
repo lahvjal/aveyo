@@ -1089,6 +1089,9 @@ body.ava-embed-mode nextjs-portal {
   padding: 0 8px 8px;
   display: grid;
   gap: 8px;
+  grid-auto-rows: max-content;
+  align-content: start;
+  align-items: start;
 }
 
 .manager-pipeline-empty {
@@ -1116,6 +1119,8 @@ body.ava-embed-mode nextjs-portal {
   padding: 11px 12px;
   display: grid;
   gap: 7px;
+  height: auto;
+  align-self: start;
 }
 
 .manager-chat-card.skeleton,
@@ -1162,9 +1167,20 @@ body.ava-embed-mode nextjs-portal {
 
 .manager-chat-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
+}
+
+.manager-chat-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.manager-chat-identity > div {
+  min-width: 0;
 }
 
 .manager-chat-head h4 {
@@ -1221,6 +1237,11 @@ body.ava-embed-mode nextjs-portal {
   color: #b54708;
 }
 
+.manager-chat-status.open {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
 .manager-chat-status.active,
 .manager-chat-status.claimed {
   background: #f5f3ff;
@@ -1230,6 +1251,11 @@ body.ava-embed-mode nextjs-portal {
 .manager-chat-status.resolved {
   background: #ecfdf3;
   color: #067647;
+}
+
+.manager-chat-status.ended {
+  background: #f2f4f7;
+  color: #475467;
 }
 
 .manager-chat-card.mood-calm {
@@ -1252,6 +1278,22 @@ body.ava-embed-mode nextjs-portal {
   gap: 8px;
   font-size: 11px;
   color: #667085;
+}
+
+.manager-chat-agent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.manager-chat-agent > span {
+  min-width: 0;
+}
+
+.manager-chat-satisfaction {
+  color: #475467;
+  font-weight: 600;
 }
 
 .manager-chat-health-note {

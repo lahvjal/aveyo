@@ -215,12 +215,15 @@ export interface ManagerHandoffRecord {
   requestId: string;
   conversationId: string;
   customerName: string;
-  status: "pending" | "claimed" | "active" | "resolved";
+  customerAvatarUrl: string | null;
+  status: "open" | "pending" | "claimed" | "active" | "resolved";
   requestedAt: string;
   claimedAt: string | null;
   resolvedAt: string | null;
   assignedAgentId: string | null;
   assignedAgentName: string | null;
+  assignedAgentAvatarUrl: string | null;
+  isEnded: boolean;
   customerRating: "thumbs_up" | "thumbs_down" | null;
   firstReplyAt: string | null;
   firstReplySeconds: number | null;
