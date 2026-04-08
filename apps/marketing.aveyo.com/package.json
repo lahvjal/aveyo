@@ -1,0 +1,31 @@
+{
+  "name": "marketing-aveyo-com",
+  "version": "0.1.0",
+  "private": true,
+  "description": "marketing.aveyo.com internal marketing and culture app",
+  "scripts": {
+    "dev": "next dev -p 4009",
+    "build": "next build",
+    "start": "next start -p 4009",
+    "lint": "eslint . --max-warnings=0",
+    "typecheck": "tsc --project tsconfig.json --noEmit",
+    "test": "echo \"No tests configured for marketing-aveyo-com\""
+  },
+  "dependencies": {
+    "@ava/config": "workspace:*",
+    "next": "^16.1.6",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@types/node": "^25.4.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^16.1.6",
+    "typescript": "^5.9.3"
+  }
+}

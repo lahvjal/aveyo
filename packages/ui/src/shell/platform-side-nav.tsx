@@ -309,6 +309,10 @@ function defaultRenderIcon({ src }: { icon: string; src: string }) {
   return <img src={src} alt="" aria-hidden="true" />;
 }
 
+function shouldOpenPrimaryNavItemInNewTab(itemId: string): boolean {
+  return itemId === "assets";
+}
+
 function toAvatarUrl(value: string | null | undefined): string {
   if (typeof value !== "string") {
     return "";
@@ -518,6 +522,22 @@ export function PlatformSideNav({
               <div key={item.id} className={itemClassName} title={title}>
                 {navBody}
               </div>
+            );
+          }
+
+          if (shouldOpenPrimaryNavItemInNewTab(item.id)) {
+            return (
+              <a
+                key={item.id}
+                href={href}
+                className={itemClassName}
+                title={title}
+                aria-label={item.label}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {navBody}
+              </a>
             );
           }
 
@@ -733,6 +753,24 @@ export function PlatformSideNav({
                   isPrimaryItemActive?.(item.id, pathname) ??
                   routeMatches(pathname, item.id === "dashboard" ? ["/"] : undefined);
                 const iconSrc = getPlatformNavIconSrc(item.icon as PlatformNavIconKey, { prefix: iconPrefix });
+
+                if (shouldOpenPrimaryNavItemInNewTab(item.id)) {
+                  return (
+                    <a
+                      key={`mobile-menu-${item.id}`}
+                      href={href}
+                      className={`${styles.mobileMenuItem}${itemIsActive ? ` ${styles.mobileMenuItemActive}` : ""}`}
+                      aria-label={item.label}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <span className={styles.mobileMenuItemIcon}>
+                        {iconSrc ? <img src={iconSrc} alt="" aria-hidden="true" /> : null}
+                      </span>
+                      <span>{item.label}</span>
+                    </a>
+                  );
+                }
 
                 return renderLink({
                   key: `mobile-menu-${item.id}`,

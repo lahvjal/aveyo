@@ -17,6 +17,7 @@ const defaultAllowedOrigins = [
   "http://localhost:4006",
   "http://localhost:4007",
   "http://localhost:4008",
+  "http://localhost:4009",
   "https://aveyo.com",
   "https://dev.aveyo.com",
   "https://staging.aveyo.com",
@@ -37,7 +38,10 @@ const defaultAllowedOrigins = [
   "https://orgchart.aveyo.com",
   "https://kpi-dev.aveyo.com",
   "https://kpi-staging.aveyo.com",
-  "https://kpi.aveyo.com"
+  "https://kpi.aveyo.com",
+  "https://marketing-dev.aveyo.com",
+  "https://marketing-staging.aveyo.com",
+  "https://marketing.aveyo.com"
 ];
 
 function isAllowedLocalDevOrigin(origin: string) {

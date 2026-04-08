@@ -5,7 +5,8 @@ const EXTERNAL_APP_ID_BY_KEY = Object.freeze({
   org: "org",
   operations: "org",
   kpi: "kpi",
-  ava: "ava"
+  ava: "ava",
+  marketing: "marketing"
 });
 
 const ICON_FILE_BY_KEY = Object.freeze({
@@ -29,10 +30,15 @@ const PRIMARY_NAV_ITEMS = [
   { id: "operations", label: "Operations", icon: "operations", externalAppKey: "operations" },
   { id: "kpi", label: "KPI Dashboard", icon: "kpi", externalAppKey: "kpi" },
   { id: "ava", label: "Ava", icon: "ava", externalAppKey: "ava" },
-  { id: "paychex", label: "Paychex", icon: "paychex" },
-  { id: "marketing", label: "Marketing", icon: "marketing" },
-  { id: "assets", label: "Asset Library", icon: "assets" },
-  { id: "culture", label: "Culture", icon: "culture" }
+  {
+    id: "paychex",
+    label: "Paychex",
+    icon: "paychex",
+    href: "https://login.flex.paychex.com/login_static/UsernameOnly.html?lang=en&downtime=false"
+  },
+  { id: "marketing", label: "Marketing", icon: "marketing", externalAppKey: "marketing" },
+  { id: "assets", label: "Asset Library", icon: "assets", href: "https://drive.google.com/drive/u/0/folders/0ADo6UX4yeepoUk9PVA" },
+  { id: "culture", label: "Culture", icon: "culture", externalAppKey: "marketing" }
 ];
 
 const UTILITY_NAV_ITEMS = [
@@ -86,6 +92,10 @@ export function resolvePlatformNavHref(item, environment, options = {}) {
 
   if (item.externalAppKey === "operations") {
     return withPath(baseUrl, "/processes");
+  }
+
+  if (item.id === "culture") {
+    return withPath(baseUrl, "/culture");
   }
 
   return trimTrailingSlash(baseUrl);

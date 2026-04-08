@@ -7,7 +7,8 @@ export const LOCAL_APP_PORTS = Object.freeze({
   org: 4005,
   kpi: 4006,
   aveyo: 4007,
-  customer: 4008
+  customer: 4008,
+  marketing: 4009
 });
 
 const DEFAULT_LOCAL_HOSTNAME = "localhost";
@@ -90,6 +91,7 @@ function buildLocalAppUrls(hostname) {
     kpi: `http://${resolvedHost}:${LOCAL_APP_PORTS.kpi}`,
     aveyo: `http://${resolvedHost}:${LOCAL_APP_PORTS.aveyo}`,
     customer: `http://${resolvedHost}:${LOCAL_APP_PORTS.customer}`,
+    marketing: `http://${resolvedHost}:${LOCAL_APP_PORTS.marketing}`,
     widget: `http://${resolvedHost}:${LOCAL_APP_PORTS.ava}/embed`
   });
 }
@@ -150,6 +152,12 @@ export const APP_URLS_BY_ENV = Object.freeze({
     dev: "https://customer-dev.aveyo.com",
     staging: "https://customer-staging.aveyo.com",
     prod: "https://customer.aveyo.com"
+  }),
+  marketing: Object.freeze({
+    local: LOCAL_APP_URLS.marketing,
+    dev: "https://marketing-dev.aveyo.com",
+    staging: "https://marketing-staging.aveyo.com",
+    prod: "https://marketing.aveyo.com"
   }),
   widget: Object.freeze({
     local: LOCAL_APP_URLS.widget,

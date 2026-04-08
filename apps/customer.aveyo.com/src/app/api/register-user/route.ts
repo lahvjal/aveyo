@@ -16,7 +16,8 @@ function createSupabaseAdminClient() {
 export async function POST(request: NextRequest) {
   try {
     // Parse request body
-    const { email, password, user_type = 'customer' } = await request.json();
+    const { email, password } = await request.json();
+    const user_type = 'customer';
 
     if (!email || !password) {
       return NextResponse.json(
@@ -74,7 +75,9 @@ export async function POST(request: NextRequest) {
       password,
       email_confirm: false, // Don't mark email as confirmed yet
       user_metadata: {
-        user_type
+        user_type,
+        account_type: 'customer',
+        role: 'customer'
       }
     });
 

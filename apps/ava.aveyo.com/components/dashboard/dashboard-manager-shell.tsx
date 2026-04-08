@@ -180,6 +180,8 @@ export function DashboardManagerShell() {
     }
     return counts;
   }, [handoffs]);
+  const onlineAgentsCount = agents.filter((agent) => agent.status === "online").length;
+  const totalAgentsCount = agents.length;
   const totalChatsCount =
     (overview?.metrics.customerChatsWithAva ?? 0) + (overview?.metrics.employeeChatsWithAva ?? 0);
   const aiResolvedCount = Math.max(
@@ -589,15 +591,19 @@ export function DashboardManagerShell() {
             <small>{isInitialLoading ? <span className="manager-skeleton-line hint" /> : "Waiting for agent"}</small>
           </article>
           <article className="manager-command-card">
-            <p className="manager-command-label">With Agent</p>
+            <p className="manager-command-label">Agents Online</p>
             <strong>
-              {isInitialLoading ? <span className="manager-skeleton-line value" /> : handoffStatusCounts.withAgent}
+              {isInitialLoading ? (
+                <span className="manager-skeleton-line value" />
+              ) : (
+                `${onlineAgentsCount}/${totalAgentsCount}`
+              )}
             </strong>
             <small>
               {isInitialLoading ? (
                 <span className="manager-skeleton-line hint" />
               ) : (
-                `${agents.filter((agent) => agent.status === "online").length} agents online`
+                `${handoffStatusCounts.withAgent} chats with agent`
               )}
             </small>
           </article>

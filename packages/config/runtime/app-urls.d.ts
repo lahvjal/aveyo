@@ -10,6 +10,7 @@ export type AppUrlId =
   | "kpi"
   | "aveyo"
   | "customer"
+  | "marketing"
   | "widget";
 
 export const LOCAL_APP_PORTS: Readonly<{
@@ -22,6 +23,7 @@ export const LOCAL_APP_PORTS: Readonly<{
   kpi: 4006;
   aveyo: 4007;
   customer: 4008;
+  marketing: 4009;
 }>;
 
 export const LOCAL_APP_URLS: Readonly<Record<AppUrlId, string>>;

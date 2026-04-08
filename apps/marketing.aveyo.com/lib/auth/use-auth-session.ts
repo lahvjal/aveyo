@@ -1,21 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { fetchAuthSession } from "./session";
+import { fetchAuthSession, type PlatformSessionUser } from "./session";
 
-const defaultSession = {
+export interface PlatformAuthSession {
+  loading: boolean;
+  authenticated: boolean;
+  role: string;
+  user: PlatformSessionUser | null;
+}
+
+const defaultSession: PlatformAuthSession = {
   loading: true,
   authenticated: false,
-  userType: "unknown",
   role: "unknown",
-  access: null,
   user: null
 };
 
 const sessionPollIntervalMs = 30000;
 
 export function useAuthSession() {
-  const [session, setSession] = useState(defaultSession);
+  const [session, setSession] = useState<PlatformAuthSession>(defaultSession);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,9 +36,7 @@ export function useAuthSession() {
           setSession({
             loading: false,
             authenticated: false,
-            userType: result.payload?.userType ?? "unknown",
             role: result.payload?.role ?? "unknown",
-            access: result.payload?.access ?? null,
             user: result.payload?.user ?? null
           });
           return;
@@ -42,21 +45,18 @@ export function useAuthSession() {
         setSession({
           loading: false,
           authenticated: true,
-          userType: result.payload.userType ?? "unknown",
           role: result.payload.role ?? "unknown",
-          access: result.payload.access ?? null,
           user: result.payload.user ?? null
         });
       } catch {
         if (cancelled) {
           return;
         }
+
         setSession({
           loading: false,
           authenticated: false,
-          userType: "unknown",
           role: "unknown",
-          access: null,
           user: null
         });
       }

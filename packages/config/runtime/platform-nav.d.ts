@@ -14,7 +14,7 @@ export type PlatformNavIconKey =
   | "admin"
   | "settings";
 
-export type ExternalAppKey = "dashboard" | "org" | "operations" | "kpi" | "ava";
+export type ExternalAppKey = "dashboard" | "org" | "operations" | "kpi" | "ava" | "marketing";
 
 export interface PlatformPrimaryNavItem {
   id: string;

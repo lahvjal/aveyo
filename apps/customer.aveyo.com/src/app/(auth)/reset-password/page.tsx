@@ -108,11 +108,12 @@ function ResetPasswordForm() {
       console.log('- Full URL:', window.location.href);
       console.log('- Query params:', searchParams?.toString());
       
-      // Update user metadata with customer type
-      // Only set the user_type to ensure we don't overwrite other metadata
+      // Re-assert customer account markers for shared-auth compatibility.
       await supabase.auth.updateUser({
         data: {
-          user_type: 'customer'
+          user_type: 'customer',
+          account_type: 'customer',
+          role: 'customer'
         }
       });
 
