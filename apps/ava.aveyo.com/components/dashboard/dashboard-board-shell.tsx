@@ -106,6 +106,9 @@ export function DashboardBoardShell() {
   const [customerDetailsLoading, setCustomerDetailsLoading] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [workspaceHint, setWorkspaceHint] = useState<string | null>(null);
+  const [claimPendingTicketId, setClaimPendingTicketId] = useState<string | null>(null);
+  const [sendPending, setSendPending] = useState(false);
+  const [notePending, setNotePending] = useState(false);
   const [resolvePending, setResolvePending] = useState(false);
   const [signOutPending, setSignOutPending] = useState(false);
   const [isNavCollapsed, setIsNavCollapsed] = useState(true);
@@ -577,6 +580,9 @@ export function DashboardBoardShell() {
     if (!authSession.authenticated || !authSession.user) {
       return;
     }
+    if (claimPendingTicketId) {
+      return;
+    }
     if (!isOnline) {
       setOperationError("Go online before claiming new requests.");
       return;
@@ -589,6 +595,7 @@ export function DashboardBoardShell() {
     }
 
     try {
+      setClaimPendingTicketId(ticketId);
       const result = await claimHandoffApi({
         requestId: queueRecord.requestId,
         representative: {
@@ -608,6 +615,8 @@ export function DashboardBoardShell() {
       setWorkspaceHint("Handoff claimed. It is now loaded in the active workspace.");
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Unable to claim this handoff.");
+    } finally {
+      setClaimPendingTicketId(null);
     }
   };
 
@@ -643,7 +652,13 @@ export function DashboardBoardShell() {
   };
 
   const sendRepMessage = async () => {
-    if (!authSession.authenticated || !authSession.user || !workspaceConversationId || !canInteract) {
+    if (
+      !authSession.authenticated ||
+      !authSession.user ||
+      !workspaceConversationId ||
+      !canInteract ||
+      sendPending
+    ) {
       return;
     }
 
@@ -655,6 +670,7 @@ export function DashboardBoardShell() {
     publishRepresentativeTyping(workspaceConversationId, false, true);
 
     try {
+      setSendPending(true);
       const result = await createRepresentativeMessageApi({
         conversationId: workspaceConversationId,
         text: messageText,
@@ -666,11 +682,13 @@ export function DashboardBoardShell() {
       setOperationError(null);
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Unable to send message.");
+    } finally {
+      setSendPending(false);
     }
   };
 
   const addSidebarNote = async () => {
-    if (!authSession.authenticated || !workspaceConversationId || !canInteract) {
+    if (!authSession.authenticated || !workspaceConversationId || !canInteract || notePending) {
       return;
     }
 
@@ -680,12 +698,15 @@ export function DashboardBoardShell() {
     }
 
     try {
+      setNotePending(true);
       const result = await createSupportNoteApi(workspaceConversationId, { body: noteBody });
       setHistoryNotes((current) => [mapSupportAgentNoteToHistoryNote(result.note), ...current]);
       setSidebarNote("");
       setOperationError(null);
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Unable to save support note.");
+    } finally {
+      setNotePending(false);
     }
   };
 
@@ -791,6 +812,7 @@ export function DashboardBoardShell() {
               pendingQueue={pendingQueue}
               activeQueue={activeQueue}
               selectedActiveTicketId={selectedQueueRecord?.requestId ?? null}
+              claimPendingTicketId={claimPendingTicketId}
               onClaimChat={claimChat}
               onSelectActiveChat={selectActiveChat}
               onSplitChat={splitChatFromCard}
@@ -831,7 +853,14 @@ export function DashboardBoardShell() {
                   }}
                   disabled={!canInteract || resolvePending}
                 >
-                  {resolvePending ? "Resolving..." : "Resolve"}
+                  {resolvePending ? (
+                    <>
+                      <span className="inline-button-spinner" aria-hidden="true" />
+                      Resolving...
+                    </>
+                  ) : (
+                    "Resolve"
+                  )}
                 </button>
               </div>
             </div>
@@ -859,6 +888,7 @@ export function DashboardBoardShell() {
                   avaSuggestionError={avaSuggestion.error}
                   agentInitials={agentInitials}
                   agentAvatarUrl={agentAvatarUrl}
+                  sendPending={sendPending}
                   onComposeNoteChange={setComposeNote}
                   onSendMessage={() => {
                     void sendRepMessage();
@@ -880,6 +910,7 @@ export function DashboardBoardShell() {
                   historyNotes={historyNotes}
                   notesDisabled={!canInteract}
                   notesDisabledReason={interactionLockReason}
+                  savePending={notePending}
                   onSidebarNoteChange={setSidebarNote}
                   onAddSidebarNote={() => {
                     void addSidebarNote();

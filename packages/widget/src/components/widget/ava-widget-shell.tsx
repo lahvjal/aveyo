@@ -269,6 +269,14 @@ function isRepConfirmationYes(text: string) {
     return false;
   }
 
+  const shortEscalationConfirmationPatterns = [
+    /^(human|agent|rep|representative|person|customer care|support agent)(\s+(please|now))?$/,
+    /^(human|agent|rep|representative)(\s+\1){1,3}$/
+  ];
+  if (shortEscalationConfirmationPatterns.some((pattern) => pattern.test(normalized))) {
+    return true;
+  }
+
   const yesPatterns = [
     /\b(yes|yeah|yep|yup)\b/,
     /\b(sure|ok|okay|alright|sounds good)\b/,
@@ -431,6 +439,13 @@ function createTimelineResetGreeting(
   };
 }
 
+function isChatClosedSignalMessage(message: TimelineMessage | undefined) {
+  if (!message || (message.kind !== "ava" && message.kind !== "system")) {
+    return false;
+  }
+  return message.sessionControl?.kind === "chat_closed";
+}
+
 export function AvaWidgetShell({
   embedMode = false,
   defaultOpen = true,
@@ -468,6 +483,7 @@ export function AvaWidgetShell({
   const [draft, setDraft] = useState("");
   const [requestError, setRequestError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [handoffRequestPending, setHandoffRequestPending] = useState(false);
   const [isAvaTyping, setIsAvaTyping] = useState(false);
   const [isRepresentativeTyping, setIsRepresentativeTyping] = useState(false);
   const [ratingSubmissionRequestId, setRatingSubmissionRequestId] = useState<string | null>(null);
@@ -483,6 +499,7 @@ export function AvaWidgetShell({
   const realtimeBusyRef = useRef(false);
   const modeStatusNoticeRef = useRef<string | null>(null);
   const pendingRepOfferMessageIdRef = useRef<string | null>(null);
+  const handledChatClosedMessageIdRef = useRef<string | null>(null);
 
   const clearAvaTypingStopTimeout = useCallback(() => {
     if (avaTypingStopTimeoutRef.current === null) {
@@ -914,6 +931,7 @@ export function AvaWidgetShell({
     }
 
     setIsSubmitting(true);
+    setHandoffRequestPending(true);
     try {
       const result = await api.requestHandoff({
         conversationId: thread.id,
@@ -932,6 +950,7 @@ export function AvaWidgetShell({
       );
     } finally {
       setIsSubmitting(false);
+      setHandoffRequestPending(false);
     }
   };
 
@@ -1340,6 +1359,45 @@ export function AvaWidgetShell({
   }, []);
 
   useEffect(() => {
+    if (!authSession.authenticated || !conversationReady) {
+      return;
+    }
+
+    const latestMessage = visibleThread.messages[visibleThread.messages.length - 1];
+    if (!isChatClosedSignalMessage(latestMessage)) {
+      return;
+    }
+
+    if (handledChatClosedMessageIdRef.current === latestMessage.id) {
+      return;
+    }
+    handledChatClosedMessageIdRef.current = latestMessage.id;
+
+    pendingRepOfferMessageIdRef.current = null;
+    clearAvaTypingState();
+    clearRepresentativeTypingState();
+    clearHandoffQueueStatusTimeout();
+    setShowRequestModal(false);
+    setRequestReason("");
+    setRequestError(null);
+    setRatingSubmissionRequestId(null);
+    setDraft("");
+
+    const resetMs = Date.now();
+    setTimelineResetAtMs(resetMs);
+    writeTimelineResetMs(visibleThread.id, resetMs);
+    closePanel();
+  }, [
+    authSession.authenticated,
+    clearAvaTypingState,
+    clearHandoffQueueStatusTimeout,
+    clearRepresentativeTypingState,
+    closePanel,
+    conversationReady,
+    visibleThread
+  ]);
+
+  useEffect(() => {
     if (typeof window === "undefined" || window.parent === window) {
       return;
     }
@@ -1461,6 +1519,7 @@ export function AvaWidgetShell({
               showAvaTyping={isAvaTyping}
               showRepresentativeTyping={isRepresentativeTyping}
               showRequestModal={showRequestModal}
+              requestSubmissionPending={handoffRequestPending}
               requestReason={requestReason}
               ratingSubmissionRequestId={ratingSubmissionRequestId}
               onRequestReasonChange={setRequestReason}
@@ -1477,6 +1536,7 @@ export function AvaWidgetShell({
               disabled={false}
               actionDisabled={composerActionDisabled}
               sending={isSubmitting}
+              requestPending={handoffRequestPending}
               showTalkToRep={isTestModeEnabled}
               showTestModeToggle={canUseTestMode}
               testModeEnabled={isTestModeEnabled}

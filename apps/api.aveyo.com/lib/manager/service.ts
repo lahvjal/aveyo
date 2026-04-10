@@ -1,5 +1,7 @@
 import { type AppRole } from "@/lib/auth/types";
 import { ServiceError } from "@/lib/service-error";
+import { computeOverallCustomerSentiment } from "@/lib/sentiment/customer-sentiment";
+import { runGlobalResolvedSessionAutoCloseAutomation } from "@/lib/store/mock-store";
 import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { type ManagerDateRange } from "./date-range";
 
@@ -26,6 +28,9 @@ export interface ManagerOverviewResult {
     pendingHandoffsNow: number;
     handoffRate: number;
     containmentRate: number;
+    aiEndedOrResolvedWithoutHandoff: number;
+    endedOrResolvedWithHandoff: number;
+    totalEndedOrResolvedChats: number;
   };
   sensitivitySummary: {
     customerAverageScore: number;
@@ -175,6 +180,7 @@ interface MessageRow {
   sender_kind: MessageSenderKind;
   sender_auth_user_id: string | null;
   body: string;
+  payload: Record<string, unknown> | null;
   created_at: string;
 }
 
@@ -196,20 +202,19 @@ interface ProfileRow {
   email: string | null;
 }
 
+interface DepartmentHierarchyRow {
+  id: string;
+  name: string | null;
+  parent_id: string | null;
+}
+
+interface AgentDirectoryProfileRow {
+  id: string;
+  employment_status: string | null;
+}
+
 const MAX_ACTIVITY_ROWS = 200;
 const RECENT_ONLINE_WINDOW_MS = 5 * 60 * 1000;
-const CUSTOMER_FRUSTRATION_KEYWORDS = [
-  "not helpful",
-  "frustrated",
-  "annoyed",
-  "angry",
-  "upset",
-  "ridiculous",
-  "still waiting",
-  "taking too long"
-];
-const LIVE_CUSTOMER_SENTIMENT_WINDOW = 8;
-const LIVE_CUSTOMER_SENTIMENT_RECENT_WINDOW = 3;
 
 const DEFAULT_MANAGER_CONFIG: ManagerConfig = {
   timezone: "America/Chicago",
@@ -234,14 +239,6 @@ const managerConfigState: {
   updatedAt: null,
   updatedBy: null
 };
-
-function normalizeIntentText(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^\w\s']/g, " ")
-    .replace(/\s+/g, " ");
-}
 
 function parseIsoToMs(value: string | null | undefined) {
   if (!value) {
@@ -451,12 +448,58 @@ async function fetchOpenAiConversations() {
   return deduped.slice(0, MAX_ACTIVITY_ROWS);
 }
 
+async function fetchEndedAiConversations(range: ManagerDateRange) {
+  const supabase = getSupabaseServiceRoleClient();
+  const { data, error } = await supabase
+    .schema("ava")
+    .from("conversations")
+    .select(
+      "id, customer_auth_user_id, status, handoff_state, channel, subject, active_support_agent_auth_user_id, created_at, updated_at, last_message_at"
+    )
+    .eq("status", "closed")
+    .eq("handoff_state", "resolved")
+    .neq("channel", "agent_impersonation")
+    .gte("created_at", range.fromIso)
+    .lt("created_at", range.toIso)
+    .order("updated_at", { ascending: false })
+    .limit(500);
+
+  if (error) {
+    throw new ServiceError(500, `Unable to load ended AI conversations: ${error.message}`);
+  }
+
+  return ((data ?? []) as ConversationRow[]).slice(0, MAX_ACTIVITY_ROWS);
+}
+
+async function fetchResolvedOrEndedConversations(range: ManagerDateRange) {
+  const supabase = getSupabaseServiceRoleClient();
+  const { data, error } = await supabase
+    .schema("ava")
+    .from("conversations")
+    .select(
+      "id, customer_auth_user_id, status, handoff_state, channel, subject, active_support_agent_auth_user_id, created_at, updated_at, last_message_at"
+    )
+    .in("status", ["resolved", "closed"])
+    .eq("handoff_state", "resolved")
+    .neq("channel", "agent_impersonation")
+    .gte("updated_at", range.fromIso)
+    .lt("updated_at", range.toIso)
+    .order("updated_at", { ascending: false })
+    .limit(5000);
+
+  if (error) {
+    throw new ServiceError(500, `Unable to load resolved or ended conversations: ${error.message}`);
+  }
+
+  return (data ?? []) as ConversationRow[];
+}
+
 async function fetchMessagesInRange(range: ManagerDateRange) {
   const supabase = getSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .schema("ava")
     .from("messages")
-    .select("id, conversation_id, sender_kind, sender_auth_user_id, body, created_at")
+    .select("id, conversation_id, sender_kind, sender_auth_user_id, body, payload, created_at")
     .gte("created_at", range.fromIso)
     .lt("created_at", range.toIso)
     .in("sender_kind", ["customer", "support_agent"])
@@ -479,7 +522,7 @@ async function fetchMessagesByConversationIds(conversationIds: string[]) {
   const { data, error } = await supabase
     .schema("ava")
     .from("messages")
-    .select("id, conversation_id, sender_kind, sender_auth_user_id, body, created_at")
+    .select("id, conversation_id, sender_kind, sender_auth_user_id, body, payload, created_at")
     .in("conversation_id", conversationIds)
     .order("created_at", { ascending: true })
     .limit(10000);
@@ -511,6 +554,87 @@ async function fetchProfilesByIds(profileIds: string[]) {
     result.set(row.id, row);
   }
   return result;
+}
+
+function isActiveEmployee(employmentStatus: string | null | undefined) {
+  const normalized = employmentStatus?.trim().toLowerCase();
+  return !normalized || normalized === "active";
+}
+
+async function fetchCustomerCareAndAdminAgentIds() {
+  const supabase = getSupabaseServiceRoleClient();
+
+  const { data: departmentData, error: departmentError } = await supabase
+    .from("departments")
+    .select("id, name, parent_id")
+    .limit(5000);
+  if (departmentError) {
+    throw new ServiceError(500, `Unable to load departments: ${departmentError.message}`);
+  }
+
+  const departments = (departmentData ?? []) as DepartmentHierarchyRow[];
+  const customerCareRootIds = departments
+    .filter((row) => row.name?.trim().toLowerCase() === "customer care")
+    .map((row) => row.id);
+  const customerCareDepartmentIds = new Set<string>(customerCareRootIds);
+
+  if (customerCareRootIds.length > 0) {
+    const childrenByParentId = new Map<string, DepartmentHierarchyRow[]>();
+    for (const department of departments) {
+      if (!department.parent_id) {
+        continue;
+      }
+      const children = childrenByParentId.get(department.parent_id) ?? [];
+      children.push(department);
+      childrenByParentId.set(department.parent_id, children);
+    }
+
+    const stack = [...customerCareRootIds];
+    while (stack.length > 0) {
+      const currentId = stack.pop();
+      if (!currentId) {
+        continue;
+      }
+      const children = childrenByParentId.get(currentId) ?? [];
+      for (const child of children) {
+        if (customerCareDepartmentIds.has(child.id)) {
+          continue;
+        }
+        customerCareDepartmentIds.add(child.id);
+        stack.push(child.id);
+      }
+    }
+  }
+
+  const { data: adminLikeData, error: adminLikeError } = await supabase
+    .from("profiles")
+    .select("id, employment_status")
+    .or("is_admin.eq.true,is_super_admin.eq.true");
+  if (adminLikeError) {
+    throw new ServiceError(500, `Unable to load admin agents: ${adminLikeError.message}`);
+  }
+
+  let customerCareData: AgentDirectoryProfileRow[] = [];
+  if (customerCareDepartmentIds.size > 0) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, employment_status")
+      .in("department_id", Array.from(customerCareDepartmentIds));
+    if (error) {
+      throw new ServiceError(500, `Unable to load customer-care agents: ${error.message}`);
+    }
+    customerCareData = (data ?? []) as AgentDirectoryProfileRow[];
+  }
+
+  const eligibleAgentIds = new Set<string>();
+  for (const row of [...((adminLikeData ?? []) as AgentDirectoryProfileRow[]), ...customerCareData]) {
+    if (!row.id || !isActiveEmployee(row.employment_status)) {
+      continue;
+    }
+    eligibleAgentIds.add(row.id);
+  }
+
+  return Array.from(eligibleAgentIds);
 }
 
 async function fetchHandoffEventsByRequestIds(requestIds: string[]) {
@@ -589,62 +713,11 @@ function computeCustomerSensitivity(params: {
   staleMinutes: number | null;
   rating: CustomerRating | null;
 }) {
-  let score = 16;
-  const sortedCustomerMessages = [...params.customerMessages].sort((left, right) =>
-    left.created_at.localeCompare(right.created_at)
-  );
-  const recentCustomerMessages = sortedCustomerMessages.slice(-LIVE_CUSTOMER_SENTIMENT_WINDOW);
-
-  let frustrationSignal = 0;
-  for (let index = 0; index < recentCustomerMessages.length; index += 1) {
-    const message = recentCustomerMessages[index];
-    if (!message) {
-      continue;
-    }
-    const normalized = normalizeIntentText(message.body);
-    const hasKeyword = CUSTOMER_FRUSTRATION_KEYWORDS.some((keyword) => normalized.includes(keyword));
-    if (!hasKeyword) {
-      continue;
-    }
-    const isVeryRecent =
-      index >= Math.max(0, recentCustomerMessages.length - LIVE_CUSTOMER_SENTIMENT_RECENT_WINDOW);
-    frustrationSignal += isVeryRecent ? 2 : 1;
-  }
-
-  score += Math.min(36, frustrationSignal * 7);
-  const recentQuestionCount = recentCustomerMessages.reduce(
-    (count, message) => count + (message.body.includes("?") ? 1 : 0),
-    0
-  );
-  if (recentQuestionCount >= 2) {
-    score += 10;
-  }
-  if (recentQuestionCount >= 4) {
-    score += 6;
-  }
-
-  const latestCustomerMessage = recentCustomerMessages[recentCustomerMessages.length - 1];
-  if (latestCustomerMessage) {
-    const normalizedLatest = normalizeIntentText(latestCustomerMessage.body);
-    const latestHasFrustrationKeyword = CUSTOMER_FRUSTRATION_KEYWORDS.some((keyword) =>
-      normalizedLatest.includes(keyword)
-    );
-    if (latestHasFrustrationKeyword) {
-      score += 10;
-    }
-  }
-
-  if (params.staleMinutes !== null && params.staleMinutes >= 10) {
-    score += Math.min(25, Math.floor(params.staleMinutes));
-  }
-  if (params.rating === "thumbs_down") {
-    score += 20;
-  }
-  if (params.rating === "thumbs_up") {
-    score -= 8;
-  }
-
-  return clampScore(score);
+  return computeOverallCustomerSentiment({
+    customerMessages: params.customerMessages,
+    staleMinutes: params.staleMinutes,
+    rating: params.rating
+  });
 }
 
 function computeAgentSensitivity(params: {
@@ -689,9 +762,10 @@ function getRangePayload(range: ManagerDateRange) {
 async function buildManagerOverview(
   range: ManagerDateRange
 ): Promise<ManagerOverviewResult> {
-  const [handoffRequests, rangeMessages] = await Promise.all([
+  const [handoffRequests, rangeMessages, resolvedOrEndedConversations] = await Promise.all([
     fetchHandoffRequests(),
-    fetchMessagesInRange(range)
+    fetchMessagesInRange(range),
+    fetchResolvedOrEndedConversations(range)
   ]);
 
   const activeHandoffsNow = handoffRequests.filter(
@@ -732,7 +806,18 @@ async function buildManagerOverview(
 
   const totalChats = customerConversationIds.size + employeeConversationIds.size;
   const handoffRate = totalChats > 0 ? rangedHandoffs.length / totalChats : 0;
-  const containmentRate = totalChats > 0 ? 1 - handoffRate : 0;
+  const allHandoffConversationIds = new Set(handoffRequests.map((row) => row.conversation_id));
+  const aiEndedOrResolvedWithoutHandoff = resolvedOrEndedConversations.filter(
+    (conversation) => !allHandoffConversationIds.has(conversation.id)
+  ).length;
+  const endedOrResolvedWithHandoff =
+    resolvedOrEndedConversations.length - aiEndedOrResolvedWithoutHandoff;
+  const totalEndedOrResolvedChats = resolvedOrEndedConversations.length;
+
+  const containmentRate =
+    totalEndedOrResolvedChats > 0
+      ? aiEndedOrResolvedWithoutHandoff / totalEndedOrResolvedChats
+      : 0;
 
   const events = await fetchHandoffEventsByRequestIds(rangedHandoffs.map((row) => row.id));
   const { ratingByRequest } = getLatestEventMaps(events);
@@ -769,7 +854,10 @@ async function buildManagerOverview(
       activeHandoffsNow,
       pendingHandoffsNow,
       handoffRate: toRounded(handoffRate, 4) ?? 0,
-      containmentRate: toRounded(containmentRate, 4) ?? 0
+      containmentRate: toRounded(containmentRate, 4) ?? 0,
+      aiEndedOrResolvedWithoutHandoff,
+      endedOrResolvedWithHandoff,
+      totalEndedOrResolvedChats
     },
     sensitivitySummary: {
       customerAverageScore: toRounded(averageNumber(sensitivityCustomerScores), 1) ?? 0,
@@ -783,7 +871,10 @@ async function buildManagerOverview(
 async function buildManagerAgents(
   range: ManagerDateRange
 ): Promise<ManagerAgentsResult> {
-  const handoffRequests = await fetchHandoffRequests();
+  const [directoryAgentIds, handoffRequests] = await Promise.all([
+    fetchCustomerCareAndAdminAgentIds(),
+    fetchHandoffRequests()
+  ]);
   const [events, rangeMessages] = await Promise.all([
     fetchHandoffEventsByRequestIds(handoffRequests.map((row) => row.id)),
     fetchMessagesInRange(range)
@@ -820,7 +911,7 @@ async function buildManagerAgents(
       historicalAgentIds.add(message.sender_auth_user_id);
     }
   }
-  const allAgentIds = Array.from(historicalAgentIds);
+  const allAgentIds = Array.from(new Set([...historicalAgentIds, ...directoryAgentIds]));
   const profileById = await fetchProfilesByIds(allAgentIds);
 
   const ratingValuesByAgent = new Map<string, number[]>();
@@ -935,12 +1026,14 @@ async function buildManagerAgents(
 async function buildManagerHandoffs(
   range: ManagerDateRange
 ): Promise<ManagerHandoffsResult> {
-  const [handoffRequests, openAiConversations] = await Promise.all([
+  const [handoffRequests, openAiConversations, endedAiConversations] = await Promise.all([
     fetchHandoffRequests(),
-    fetchOpenAiConversations()
+    fetchOpenAiConversations(),
+    fetchEndedAiConversations(range)
   ]);
   const events = await fetchHandoffEventsByRequestIds(handoffRequests.map((row) => row.id));
   const { resolvedByRequest, ratingByRequest } = getLatestEventMaps(events);
+  const anyHandoffConversationIds = new Set(handoffRequests.map((row) => row.conversation_id));
   const openHandoffConversationIds = new Set(
     handoffRequests
       .filter((row) => row.status === "pending" || row.status === "claimed" || row.status === "active")
@@ -971,10 +1064,14 @@ async function buildManagerHandoffs(
       !openHandoffConversationIds.has(conversation.id) &&
       !openHandoffCustomerIds.has(conversation.customer_auth_user_id)
   );
+  const endedAiOnlyConversations = endedAiConversations.filter(
+    (conversation) => !anyHandoffConversationIds.has(conversation.id)
+  );
   const conversationIds = Array.from(
     new Set([
       ...topRows.map((row) => row.conversation_id),
-      ...aiOnlyConversations.map((conversation) => conversation.id)
+      ...aiOnlyConversations.map((conversation) => conversation.id),
+      ...endedAiOnlyConversations.map((conversation) => conversation.id)
     ])
   );
   const [conversationById, messages] = await Promise.all([
@@ -1009,6 +1106,11 @@ async function buildManagerHandoffs(
   const startedAiOnlyConversations = aiOnlyConversations.filter((conversation) => {
     const conversationMessages = messagesByConversation.get(conversation.id) ?? [];
     // A real AI session starts when the customer sends the first message.
+    return conversationMessages.some((message) => message.sender_kind === "customer");
+  });
+  const startedEndedAiOnlyConversations = endedAiOnlyConversations.filter((conversation) => {
+    const conversationMessages = messagesByConversation.get(conversation.id) ?? [];
+    // Avoid rendering synthetic/empty rows in resolved lane.
     return conversationMessages.some((message) => message.sender_kind === "customer");
   });
 
@@ -1179,7 +1281,63 @@ async function buildManagerHandoffs(
     };
   });
 
-  const handoffs = [...handoffRecords, ...aiHandlingRecords];
+  const endedAiOnlyRecords = startedEndedAiOnlyConversations.map<ManagerHandoffRecord>((conversation) => {
+    const normalizedConversation = conversationById.get(conversation.id) ?? conversation;
+    const conversationMessages = messagesByConversation.get(normalizedConversation.id) ?? [];
+    const lastMessage = conversationMessages[conversationMessages.length - 1];
+    const closedAt =
+      normalizedConversation.last_message_at ??
+      normalizedConversation.updated_at ??
+      lastMessage?.created_at ??
+      normalizedConversation.created_at;
+    const lastMessageAt = lastMessage?.created_at ?? closedAt ?? null;
+    const customerMessages = conversationMessages.filter((message) => message.sender_kind === "customer");
+    const customerProfile = customerProfiles.get(normalizedConversation.customer_auth_user_id);
+    const customerFallbackName =
+      customerProfile?.full_name?.trim() || customerProfile?.email?.trim() || "Customer";
+    const customerName = parseCustomerName(normalizedConversation.subject, customerFallbackName);
+    const customerSensitivityScore = computeCustomerSensitivity({
+      customerMessages,
+      staleMinutes: null,
+      rating: null
+    });
+    const agentSensitivityScore = computeAgentSensitivity({
+      firstReplySeconds: null,
+      staleMinutes: null,
+      rating: null,
+      slowFirstReplyMinutes: managerConfigState.config.thresholds.slowFirstReplyMinutes,
+      stalledConversationMinutes: managerConfigState.config.thresholds.stalledConversationMinutes
+    });
+
+    return {
+      requestId: `conversation-${normalizedConversation.id}`,
+      conversationId: normalizedConversation.id,
+      customerName,
+      customerAvatarUrl: customerProfile?.profile_photo_url?.trim() || null,
+      status: "resolved",
+      requestedAt: normalizedConversation.created_at ?? closedAt ?? new Date().toISOString(),
+      claimedAt: null,
+      resolvedAt: closedAt ?? null,
+      assignedAgentId: null,
+      assignedAgentName: null,
+      assignedAgentAvatarUrl: null,
+      isEnded: true,
+      customerRating: null,
+      firstReplyAt: null,
+      firstReplySeconds: null,
+      resolutionSeconds: null,
+      lastMessageAt,
+      staleMinutes: null,
+      slowFirstReply: false,
+      needsAttention: false,
+      customerSensitivityScore,
+      customerSensitivityBand: sensitivityBand(customerSensitivityScore),
+      agentSensitivityScore,
+      agentSensitivityBand: sensitivityBand(agentSensitivityScore)
+    };
+  });
+
+  const handoffs = [...handoffRecords, ...aiHandlingRecords, ...endedAiOnlyRecords];
 
   return {
     range: getRangePayload(range),
@@ -1248,6 +1406,11 @@ export async function getManagerHandoffsResult(
   actorRole: AppRole
 ) {
   await checkManagerAccess(actorUserId, actorRole);
+  try {
+    await runGlobalResolvedSessionAutoCloseAutomation();
+  } catch (automationError) {
+    console.error("Resolved session auto-close check failed", automationError);
+  }
   return buildManagerHandoffs(range);
 }
 

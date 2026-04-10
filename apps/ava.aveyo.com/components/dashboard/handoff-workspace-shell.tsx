@@ -110,6 +110,8 @@ export function HandoffWorkspaceShell({
   const [customerDetailsLoading, setCustomerDetailsLoading] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [closeHint, setCloseHint] = useState<string | null>(null);
+  const [sendPending, setSendPending] = useState(false);
+  const [notePending, setNotePending] = useState(false);
   const [resolvePending, setResolvePending] = useState(false);
   const [signOutPending, setSignOutPending] = useState(false);
   const [isNavCollapsed, setIsNavCollapsed] = useState(true);
@@ -409,7 +411,13 @@ export function HandoffWorkspaceShell({
   }, [authSession.authenticated, isConversationLoaded, workspaceConversationId]);
 
   const sendRepMessage = async () => {
-    if (!authSession.authenticated || !authSession.user || !workspaceConversationId || !canInteract) {
+    if (
+      !authSession.authenticated ||
+      !authSession.user ||
+      !workspaceConversationId ||
+      !canInteract ||
+      sendPending
+    ) {
       return;
     }
 
@@ -421,6 +429,7 @@ export function HandoffWorkspaceShell({
     publishRepresentativeTyping(workspaceConversationId, false, true);
 
     try {
+      setSendPending(true);
       const result = await createRepresentativeMessageApi({
         conversationId: workspaceConversationId,
         text: messageText,
@@ -432,11 +441,13 @@ export function HandoffWorkspaceShell({
       setOperationError(null);
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Unable to send message.");
+    } finally {
+      setSendPending(false);
     }
   };
 
   const addSidebarNote = async () => {
-    if (!authSession.authenticated || !workspaceConversationId || !canInteract) {
+    if (!authSession.authenticated || !workspaceConversationId || !canInteract || notePending) {
       return;
     }
 
@@ -446,12 +457,15 @@ export function HandoffWorkspaceShell({
     }
 
     try {
+      setNotePending(true);
       const result = await createSupportNoteApi(workspaceConversationId, { body: noteBody });
       setHistoryNotes((current) => [mapSupportAgentNoteToHistoryNote(result.note), ...current]);
       setSidebarNote("");
       setOperationError(null);
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Unable to save support note.");
+    } finally {
+      setNotePending(false);
     }
   };
 
@@ -556,7 +570,14 @@ export function HandoffWorkspaceShell({
               onClick={resolveChat}
               disabled={!canInteract || resolvePending}
             >
-              {resolvePending ? "Resolving..." : "Resolve & Close"}
+              {resolvePending ? (
+                <>
+                  <span className="inline-button-spinner" aria-hidden="true" />
+                  Resolving...
+                </>
+              ) : (
+                "Resolve & Close"
+              )}
             </button>
           </div>
         </div>
@@ -584,6 +605,7 @@ export function HandoffWorkspaceShell({
               avaSuggestionError={avaSuggestion.error}
               agentInitials={agentInitials}
               agentAvatarUrl={agentAvatarUrl}
+              sendPending={sendPending}
               onComposeNoteChange={setComposeNote}
               onSendMessage={() => {
                 void sendRepMessage();
@@ -605,6 +627,7 @@ export function HandoffWorkspaceShell({
               historyNotes={historyNotes}
               notesDisabled={!canInteract}
               notesDisabledReason={interactionLockReason}
+              savePending={notePending}
               onSidebarNoteChange={setSidebarNote}
               onAddSidebarNote={() => {
                 void addSidebarNote();

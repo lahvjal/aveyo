@@ -178,6 +178,9 @@ export interface ManagerOverviewResult {
     pendingHandoffsNow: number;
     handoffRate: number;
     containmentRate: number;
+    aiEndedOrResolvedWithoutHandoff: number;
+    endedOrResolvedWithHandoff: number;
+    totalEndedOrResolvedChats: number;
   };
   sensitivitySummary: {
     customerAverageScore: number;

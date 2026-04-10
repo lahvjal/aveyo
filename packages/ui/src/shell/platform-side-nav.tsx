@@ -23,6 +23,7 @@ type PlatformPrimaryNavItem = (typeof PLATFORM_PRIMARY_NAV_ITEMS)[number];
 type PlatformNavIconKey = Parameters<typeof getPlatformNavIconSrc>[0];
 
 export interface PlatformSideNavProps {
+  primaryItems?: PlatformPrimaryNavItem[];
   pathname?: string;
   storageKey: string;
   renderWordmark?: (collapsed: boolean) => ReactNode;
@@ -321,6 +322,7 @@ function toAvatarUrl(value: string | null | undefined): string {
 }
 
 export function PlatformSideNav({
+  primaryItems,
   pathname = DEFAULT_PATHNAME,
   storageKey,
   renderWordmark,
@@ -368,7 +370,10 @@ export function PlatformSideNav({
     setIsMobileMenuOpen(false);
   }, [pathname]);
 
-  const primaryNavItems = PLATFORM_PRIMARY_NAV_ITEMS as PlatformPrimaryNavItem[];
+  const primaryNavItems = useMemo(
+    () => primaryItems ?? (PLATFORM_PRIMARY_NAV_ITEMS as PlatformPrimaryNavItem[]),
+    [primaryItems]
+  );
   const configuredUtilityItems = useMemo(
     () => {
       const resolvedItems =

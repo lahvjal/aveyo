@@ -1,5 +1,9 @@
 import { type ConversationThread } from "@ava/chat-domain";
 import { AvaOrb } from "@ava/ui";
+import {
+  getCustomerMessageSentimentLabel,
+  getCustomerMessageSentimentLevel
+} from "@/lib/customer-sentiment-ui";
 import { type Ticket } from "@/lib/dashboard-types";
 import { InitialChip } from "./initial-chip";
 
@@ -19,6 +23,7 @@ interface ChatColumnProps {
   avaSuggestionError?: string | null;
   agentInitials: string;
   agentAvatarUrl?: string | null;
+  sendPending?: boolean;
   onComposeNoteChange: (value: string) => void;
   onSendMessage: () => void;
   onUseAvaSuggestion?: () => void;
@@ -41,12 +46,15 @@ export function ChatColumn({
   avaSuggestionError,
   agentInitials,
   agentAvatarUrl,
+  sendPending = false,
   onComposeNoteChange,
   onSendMessage,
   onUseAvaSuggestion,
   onRefreshAvaSuggestion
 }: ChatColumnProps) {
   const composerDisabled = isEmptyState || composerLocked;
+  const hasComposeText = composeNote.trim().length > 0;
+  const sendDisabled = composerDisabled || sendPending || !hasComposeText;
   const emptyStateEyebrow = !isOnline
     ? "Offline mode"
     : hasPendingChats
@@ -71,7 +79,9 @@ export function ChatColumn({
         ? "Claim a chat from the queue to unlock messaging."
         : "Messaging unlocks when a conversation becomes active."
     : hasActiveChat
-      ? "Press Enter to send. Shift+Enter for a new line."
+      ? sendPending
+        ? "Sending message..."
+        : "Press Enter to send. Shift+Enter for a new line."
       : "Select a conversation to send messages.";
   const showSuggestionCard = !composerDisabled && showAvaSuggestion;
 
@@ -129,10 +139,18 @@ export function ChatColumn({
             }
 
             const isCustomer = message.kind === "customer";
+            const customerSentimentLevel = getCustomerMessageSentimentLevel(message);
             return (
               <div className="timeline-row left" key={message.id}>
                 {isCustomer ? <InitialChip initials="JD" tone="sand" size={25} /> : <AvaOrb size={25} />}
                 <p className={`msg-bubble ${isCustomer ? "customer" : "ava"}`}>{message.text}</p>
+                {isCustomer && customerSentimentLevel ? (
+                  <span
+                    className={`customer-sentiment-dot ${customerSentimentLevel}`}
+                    title={getCustomerMessageSentimentLabel(customerSentimentLevel)}
+                    aria-label={getCustomerMessageSentimentLabel(customerSentimentLevel)}
+                  />
+                ) : null}
               </div>
             );
           })}
@@ -185,7 +203,9 @@ export function ChatColumn({
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
-              onSendMessage();
+              if (!sendDisabled) {
+                onSendMessage();
+              }
             }
           }}
           placeholder={
@@ -198,12 +218,12 @@ export function ChatColumn({
         />
         <button
           type="button"
-          className="chat-send-button"
+          className={`chat-send-button${sendPending ? " is-loading" : ""}`}
           onClick={onSendMessage}
-          aria-label="Send message"
-          disabled={composerDisabled}
+          aria-label={sendPending ? "Sending message" : "Send message"}
+          disabled={sendDisabled}
         >
-          ↑
+          {sendPending ? <span className="inline-button-spinner" aria-hidden="true" /> : "↑"}
         </button>
         <p className="compose-helper">{composeHelper}</p>
       </div>

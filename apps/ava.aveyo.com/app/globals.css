@@ -315,6 +315,27 @@ body.ava-embed-mode nextjs-portal {
   font-weight: 700;
 }
 
+.board-queue-action:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.board-queue-action.is-loading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.inline-button-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: widget-send-button-spin 700ms linear infinite;
+}
+
 .board-queue-action.claim {
   background: #204e71;
   color: #ffffff;
@@ -1353,11 +1374,41 @@ body.ava-embed-mode nextjs-portal {
   color: #667085;
 }
 
+.manager-preview-refreshing {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #667085;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.manager-preview-loading {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px 14px;
+  background: #ffffff;
+}
+
+.manager-preview-loading .manager-chat-card.skeleton {
+  min-height: 64px;
+}
+
 .manager-preview-state,
 .manager-preview-error {
   margin: 0;
   padding: 12px;
   font-size: 13px;
+}
+
+.manager-preview-state.loading {
+  padding: 0;
+  font-size: 12px;
+  color: #667085;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .manager-preview-error {
@@ -1512,6 +1563,10 @@ body.ava-embed-mode nextjs-portal {
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 }
 
 .workspace-resolve-button:disabled {
@@ -1918,6 +1973,27 @@ body.ava-embed-mode nextjs-portal {
   border-bottom-right-radius: 0;
 }
 
+.customer-sentiment-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  align-self: center;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.customer-sentiment-dot.calm {
+  background: #12b76a;
+}
+
+.customer-sentiment-dot.frustrated {
+  background: #f79009;
+}
+
+.customer-sentiment-dot.escalated {
+  background: #f04438;
+}
+
 .msg-bubble.customer {
   background: #e6e6e6;
   color: #000000;
@@ -2049,11 +2125,18 @@ body.ava-embed-mode nextjs-portal {
   background: #dddddd;
   color: #6f6f6f;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .chat-note-compose .chat-send-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.chat-note-compose .chat-send-button.is-loading:disabled {
+  opacity: 1;
 }
 
 .compose-helper {
@@ -2182,11 +2265,18 @@ body.ava-embed-mode nextjs-portal {
   background: #dddddd;
   color: #6f6f6f;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .detail-note-input button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.detail-note-input button.is-loading:disabled {
+  opacity: 1;
 }
 
 .detail-history {
@@ -2571,6 +2661,38 @@ body.ava-embed-mode nextjs-portal {
   cursor: pointer;
 }
 
+.widget-route-root .request-action:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.widget-route-root .request-action-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.widget-route-root .request-action-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: widget-send-button-spin 700ms linear infinite;
+}
+
+.widget-route-root .request-modal-status {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #384152;
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .widget-route-root .request-action.cancel {
   background: #ffffff;
   color: #000000;
@@ -2651,6 +2773,17 @@ body.ava-embed-mode nextjs-portal {
   color: #0f5132;
   font-size: 12px;
   font-weight: 600;
+}
+
+.widget-route-root .handoff-rating-pending {
+  margin: 6px 0 0;
+  color: #384152;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
 }
 
 .widget-route-root .widget-testmode {
@@ -2812,6 +2945,17 @@ body.ava-embed-mode nextjs-portal {
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
+}
+
+.widget-route-root .rep-trigger-pill:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.widget-route-root .rep-trigger-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .widget-route-root .rep-trigger-icon {

@@ -26,6 +26,18 @@ export type HandoffState = "none" | "pending" | "claimed" | "active" | "resolved
 
 export type HandoffRating = "thumbs_up" | "thumbs_down";
 
+export type CustomerSentimentLevel = "calm" | "frustrated" | "escalated";
+
+export interface CustomerSentiment {
+  level: CustomerSentimentLevel;
+  score: number;
+}
+
+export interface SessionControlSignal {
+  kind: "chat_closed";
+  reason?: "post_handoff_no_more_help" | "idle_timeout";
+}
+
 export interface HandoffFeedbackRequest {
   type: "handoff_rating";
   requestId: string;
@@ -48,6 +60,7 @@ export type TimelineMessage =
       text: string;
       createdAt: string;
       deliveryState: MessageDeliveryState;
+      customerSentiment?: CustomerSentiment;
     }
   | {
       id: string;
@@ -67,6 +80,7 @@ export type TimelineMessage =
       createdAt: string;
       deliveryState: MessageDeliveryState;
       feedbackRequest?: HandoffFeedbackRequest;
+      sessionControl?: SessionControlSignal;
     }
   | {
       id: string;
@@ -79,6 +93,7 @@ export type TimelineMessage =
       representative?: RepresentativeProfile;
       queue?: QueueSnapshot;
       feedbackRequest?: HandoffFeedbackRequest;
+      sessionControl?: SessionControlSignal;
     };
 
 export interface ConversationThread {

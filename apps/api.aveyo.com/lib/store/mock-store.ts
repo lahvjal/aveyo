@@ -4,6 +4,7 @@ import {
   type HandoffRating,
   type QueueSnapshot,
   type RepresentativeProfile,
+  type SessionControlSignal,
   type SystemEvent,
   type TimelineMessage
 } from "@ava/chat-domain";
@@ -13,6 +14,11 @@ import {
   listMySqlProjectCustomers
 } from "@/lib/mysql/customer-projects";
 import { getMySqlCustomerProjectContextSnapshot } from "@/lib/mysql/customer-project-context";
+import {
+  detectCustomerMessageSentimentForIncomingMessage,
+  getCustomerSentimentForMessage,
+  serializeCustomerSentimentPayload
+} from "@/lib/sentiment/customer-sentiment";
 import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 type AppendableMessageInput =
@@ -239,6 +245,9 @@ const SESSION_IDLE_PROMPT_MESSAGE =
   "Are you still there? If I don't hear from you, I'll close this conversation.";
 const SESSION_IDLE_CLOSE_MESSAGE =
   "You didn't respond, so I will be closing this conversation.";
+const SESSION_CLOSED_STATUS_MESSAGE = "Chat ended.";
+const RESOLVED_SESSION_AUTO_CLOSE_AFTER_MS = 30 * 60 * 1000;
+const RESOLVED_SESSION_CLOSE_MESSAGE = "This handoff has been resolved, so I am closing this chat.";
 
 const systemEventValues: SystemEvent[] = [
   "request_sent",
@@ -448,6 +457,25 @@ function parseHandoffFeedbackRequest(value: unknown): HandoffFeedbackRequest | u
   };
 }
 
+function parseSessionControlSignal(value: unknown): SessionControlSignal | undefined {
+  const payload = asRecord(value);
+  if (!payload || payload.kind !== "chat_closed") {
+    return undefined;
+  }
+
+  const reason = asTrimmedString(payload.reason);
+  if (reason === "post_handoff_no_more_help" || reason === "idle_timeout") {
+    return {
+      kind: "chat_closed",
+      reason
+    };
+  }
+
+  return {
+    kind: "chat_closed"
+  };
+}
+
 function parseCustomerRatingPayload(value: unknown): HandoffRating | null {
   const payload = asRecord(value);
   if (!payload) {
@@ -531,6 +559,14 @@ interface IdleAutomationConversationRow extends ConversationRow {
   last_message_at: string | null;
 }
 
+interface ResolvedAutomationConversationRow extends ConversationRow {
+  status: "resolved";
+  handoff_state: "resolved";
+  channel: string | null;
+  updated_at: string;
+  last_message_at: string | null;
+}
+
 function readSessionAutomationKind(message: MessageRow): "idle_prompt" | "idle_close" | null {
   const automationValue = message.payload?.automation;
   if (!automationValue || typeof automationValue !== "object") {
@@ -606,6 +642,62 @@ async function listGlobalIdleAutomationConversationRows(): Promise<IdleAutomatio
   return deduped;
 }
 
+function resolvedSessionAutoCloseCutoffIso(nowMs: number = Date.now()) {
+  return new Date(nowMs - RESOLVED_SESSION_AUTO_CLOSE_AFTER_MS).toISOString();
+}
+
+async function listResolvedAutomationConversationRows(
+  customerAuthUserId: string
+): Promise<ResolvedAutomationConversationRow[]> {
+  const supabase = getSupabaseServiceRoleClient();
+  const cutoffIso = resolvedSessionAutoCloseCutoffIso();
+  const { data, error } = await supabase
+    .schema("ava")
+    .from("conversations")
+    .select(
+      "id, customer_auth_user_id, status, handoff_state, active_support_agent_auth_user_id, channel, project_ref, updated_at, last_message_at"
+    )
+    .eq("customer_auth_user_id", customerAuthUserId)
+    .eq("status", "resolved")
+    .eq("handoff_state", "resolved")
+    .neq("channel", "agent_impersonation")
+    .lt("updated_at", cutoffIso)
+    .order("updated_at", { ascending: true })
+    .limit(100);
+
+  if (error) {
+    throw new StoreError(500, `Unable to load resolved automation conversations: ${error.message}`);
+  }
+
+  return (data ?? []) as ResolvedAutomationConversationRow[];
+}
+
+async function listGlobalResolvedAutomationConversationRows(): Promise<ResolvedAutomationConversationRow[]> {
+  const supabase = getSupabaseServiceRoleClient();
+  const cutoffIso = resolvedSessionAutoCloseCutoffIso();
+  const { data, error } = await supabase
+    .schema("ava")
+    .from("conversations")
+    .select(
+      "id, customer_auth_user_id, status, handoff_state, active_support_agent_auth_user_id, channel, project_ref, updated_at, last_message_at"
+    )
+    .eq("status", "resolved")
+    .eq("handoff_state", "resolved")
+    .neq("channel", "agent_impersonation")
+    .lt("updated_at", cutoffIso)
+    .order("updated_at", { ascending: true })
+    .limit(200);
+
+  if (error) {
+    throw new StoreError(
+      500,
+      `Unable to load global resolved automation conversations: ${error.message}`
+    );
+  }
+
+  return (data ?? []) as ResolvedAutomationConversationRow[];
+}
+
 async function getRecentMessagesForConversation(
   conversationId: string,
   limit: number = 200
@@ -674,10 +766,69 @@ async function appendAvaAutomationMessage(
   return messageRow.id;
 }
 
-async function closeConversationForIdleTimeout(conversationId: string) {
+async function appendSessionClosedStatusMessage(
+  conversationId: string,
+  reason?: SessionControlSignal["reason"]
+): Promise<string> {
   const supabase = getSupabaseServiceRoleClient();
   const now = nowIso();
-  const { error } = await supabase
+  const sessionControl: SessionControlSignal = reason
+    ? {
+        kind: "chat_closed",
+        reason
+      }
+    : {
+        kind: "chat_closed"
+      };
+
+  const { data: messageRow, error: messageError } = await supabase
+    .schema("ava")
+    .from("messages")
+    .insert({
+      conversation_id: conversationId,
+      sender_kind: "system",
+      sender_auth_user_id: null,
+      body: SESSION_CLOSED_STATUS_MESSAGE,
+      payload: {
+        systemEvent: "queue_update",
+        sessionControl
+      }
+    })
+    .select("id")
+    .single();
+
+  if (messageError) {
+    throw new StoreError(500, `Unable to insert conversation closed status message: ${messageError.message}`);
+  }
+
+  const { error: conversationTimestampError } = await supabase
+    .schema("ava")
+    .from("conversations")
+    .update({
+      updated_at: now,
+      last_message_at: now
+    })
+    .eq("id", conversationId);
+
+  if (conversationTimestampError) {
+    throw new StoreError(
+      500,
+      `Unable to update conversation timestamp for closed status message: ${conversationTimestampError.message}`
+    );
+  }
+
+  return messageRow.id;
+}
+
+async function closeConversationForSessionEnd(
+  conversationId: string,
+  options?: { allowResolvedState?: boolean }
+) {
+  const supabase = getSupabaseServiceRoleClient();
+  const now = nowIso();
+  const statusFilter = options?.allowResolvedState ? ["open", "resolved"] : ["open"];
+  const handoffStateFilter = options?.allowResolvedState ? ["none", "resolved"] : ["none"];
+  const { data, error } = await supabase
     .schema("ava")
     .from("conversations")
     .update({
@@ -688,16 +839,39 @@ async function closeConversationForIdleTimeout(conversationId: string) {
       last_message_at: now
     })
     .eq("id", conversationId)
-    .eq("status", "open")
-    .eq("handoff_state", "none");
+    .in("status", statusFilter)
+    .in("handoff_state", handoffStateFilter)
+    .select("id")
+    .maybeSingle();
 
-  if (error) {
-    throw new StoreError(500, `Unable to close idle conversation: ${error.message}`);
+  if (error && !isNoRowsError(error)) {
+    throw new StoreError(500, `Unable to close conversation session: ${error.message}`);
   }
+
+  return Boolean(data?.id);
 }
 
-export async function closeConversationSession(conversationId: string) {
-  await closeConversationForIdleTimeout(conversationId);
+export async function closeConversationSession(
+  conversationId: string,
+  options?: {
+    reason?: SessionControlSignal["reason"];
+    allowResolvedState?: boolean;
+    closingNoticeText?: string;
+  }
+) {
+  const didClose = await closeConversationForSessionEnd(conversationId, {
+    allowResolvedState: options?.allowResolvedState
+  });
+  if (!didClose) {
+    return false;
+  }
+
+  const closingNoticeText = options?.closingNoticeText?.trim();
+  if (closingNoticeText) {
+    await appendAvaMessage(conversationId, closingNoticeText);
+  }
+  await appendSessionClosedStatusMessage(conversationId, options?.reason);
+  return true;
 }
 
 async function runIdleAutomationForConversation(conversation: IdleAutomationConversationRow) {
@@ -767,7 +941,43 @@ async function runIdleAutomationForConversation(conversation: IdleAutomationConv
   }
 
   await appendAvaAutomationMessage(conversation.id, SESSION_IDLE_CLOSE_MESSAGE, "idle_close");
-  await closeConversationForIdleTimeout(conversation.id);
+  await closeConversationSession(conversation.id, {
+    reason: "idle_timeout"
+  });
+}
+
+async function runResolvedAutomationForConversation(conversation: ResolvedAutomationConversationRow) {
+  const lastActivityMs = parseIsoToMs(conversation.last_message_at ?? conversation.updated_at);
+  if (lastActivityMs === null) {
+    return;
+  }
+  if (Date.now() - lastActivityMs < RESOLVED_SESSION_AUTO_CLOSE_AFTER_MS) {
+    return;
+  }
+
+  await closeConversationSession(conversation.id, {
+    allowResolvedState: true,
+    closingNoticeText: RESOLVED_SESSION_CLOSE_MESSAGE
+  });
+}
+
+export async function runGlobalResolvedSessionAutoCloseAutomation() {
+  const conversations = await listGlobalResolvedAutomationConversationRows();
+  for (const conversation of conversations) {
+    await runResolvedAutomationForConversation(conversation);
+  }
+}
+
+async function runResolvedSessionAutoCloseAutomation(actorUserId: string, isSupportAgent: boolean) {
+  if (isSupportAgent) {
+    await runGlobalResolvedSessionAutoCloseAutomation();
+    return;
+  }
+
+  const conversations = await listResolvedAutomationConversationRows(actorUserId);
+  for (const conversation of conversations) {
+    await runResolvedAutomationForConversation(conversation);
+  }
 }
 
 async function getSupportAgentMap(ids: string[]) {
@@ -1264,6 +1474,7 @@ function rowToTimelineMessage(
     const queue = payload.queue;
     const payloadRecord = asRecord(payload);
     const feedbackRequest = parseHandoffFeedbackRequest(payloadRecord?.feedbackRequest);
+    const sessionControl = parseSessionControlSignal(payloadRecord?.sessionControl);
     const representative = row.sender_auth_user_id
       ? supportAgentMap.get(row.sender_auth_user_id)
       : undefined;
@@ -1278,7 +1489,8 @@ function rowToTimelineMessage(
       systemEvent: toSystemEvent(payload.systemEvent),
       representative,
       queue: (typeof queue === "object" && queue ? (queue as QueueSnapshot) : undefined) ?? undefined,
-      feedbackRequest
+      feedbackRequest,
+      sessionControl
     };
   }
 
@@ -1286,6 +1498,7 @@ function rowToTimelineMessage(
     const payload = row.payload ?? {};
     const payloadRecord = asRecord(payload);
     const feedbackRequest = parseHandoffFeedbackRequest(payloadRecord?.feedbackRequest);
+    const sessionControl = parseSessionControlSignal(payloadRecord?.sessionControl);
     return {
       id: row.id,
       conversationId: row.conversation_id,
@@ -1293,7 +1506,23 @@ function rowToTimelineMessage(
       deliveryState: "sent",
       kind: "ava",
       text: row.body,
-      feedbackRequest
+      feedbackRequest,
+      sessionControl
+    };
+  }
+
+  if (row.sender_kind === "customer") {
+    return {
+      id: row.id,
+      conversationId: row.conversation_id,
+      createdAt: row.created_at,
+      deliveryState: "sent",
+      kind: "customer",
+      text: row.body,
+      customerSentiment: getCustomerSentimentForMessage({
+        body: row.body,
+        payload: row.payload
+      })
     };
   }
 
@@ -1675,6 +1904,12 @@ export async function listQueue(
     throw new StoreError(403, "Support-agent role required.");
   }
 
+  try {
+    await runResolvedSessionAutoCloseAutomation(actorUserId, true);
+  } catch (automationError) {
+    console.error("Resolved session auto-close check failed", automationError);
+  }
+
   const supabase = getSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .schema("ava")
@@ -1845,6 +2080,7 @@ export async function runCustomerSessionIdleAutomation(actorUserId: string) {
   for (const conversation of conversations) {
     await runIdleAutomationForConversation(conversation);
   }
+  await runResolvedSessionAutoCloseAutomation(actorUserId, supportAgent);
 }
 
 export async function listRealtimeEvents(
@@ -2029,7 +2265,7 @@ export async function appendMessage(
     throw new StoreError(400, "clientMessageId must be 128 characters or fewer.");
   }
 
-  const payload =
+  const payload: Record<string, unknown> =
     message.kind === "representative"
       ? { representativeId: message.representativeId }
       : {};
@@ -2041,6 +2277,32 @@ export async function appendMessage(
     "id, conversation_id, sender_kind, sender_auth_user_id, body, payload, created_at" as const;
 
   const supabase = getSupabaseServiceRoleClient();
+  const listRecentCustomerMessages = async () => {
+    if (message.kind !== "customer") {
+      return [] as string[];
+    }
+
+    const { data, error } = await supabase
+      .schema("ava")
+      .from("messages")
+      .select("body, created_at")
+      .eq("conversation_id", conversationId)
+      .eq("sender_kind", "customer")
+      .order("created_at", { ascending: false })
+      .limit(4);
+
+    if (error) {
+      console.error("Unable to load recent customer messages for sentiment context", {
+        conversationId,
+        error: error.message
+      });
+      return [] as string[];
+    }
+
+    return ((data ?? []) as Array<{ body: string; created_at: string }>)
+      .sort((left, right) => left.created_at.localeCompare(right.created_at))
+      .map((row) => row.body);
+  };
   const fetchExistingIdempotentMessage = async () => {
     if (!clientMessageIdSupported || !normalizedClientMessageId || !senderAuthUserId) {
       return undefined;
@@ -2072,6 +2334,18 @@ export async function appendMessage(
       existingIdempotentMessage.sender_auth_user_id ? [existingIdempotentMessage.sender_auth_user_id] : []
     );
     return rowToTimelineMessage(existingIdempotentMessage, supportAgentMap);
+  }
+
+  if (message.kind === "customer") {
+    const recentCustomerMessages = await listRecentCustomerMessages();
+    const sentimentResult = await detectCustomerMessageSentimentForIncomingMessage(message.text, {
+      timeoutMs: 2200,
+      recentCustomerMessages
+    });
+    payload.customerSentiment = serializeCustomerSentimentPayload(
+      sentimentResult.sentiment,
+      sentimentResult.source
+    );
   }
 
   const insertMessage = async (): Promise<{
@@ -2198,7 +2472,8 @@ export async function appendMessage(
 
 export async function appendAvaMessage(
   conversationId: string,
-  text: string
+  text: string,
+  payload?: Record<string, unknown>
 ): Promise<TimelineMessage> {
   const conversation = await getConversationRow(conversationId);
   if (!conversation) {
@@ -2219,7 +2494,7 @@ export async function appendAvaMessage(
       sender_kind: "ava",
       sender_auth_user_id: null,
       body: messageText,
-      payload: {}
+      payload: payload ?? {}
     })
     .select("id, conversation_id, sender_kind, sender_auth_user_id, body, payload, created_at")
     .single();

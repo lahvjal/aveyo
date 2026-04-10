@@ -3,6 +3,7 @@ interface WidgetComposerProps {
   disabled?: boolean;
   actionDisabled?: boolean;
   sending?: boolean;
+  requestPending?: boolean;
   showTalkToRep?: boolean;
   showTestModeToggle?: boolean;
   testModeEnabled?: boolean;
@@ -18,6 +19,7 @@ export function WidgetComposer({
   disabled = false,
   actionDisabled = false,
   sending = false,
+  requestPending = false,
   showTalkToRep = false,
   showTestModeToggle = false,
   testModeEnabled = false,
@@ -30,6 +32,7 @@ export function WidgetComposer({
   const showTopRow = showTalkToRep || showTestModeToggle;
   const hasDraft = draft.trim().length > 0;
   const sendDisabled = disabled || actionDisabled || sending || !hasDraft;
+  const repActionDisabled = actionDisabled || requestPending;
   const sendButtonClassName = `composer-send-button${
     hasDraft && !disabled && !actionDisabled && !sending ? " is-active" : ""
   }${sending ? " is-loading" : ""}`;
@@ -43,7 +46,8 @@ export function WidgetComposer({
               type="button"
               className="rep-trigger-pill"
               onClick={onOpenRequestModal}
-              disabled={actionDisabled}
+              disabled={repActionDisabled}
+              aria-label={requestPending ? "Requesting representative support" : "Talk to a representative"}
             >
               <span className="rep-trigger-icon" aria-hidden>
                 <svg width="25" height="25" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -63,7 +67,16 @@ export function WidgetComposer({
                   />
                 </svg>
               </span>
-              <span>Talk to a rep</span>
+              <span className="rep-trigger-label">
+                {requestPending ? (
+                  <>
+                    <span className="request-action-spinner" aria-hidden="true" />
+                    Requesting...
+                  </>
+                ) : (
+                  "Talk to a rep"
+                )}
+              </span>
             </button>
           ) : (
             <div className="widget-bottom-spacer" />

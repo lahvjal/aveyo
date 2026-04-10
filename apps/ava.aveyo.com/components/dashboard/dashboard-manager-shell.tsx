@@ -18,6 +18,10 @@ import {
   type ManagerOverviewResult
 } from "@/lib/dashboard-api";
 import {
+  getCustomerMessageSentimentLabel,
+  getCustomerMessageSentimentLevel
+} from "@/lib/customer-sentiment-ui";
+import {
   buildManagerDateRangeSearchParams,
   fromDateTimeLocalValue,
   getDefaultManagerTimeZone,
@@ -28,6 +32,50 @@ import {
 import { AppSideRail } from "@/components/app-side-rail";
 import { AvaSecondaryNav } from "@/components/ava-secondary-nav";
 import { InitialChip } from "@/components/dashboard/initial-chip";
+
+const PREVIEW_REFRESH_MIN_INTERVAL_MS = 1500;
+
+function formatRelativeAgo(iso: string | null, nowMs: number = Date.now()) {
+  if (!iso) {
+    return "—";
+  }
+  const timeMs = new Date(iso).getTime();
+  if (Number.isNaN(timeMs)) {
+    return "—";
+  }
+  const deltaSeconds = Math.max(0, Math.floor((nowMs - timeMs) / 1000));
+  if (deltaSeconds < 60) {
+    return `${deltaSeconds}s ago`;
+  }
+  const deltaMinutes = Math.floor(deltaSeconds / 60);
+  if (deltaMinutes < 60) {
+    return `${deltaMinutes}m ago`;
+  }
+  const deltaHours = Math.floor(deltaMinutes / 60);
+  if (deltaHours < 24) {
+    return `${deltaHours}h ago`;
+  }
+  return `${Math.floor(deltaHours / 24)}d ago`;
+}
+
+function RelativeAgoLabel({ iso, live }: { iso: string | null; live: boolean }) {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    setNowMs(Date.now());
+    if (!live) {
+      return;
+    }
+    const intervalId = window.setInterval(() => {
+      setNowMs(Date.now());
+    }, 1000);
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [live, iso]);
+
+  return <>{formatRelativeAgo(iso, nowMs)}</>;
+}
 
 function toRoleLabel(role: string | null | undefined) {
   if (role === "super_admin") {
@@ -176,6 +224,12 @@ export function DashboardManagerShell() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const previewTimelineRef = useRef<HTMLDivElement | null>(null);
+  const previewRequestSerialRef = useRef(0);
+  const previewInFlightConversationIdRef = useRef<string | null>(null);
+  const previewLastLoadedRef = useRef<{ conversationId: string | null; atMs: number }>({
+    conversationId: null,
+    atMs: 0
+  });
   const realtimeCursorRef = useRef<string | undefined>(undefined);
   const realtimeBusyRef = useRef(false);
 
@@ -255,8 +309,7 @@ export function DashboardManagerShell() {
     const counts = {
       aiHandling: 0,
       pending: 0,
-      withAgent: 0,
-      agentResolved: 0
+      withAgent: 0
     };
     for (const handoff of handoffs) {
       const lane = getPipelineLaneForHandoff(handoff);
@@ -272,9 +325,6 @@ export function DashboardManagerShell() {
         counts.withAgent += 1;
         continue;
       }
-      if (lane === "resolved") {
-        counts.agentResolved += 1;
-      }
     }
     return counts;
   }, [handoffs]);
@@ -282,10 +332,6 @@ export function DashboardManagerShell() {
   const totalAgentsCount = agents.length;
   const totalChatsCount =
     (overview?.metrics.customerChatsWithAva ?? 0) + (overview?.metrics.employeeChatsWithAva ?? 0);
-  const aiResolvedCount = Math.max(
-    0,
-    Math.round((overview?.metrics.containmentRate ?? 0) * totalChatsCount)
-  );
   const aiHandlingCount = handoffStatusCounts.aiHandling;
   const moodCounts = useMemo(() => {
     const counts = {
@@ -340,29 +386,118 @@ export function DashboardManagerShell() {
       { id: "resolved" as const, label: "Resolved", count: byLane.resolved.length, items: byLane.resolved }
     ];
   }, [moodFilteredHandoffs]);
+  const resolvedLaneItems = useMemo(
+    () => pipelineLanes.find((lane) => lane.id === "resolved")?.items ?? [],
+    [pipelineLanes]
+  );
+  const totalEndedOrResolvedChatsCount = resolvedLaneItems.length;
+  const aiEndedOrResolvedWithoutHandoffCount = resolvedLaneItems.filter((handoff) =>
+    handoff.requestId.startsWith("conversation-")
+  ).length;
+  const endedOrResolvedWithHandoffCount = Math.max(
+    0,
+    totalEndedOrResolvedChatsCount - aiEndedOrResolvedWithoutHandoffCount
+  );
   const selectedHandoff = useMemo(
     () => handoffs.find((handoff) => handoff.requestId === selectedRequestId) ?? null,
     [handoffs, selectedRequestId]
   );
   const selectedConversationId = selectedHandoff?.conversationId ?? null;
+  const selectedConversationIsLive = Boolean(
+    selectedHandoff &&
+      !selectedHandoff.isEnded &&
+      getPipelineLaneForHandoff(selectedHandoff) !== "resolved"
+  );
   const selectedCustomerInitials = useMemo(
     () => getNameInitials(selectedHandoff?.customerName, "CU"),
     [selectedHandoff]
   );
-  const previewMessages = useMemo(() => previewConversation?.messages.slice(-50) ?? [], [previewConversation]);
-  const loadConversationPreview = useCallback(async (conversationId: string) => {
+  const selectedConversationPreview = useMemo(() => {
+    if (!selectedConversationId) {
+      return null;
+    }
+    if (!previewConversation || previewConversation.id !== selectedConversationId) {
+      return null;
+    }
+    return previewConversation;
+  }, [previewConversation, selectedConversationId]);
+  const previewMessages = useMemo(
+    () => selectedConversationPreview?.messages.slice(-50) ?? [],
+    [selectedConversationPreview]
+  );
+  const selectedConversationLastMessageAt =
+    previewMessages.length > 0
+      ? previewMessages[previewMessages.length - 1]?.createdAt ?? null
+      : selectedHandoff?.lastMessageAt ?? null;
+  const previewNeedsHydration = Boolean(selectedConversationId && !selectedConversationPreview);
+  const showPreviewRefreshIndicator = previewLoading && Boolean(selectedConversationPreview);
+  const openTranscriptPreview = useCallback(
+    (requestId: string) => {
+      if (selectedRequestId === requestId) {
+        return;
+      }
+      setPreviewError(null);
+      setPreviewLoading(true);
+      setSelectedRequestId(requestId);
+    },
+    [selectedRequestId]
+  );
+  const loadConversationPreview = useCallback(async (
+    conversationId: string,
+    options?: {
+      keepVisibleConversation?: boolean;
+      force?: boolean;
+      minIntervalMs?: number;
+    }
+  ) => {
+    const minIntervalMs = options?.minIntervalMs ?? 0;
+    const nowMs = Date.now();
+    if (!options?.force) {
+      if (previewInFlightConversationIdRef.current === conversationId) {
+        return;
+      }
+      if (
+        previewLastLoadedRef.current.conversationId === conversationId &&
+        nowMs - previewLastLoadedRef.current.atMs < minIntervalMs
+      ) {
+        return;
+      }
+    }
+
+    const requestSerial = previewRequestSerialRef.current + 1;
+    previewRequestSerialRef.current = requestSerial;
+    previewInFlightConversationIdRef.current = conversationId;
     setPreviewLoading(true);
     setPreviewError(null);
+    if (!options?.keepVisibleConversation) {
+      setPreviewConversation(null);
+    }
     try {
       const result = await getConversationApi(conversationId);
+      if (previewRequestSerialRef.current !== requestSerial) {
+        return;
+      }
+      previewLastLoadedRef.current = {
+        conversationId,
+        atMs: Date.now()
+      };
       setPreviewConversation(result.conversation);
     } catch (fetchError) {
+      if (previewRequestSerialRef.current !== requestSerial) {
+        return;
+      }
       setPreviewError(
         fetchError instanceof Error && fetchError.message
           ? fetchError.message
           : "Unable to load conversation preview."
       );
     } finally {
+      if (previewRequestSerialRef.current !== requestSerial) {
+        return;
+      }
+      if (previewInFlightConversationIdRef.current === conversationId) {
+        previewInFlightConversationIdRef.current = null;
+      }
       setPreviewLoading(false);
     }
   }, []);
@@ -412,15 +547,19 @@ export function DashboardManagerShell() {
           await refreshManagerData({ silent: true });
         }
 
-        if (selectedConversationId) {
+        if (selectedConversationId && selectedConversationIsLive) {
           const selectedConversationChanged =
             result.cursorStale ||
             result.events.some(
               (event) =>
-                event.conversationId === selectedConversationId && event.type !== "typing"
+                event.conversationId === selectedConversationId &&
+                event.type === "message_created"
             );
           if (selectedConversationChanged) {
-            await loadConversationPreview(selectedConversationId);
+            await loadConversationPreview(selectedConversationId, {
+              keepVisibleConversation: true,
+              minIntervalMs: PREVIEW_REFRESH_MIN_INTERVAL_MS
+            });
           }
         }
       } catch (pollError) {
@@ -450,29 +589,27 @@ export function DashboardManagerShell() {
     loadConversationPreview,
     rangeQuery,
     refreshManagerData,
-    selectedConversationId
+    selectedConversationId,
+    selectedConversationIsLive
   ]);
 
   useEffect(() => {
-    if (!selectedHandoff) {
+    if (!selectedConversationId) {
+      previewRequestSerialRef.current += 1;
+      previewInFlightConversationIdRef.current = null;
+      previewLastLoadedRef.current = {
+        conversationId: null,
+        atMs: 0
+      };
       setPreviewConversation(null);
       setPreviewError(null);
+      setPreviewLoading(false);
       return;
     }
-    void loadConversationPreview(selectedHandoff.conversationId);
-  }, [loadConversationPreview, selectedHandoff]);
-
-  useEffect(() => {
-    if (!selectedHandoff || getPipelineLaneForHandoff(selectedHandoff) === "resolved") {
-      return;
-    }
-    const intervalId = window.setInterval(() => {
-      void loadConversationPreview(selectedHandoff.conversationId);
-    }, 12000);
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [loadConversationPreview, selectedHandoff]);
+    void loadConversationPreview(selectedConversationId, {
+      force: true
+    });
+  }, [loadConversationPreview, selectedConversationId]);
 
   useEffect(() => {
     if (selectedRequestId && !selectedHandoff) {
@@ -504,7 +641,10 @@ export function DashboardManagerShell() {
     frustrated: totalMoodCount > 0 ? Math.round((moodCounts.frustrated / totalMoodCount) * 100) : 0,
     escalated: totalMoodCount > 0 ? Math.round((moodCounts.escalated / totalMoodCount) * 100) : 0
   };
-  const containmentPercent = Math.round((overview?.metrics.containmentRate ?? 0) * 100);
+  const containmentPercent =
+    totalEndedOrResolvedChatsCount > 0
+      ? Math.round((aiEndedOrResolvedWithoutHandoffCount / totalEndedOrResolvedChatsCount) * 100)
+      : 0;
   const containmentTone =
     containmentPercent >= 60 ? "#16a34a" : containmentPercent >= 40 ? "#d17a00" : "#e5484d";
   const containmentStateLabel =
@@ -552,28 +692,6 @@ export function DashboardManagerShell() {
   };
 
   const formatPercent = (value: number) => `${Math.round(value * 100)}%`;
-  const formatAgo = (iso: string | null) => {
-    if (!iso) {
-      return "—";
-    }
-    const timeMs = new Date(iso).getTime();
-    if (Number.isNaN(timeMs)) {
-      return "—";
-    }
-    const deltaSeconds = Math.max(0, Math.floor((Date.now() - timeMs) / 1000));
-    if (deltaSeconds < 60) {
-      return `${deltaSeconds}s ago`;
-    }
-    const deltaMinutes = Math.floor(deltaSeconds / 60);
-    if (deltaMinutes < 60) {
-      return `${deltaMinutes}m ago`;
-    }
-    const deltaHours = Math.floor(deltaMinutes / 60);
-    if (deltaHours < 24) {
-      return `${deltaHours}h ago`;
-    }
-    return `${Math.floor(deltaHours / 24)}d ago`;
-  };
 
   return (
     <div className={`rep-shell${isNavCollapsed ? " primary-collapsed" : ""}`}>
@@ -713,12 +831,12 @@ export function DashboardManagerShell() {
             </div>
             <div className="manager-command-copy">
               <h3>AI Containment Rate</h3>
-              <p>Chats fully resolved by AI without agent handoff.</p>
+              <p>Chats ended or resolved without handoff divided by total chats ended or resolved.</p>
               <small>
                 {isInitialLoading ? (
                   <span className="manager-skeleton-line hint" />
                 ) : (
-                  `${aiResolvedCount} AI resolved / ${handoffStatusCounts.agentResolved} Agent resolved`
+                  `${aiEndedOrResolvedWithoutHandoffCount} ended/resolved without handoff / ${totalEndedOrResolvedChatsCount} total ended/resolved`
                 )}
               </small>
               {!isInitialLoading ? (
@@ -746,7 +864,11 @@ export function DashboardManagerShell() {
           <article className="manager-command-card">
             <p className="manager-command-label">AI Resolved</p>
             <strong>
-              {isInitialLoading ? <span className="manager-skeleton-line value" /> : aiResolvedCount}
+              {isInitialLoading ? (
+                <span className="manager-skeleton-line value" />
+              ) : (
+                aiEndedOrResolvedWithoutHandoffCount
+              )}
             </strong>
             <small>{isInitialLoading ? <span className="manager-skeleton-line hint" /> : "No agent needed"}</small>
           </article>
@@ -777,7 +899,11 @@ export function DashboardManagerShell() {
           <article className="manager-command-card">
             <p className="manager-command-label">Agent Resolved</p>
             <strong>
-              {isInitialLoading ? <span className="manager-skeleton-line value" /> : handoffStatusCounts.agentResolved}
+              {isInitialLoading ? (
+                <span className="manager-skeleton-line value" />
+              ) : (
+                endedOrResolvedWithHandoffCount
+              )}
             </strong>
             <small>
               {isInitialLoading ? (
@@ -919,11 +1045,11 @@ export function DashboardManagerShell() {
                               }`}
                               role="button"
                               tabIndex={0}
-                              onClick={() => setSelectedRequestId(handoff.requestId)}
+                              onClick={() => openTranscriptPreview(handoff.requestId)}
                               onKeyDown={(event) => {
                                 if (event.key === "Enter" || event.key === " ") {
                                   event.preventDefault();
-                                  setSelectedRequestId(handoff.requestId);
+                                  openTranscriptPreview(handoff.requestId);
                                 }
                               }}
                             >
@@ -959,7 +1085,7 @@ export function DashboardManagerShell() {
                                   )}
                                   <span>{agentLabel}</span>
                                 </span>
-                                <span>{formatAgo(handoff.lastMessageAt)}</span>
+                                <span>{formatRelativeAgo(handoff.lastMessageAt)}</span>
                               </div>
 
                               <div className="manager-chat-meta">
@@ -1004,13 +1130,32 @@ export function DashboardManagerShell() {
 
                 <div className="manager-preview-meta">
                   <span>{selectedHandoff.conversationId}</span>
-                  <span>{formatAgo(selectedHandoff.lastMessageAt)}</span>
+                  <span>
+                    {showPreviewRefreshIndicator ? (
+                      <span className="manager-preview-refreshing" role="status" aria-live="polite">
+                        <span className="inline-button-spinner" aria-hidden="true" /> Refreshing...
+                      </span>
+                    ) : (
+                      <RelativeAgoLabel
+                        iso={selectedConversationLastMessageAt}
+                        live={selectedConversationIsLive}
+                      />
+                    )}
+                  </span>
                 </div>
 
-                {previewLoading && !previewConversation ? (
-                  <p className="manager-preview-state">Loading conversation...</p>
-                ) : previewError ? (
+                {previewError && !selectedConversationPreview ? (
                   <p className="manager-preview-error">{previewError}</p>
+                ) : previewNeedsHydration ? (
+                  <div className="manager-preview-loading" role="status" aria-live="polite">
+                    <p className="manager-preview-state loading">
+                      <span className="inline-button-spinner" aria-hidden="true" />
+                      Loading transcript...
+                    </p>
+                    <article className="manager-chat-card skeleton" />
+                    <article className="manager-chat-card skeleton" />
+                    <article className="manager-chat-card skeleton" />
+                  </div>
                 ) : previewMessages.length === 0 ? (
                   <p className="manager-preview-state">No messages available yet.</p>
                 ) : (
@@ -1040,6 +1185,7 @@ export function DashboardManagerShell() {
                       }
 
                       const isCustomer = message.kind === "customer";
+                      const customerSentimentLevel = getCustomerMessageSentimentLevel(message);
                       return (
                         <div className="timeline-row left" key={message.id}>
                           {isCustomer ? (
@@ -1048,6 +1194,13 @@ export function DashboardManagerShell() {
                             <AvaOrb size={25} />
                           )}
                           <p className={`msg-bubble ${isCustomer ? "customer" : "ava"}`}>{message.text}</p>
+                          {isCustomer && customerSentimentLevel ? (
+                            <span
+                              className={`customer-sentiment-dot ${customerSentimentLevel}`}
+                              title={getCustomerMessageSentimentLabel(customerSentimentLevel)}
+                              aria-label={getCustomerMessageSentimentLabel(customerSentimentLevel)}
+                            />
+                          ) : null}
                         </div>
                       );
                     })}

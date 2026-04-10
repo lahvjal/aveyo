@@ -13,6 +13,7 @@ interface DetailColumnProps {
   historyNotes: HistoryNote[];
   notesDisabled?: boolean;
   notesDisabledReason?: string;
+  savePending?: boolean;
   onSidebarNoteChange: (value: string) => void;
   onAddSidebarNote: () => void;
 }
@@ -25,11 +26,13 @@ export function DetailColumn({
   historyNotes,
   notesDisabled = false,
   notesDisabledReason,
+  savePending = false,
   onSidebarNoteChange,
   onAddSidebarNote
 }: DetailColumnProps) {
   const hasSelectedConversation = Boolean(activeTicket);
   const noteDisabled = !hasSelectedConversation || notesDisabled;
+  const saveDisabled = noteDisabled || savePending || sidebarNote.trim().length === 0;
   const fieldValue = (value: string | null | undefined) =>
     customerDetailsLoading ? "Loading..." : value || "N/A";
 
@@ -99,10 +102,11 @@ export function DetailColumn({
           <button
             type="button"
             onClick={onAddSidebarNote}
-            aria-label="Save side note"
-            disabled={noteDisabled || sidebarNote.trim().length === 0}
+            className={savePending ? "is-loading" : ""}
+            aria-label={savePending ? "Saving side note" : "Save side note"}
+            disabled={saveDisabled}
           >
-            ↑
+            {savePending ? <span className="inline-button-spinner" aria-hidden="true" /> : "↑"}
           </button>
         </div>
       </div>

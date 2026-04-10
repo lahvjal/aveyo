@@ -13,6 +13,7 @@ interface WidgetTimelineProps {
   showAvaTyping?: boolean;
   showRepresentativeTyping?: boolean;
   showRequestModal: boolean;
+  requestSubmissionPending?: boolean;
   requestReason: string;
   ratingSubmissionRequestId?: string | null;
   onRequestReasonChange: (value: string) => void;
@@ -143,6 +144,7 @@ export function WidgetTimeline({
   showAvaTyping = false,
   showRepresentativeTyping = false,
   showRequestModal,
+  requestSubmissionPending = false,
   requestReason,
   ratingSubmissionRequestId,
   onRequestReasonChange,
@@ -244,6 +246,11 @@ export function WidgetTimeline({
                       />
                     </button>
                   </div>
+                  {ratingPending ? (
+                    <p className="handoff-rating-pending" role="status" aria-live="polite">
+                      <span className="request-action-spinner" aria-hidden="true" /> Submitting rating...
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -338,6 +345,7 @@ export function WidgetTimeline({
       {showRequestModal ? (
         <HandoffRequestModal
           requestReason={requestReason}
+          submitting={requestSubmissionPending}
           onRequestReasonChange={onRequestReasonChange}
           onCancel={onCancelRequest}
           onSubmit={onSubmitRequest}

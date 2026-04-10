@@ -387,6 +387,17 @@ body {
   cursor: default;
 }
 
+.widget-route-root .handoff-rating-pending {
+  margin: 6px 0 0;
+  color: #384152;
+  font-size: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
 .widget-route-root .request-modal-card {
   background: #e6e6e6;
   border-radius: 20px;
@@ -438,6 +449,38 @@ body {
   height: 40px;
   font-size: 14px;
   cursor: pointer;
+}
+
+.widget-route-root .request-action:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.widget-route-root .request-action-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.widget-route-root .request-action-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: widget-send-button-spin 700ms linear infinite;
+}
+
+.widget-route-root .request-modal-status {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #384152;
+  font-size: 12px;
+  font-weight: 600;
 }
 
 .widget-route-root .request-action.cancel {
@@ -609,6 +652,17 @@ body {
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
+}
+
+.widget-route-root .rep-trigger-pill:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.widget-route-root .rep-trigger-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .widget-route-root .rep-trigger-icon {

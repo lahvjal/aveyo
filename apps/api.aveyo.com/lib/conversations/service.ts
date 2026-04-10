@@ -86,6 +86,26 @@ function isHumanAgentRequest(text: string) {
     return false;
   }
 
+  const shortEscalationTokens = new Set([
+    "human",
+    "agent",
+    "rep",
+    "representative",
+    "person",
+    "real person",
+    "customer care",
+    "support agent"
+  ]);
+  if (shortEscalationTokens.has(normalized)) {
+    return true;
+  }
+  if (/^(human|agent|rep|representative)(\s+\1){1,3}$/.test(normalized)) {
+    return true;
+  }
+  if (/^(human|agent|rep|representative|person|customer care|support agent)\s+(please|now)$/.test(normalized)) {
+    return true;
+  }
+
   const directPhrases = [
     "talk to a person",
     "talk to a human",
@@ -352,11 +372,10 @@ async function tryGenerateAvaReply(params: {
     isNoMoreHelpResponse(latestMessage.text)
   ) {
     try {
-      await appendAvaMessage(
-        params.conversationId,
-        "If there's nothing else, I will close this chat. Thanks."
-      );
-      await closeConversationSession(params.conversationId);
+      await appendAvaMessage(params.conversationId, "Thanks for confirming. I am closing this chat now.");
+      await closeConversationSession(params.conversationId, {
+        reason: "post_handoff_no_more_help"
+      });
     } finally {
       await publishAvaTyping(false);
     }

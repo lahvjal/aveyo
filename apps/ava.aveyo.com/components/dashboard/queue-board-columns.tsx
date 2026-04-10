@@ -5,6 +5,7 @@ interface QueueBoardColumnsProps {
   pendingQueue: Ticket[];
   activeQueue: Ticket[];
   selectedActiveTicketId: string | null;
+  claimPendingTicketId?: string | null;
   onClaimChat: (ticketId: string) => void;
   onSelectActiveChat: (ticketId: string) => void;
   onSplitChat: (ticketId: string) => void;
@@ -14,14 +15,24 @@ function QueueLaneCard(props: {
   ticket: Ticket;
   lane: "pending" | "active";
   isSelected?: boolean;
+  claimPendingTicketId?: string | null;
   onClaimChat: (ticketId: string) => void;
   onSelectActiveChat: (ticketId: string) => void;
   onSplitChat: (ticketId: string) => void;
 }) {
-  const { ticket, lane, isSelected = false, onClaimChat, onSelectActiveChat, onSplitChat } = props;
+  const {
+    ticket,
+    lane,
+    isSelected = false,
+    claimPendingTicketId = null,
+    onClaimChat,
+    onSelectActiveChat,
+    onSplitChat
+  } = props;
   const secondaryLine =
     ticket.email.trim() && ticket.email.trim() !== ticket.fullName.trim() ? ticket.email : null;
   const interactiveCard = lane === "active";
+  const claimPending = lane === "pending" && claimPendingTicketId === ticket.id;
 
   const selectCard = () => {
     if (!interactiveCard) {
@@ -62,10 +73,18 @@ function QueueLaneCard(props: {
       {lane === "pending" ? (
         <button
           type="button"
-          className="board-queue-action claim"
+          className={`board-queue-action claim${claimPending ? " is-loading" : ""}`}
           onClick={() => onClaimChat(ticket.id)}
+          disabled={claimPending}
         >
-          Claim Chat
+          {claimPending ? (
+            <>
+              <span className="inline-button-spinner" aria-hidden="true" />
+              Claiming...
+            </>
+          ) : (
+            "Claim Chat"
+          )}
         </button>
       ) : (
         <button
@@ -90,6 +109,7 @@ function QueueLane(props: {
   emptyCopy: string;
   tickets: Ticket[];
   selectedActiveTicketId: string | null;
+  claimPendingTicketId?: string | null;
   onClaimChat: (ticketId: string) => void;
   onSelectActiveChat: (ticketId: string) => void;
   onSplitChat: (ticketId: string) => void;
@@ -101,6 +121,7 @@ function QueueLane(props: {
     emptyCopy,
     tickets,
     selectedActiveTicketId,
+    claimPendingTicketId,
     onClaimChat,
     onSelectActiveChat,
     onSplitChat
@@ -121,6 +142,7 @@ function QueueLane(props: {
               ticket={ticket}
               lane={lane}
               isSelected={lane === "active" && selectedActiveTicketId === ticket.id}
+              claimPendingTicketId={claimPendingTicketId}
               onClaimChat={onClaimChat}
               onSelectActiveChat={onSelectActiveChat}
               onSplitChat={onSplitChat}
@@ -136,6 +158,7 @@ export function QueueBoardColumns({
   pendingQueue,
   activeQueue,
   selectedActiveTicketId,
+  claimPendingTicketId = null,
   onClaimChat,
   onSelectActiveChat,
   onSplitChat
@@ -149,6 +172,7 @@ export function QueueBoardColumns({
         tickets={pendingQueue}
         emptyCopy="No pending requests."
         selectedActiveTicketId={selectedActiveTicketId}
+        claimPendingTicketId={claimPendingTicketId}
         onClaimChat={onClaimChat}
         onSelectActiveChat={onSelectActiveChat}
         onSplitChat={onSplitChat}
@@ -160,6 +184,7 @@ export function QueueBoardColumns({
         tickets={activeQueue}
         emptyCopy="No active chats."
         selectedActiveTicketId={selectedActiveTicketId}
+        claimPendingTicketId={claimPendingTicketId}
         onClaimChat={onClaimChat}
         onSelectActiveChat={onSelectActiveChat}
         onSplitChat={onSplitChat}
