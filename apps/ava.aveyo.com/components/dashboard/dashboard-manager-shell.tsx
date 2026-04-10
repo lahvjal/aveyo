@@ -330,8 +330,6 @@ export function DashboardManagerShell() {
   }, [handoffs]);
   const onlineAgentsCount = agents.filter((agent) => agent.status === "online").length;
   const totalAgentsCount = agents.length;
-  const totalChatsCount =
-    (overview?.metrics.customerChatsWithAva ?? 0) + (overview?.metrics.employeeChatsWithAva ?? 0);
   const aiHandlingCount = handoffStatusCounts.aiHandling;
   const moodCounts = useMemo(() => {
     const counts = {
@@ -362,6 +360,7 @@ export function DashboardManagerShell() {
       (handoff) => getMoodFromSensitivityBand(handoff.customerSensitivityBand) === moodFilter
     );
   }, [handoffs, moodFilter]);
+  const totalChatsCount = moodFilteredHandoffs.length;
   const pipelineLanes = useMemo(() => {
     const byLane: Record<PipelineLaneId, ManagerHandoffRecord[]> = {
       ai_handling: [],
