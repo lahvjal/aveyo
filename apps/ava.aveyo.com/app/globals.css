@@ -147,6 +147,15 @@ body.ava-embed-mode nextjs-portal {
   grid-template-rows: auto 1fr;
 }
 
+.dashboard-queue-pane.is-offline,
+.dashboard-inline-workspace.is-offline {
+  opacity: 0.55;
+  filter: grayscale(0.85);
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 140ms ease, filter 140ms ease;
+}
+
 .dashboard-inline-columns {
   min-height: 0;
 }

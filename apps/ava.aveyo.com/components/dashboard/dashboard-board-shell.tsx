@@ -14,6 +14,7 @@ import {
 import { buildAuthLoginUrl } from "@/lib/auth/config";
 import { logoutAuthSession } from "@/lib/auth/session";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
+import { useSupportPresence } from "@/lib/use-support-presence";
 import {
   claimHandoffApi,
   createRepresentativeMessageApi,
@@ -95,7 +96,7 @@ export function DashboardBoardShell() {
   const authSession = useAuthSession();
   const seededConversation = useMemo(() => createEmptyConversation(), []);
 
-  const [isOnline, setIsOnline] = useState(true);
+  const { isOnline, syncing: presenceSyncing, toggleOnline } = useSupportPresence(authSession);
   const [queueRecords, setQueueRecords] = useState<QueueRecord[]>([]);
   const [selectedActiveRequestId, setSelectedActiveRequestId] = useState<string | null>(null);
   const [conversation, setConversation] = useState<ConversationThread>(seededConversation);
@@ -259,6 +260,16 @@ export function DashboardBoardShell() {
       setOperationError(error instanceof Error ? error.message : "Unable to refresh queue.");
     }
   }, [refreshQueueData]);
+  const handleToggleOnline = useCallback(async () => {
+    try {
+      await toggleOnline();
+      setOperationError(null);
+    } catch (error) {
+      setOperationError(
+        error instanceof Error ? error.message : "Unable to update online status."
+      );
+    }
+  }, [toggleOnline]);
 
   const refreshSelectedConversation = useCallback(async () => {
     if (!workspaceConversationId) {
@@ -799,15 +810,19 @@ export function DashboardBoardShell() {
           <button
             type="button"
             className={`offline-toggle ${isOnline ? "online" : "offline"}`}
-            onClick={() => setIsOnline((state) => !state)}
+            onClick={() => {
+              void handleToggleOnline();
+            }}
             aria-pressed={isOnline}
+            disabled={presenceSyncing}
           >
-            <span aria-hidden>◉</span> {isOnline ? "Go Offline" : "Go Online"}
+            <span aria-hidden>{presenceSyncing ? "..." : "◉"}</span>{" "}
+            {presenceSyncing ? "Updating..." : isOnline ? "Go Offline" : "Go Online"}
           </button>
         </div>
 
         <div className="dashboard-board-layout">
-          <div className="dashboard-queue-pane">
+          <div className={`dashboard-queue-pane${isOnline ? "" : " is-offline"}`}>
             <QueueBoardColumns
               pendingQueue={pendingQueue}
               activeQueue={activeQueue}
@@ -819,7 +834,7 @@ export function DashboardBoardShell() {
             />
           </div>
 
-          <div className="dashboard-inline-workspace">
+          <div className={`dashboard-inline-workspace${isOnline ? "" : " is-offline"}`}>
             <div className="workspace-status-bar">
               <div className="workspace-status-copy">
                 <strong>

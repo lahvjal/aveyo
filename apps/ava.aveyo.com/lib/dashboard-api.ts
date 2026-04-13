@@ -136,6 +136,38 @@ export function getConversationCustomerDetailsApi(conversationId: string) {
   );
 }
 
+export interface SupportPresenceResult {
+  status: "online" | "offline";
+  desiredStatus: "online" | "offline";
+  lastHeartbeatAt: string | null;
+  heartbeatTtlSeconds: number;
+}
+
+function updateSupportPresenceApi(action: "online" | "offline" | "heartbeat") {
+  return apiRequest<SupportPresenceResult>("/api/support/presence", {
+    method: "POST",
+    body: JSON.stringify({ action })
+  });
+}
+
+export function getSupportPresenceApi() {
+  return apiRequest<SupportPresenceResult>("/api/support/presence", {
+    method: "GET"
+  });
+}
+
+export function setSupportPresenceOnlineApi() {
+  return updateSupportPresenceApi("online");
+}
+
+export function setSupportPresenceOfflineApi() {
+  return updateSupportPresenceApi("offline");
+}
+
+export function heartbeatSupportPresenceApi() {
+  return updateSupportPresenceApi("heartbeat");
+}
+
 export type ManagerDateRangePreset = "today" | "7d" | "30d" | "custom";
 
 export interface ManagerDateRangeQuery {

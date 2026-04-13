@@ -1,4 +1,5 @@
 import { type AppRole } from "@/lib/auth/types";
+import { getOnlineSupportAgentIds } from "@/lib/presence/service";
 import { ServiceError } from "@/lib/service-error";
 import { computeOverallCustomerSentiment } from "@/lib/sentiment/customer-sentiment";
 import { runGlobalResolvedSessionAutoCloseAutomation } from "@/lib/store/mock-store";
@@ -214,7 +215,6 @@ interface AgentDirectoryProfileRow {
 }
 
 const MAX_ACTIVITY_ROWS = 200;
-const RECENT_ONLINE_WINDOW_MS = 5 * 60 * 1000;
 
 const DEFAULT_MANAGER_CONFIG: ManagerConfig = {
   timezone: "America/Chicago",
@@ -881,26 +881,6 @@ async function buildManagerAgents(
   ]);
   const { resolvedByRequest, ratingByRequest } = getLatestEventMaps(events);
 
-  const activeAgentIds = new Set<string>(
-    handoffRequests
-      .filter((row) => row.status === "active" || row.status === "claimed")
-      .map((row) => row.claimed_by_auth_user_id)
-      .filter((value): value is string => Boolean(value))
-  );
-
-  const nowMs = Date.now();
-  const recentAgentIds = new Set<string>(
-    rangeMessages
-      .filter((message) => {
-        if (message.sender_kind !== "support_agent" || !message.sender_auth_user_id) {
-          return false;
-        }
-        const createdAtMs = parseIsoToMs(message.created_at);
-        return createdAtMs !== null && nowMs - createdAtMs <= RECENT_ONLINE_WINDOW_MS;
-      })
-      .map((message) => message.sender_auth_user_id as string)
-  );
-
   const historicalAgentIds = new Set<string>(
     handoffRequests
       .map((row) => row.claimed_by_auth_user_id)
@@ -912,6 +892,7 @@ async function buildManagerAgents(
     }
   }
   const allAgentIds = Array.from(new Set([...historicalAgentIds, ...directoryAgentIds]));
+  const onlineAgentIds = await getOnlineSupportAgentIds(allAgentIds);
   const profileById = await fetchProfilesByIds(allAgentIds);
 
   const ratingValuesByAgent = new Map<string, number[]>();
@@ -997,7 +978,7 @@ async function buildManagerAgents(
         agentId,
         name: getProfileDisplayName(profileById.get(agentId)),
         avatarUrl: profileById.get(agentId)?.profile_photo_url?.trim() || null,
-        status: activeAgentIds.has(agentId) || recentAgentIds.has(agentId) ? "online" : "offline",
+        status: onlineAgentIds.has(agentId) ? "online" : "offline",
         activeHandoffs: activeCountByAgent.get(agentId) ?? 0,
         avgRating: toRounded(avgRating, 2),
         ratingCount: ratingValues.length,

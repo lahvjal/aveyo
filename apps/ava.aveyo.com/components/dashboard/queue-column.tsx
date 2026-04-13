@@ -3,6 +3,7 @@ import { InitialChip } from "./initial-chip";
 
 interface QueueColumnProps {
   isOnline: boolean;
+  onlineStatusPending?: boolean;
   activeTicket: Ticket | null;
   pendingQueue: Ticket[];
   onToggleOnline: () => void;
@@ -12,6 +13,7 @@ interface QueueColumnProps {
 
 export function QueueColumn({
   isOnline,
+  onlineStatusPending = false,
   activeTicket,
   pendingQueue,
   onToggleOnline,
@@ -40,8 +42,10 @@ export function QueueColumn({
           className={`offline-toggle ${isOnline ? "online" : "offline"}`}
           onClick={onToggleOnline}
           aria-pressed={isOnline}
+          disabled={onlineStatusPending}
         >
-          <span aria-hidden>◉</span> {isOnline ? "Go Offline" : "Go Online"}
+          <span aria-hidden>{onlineStatusPending ? "..." : "◉"}</span>{" "}
+          {onlineStatusPending ? "Updating..." : isOnline ? "Go Offline" : "Go Online"}
         </button>
       </div>
 

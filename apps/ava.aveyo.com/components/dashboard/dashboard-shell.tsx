@@ -21,6 +21,7 @@ import {
 import { buildAuthLoginUrl } from "@/lib/auth/config";
 import { logoutAuthSession } from "@/lib/auth/session";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
+import { useSupportPresence } from "@/lib/use-support-presence";
 import {
   claimHandoffApi,
   createRepresentativeMessageApi,
@@ -114,7 +115,7 @@ export function DashboardShell() {
   const authSession = useAuthSession();
   const seededConversation = useMemo(() => createEmptyConversation(), []);
 
-  const [isOnline, setIsOnline] = useState(true);
+  const { isOnline, syncing: presenceSyncing, toggleOnline } = useSupportPresence(authSession);
   const [queueRecords, setQueueRecords] = useState<QueueRecord[]>([]);
   const [conversationMap, setConversationMap] = useState<Record<string, ConversationThread>>({});
   const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
@@ -259,6 +260,16 @@ export function DashboardShell() {
     },
     [activeRequestId, seededConversation]
   );
+  const handleToggleOnline = useCallback(async () => {
+    try {
+      await toggleOnline();
+      setOperationError(null);
+    } catch (error) {
+      setOperationError(
+        error instanceof Error ? error.message : "Unable to update online status."
+      );
+    }
+  }, [toggleOnline]);
 
   const publishRepresentativeTyping = useCallback(
     (conversationId: string, isTyping: boolean, force = false) => {
@@ -662,9 +673,12 @@ export function DashboardShell() {
         <div className="rep-main-columns">
           <QueueColumn
             isOnline={isOnline}
+            onlineStatusPending={presenceSyncing}
             activeTicket={activeTicket}
             pendingQueue={pendingQueue}
-            onToggleOnline={() => setIsOnline((state) => !state)}
+            onToggleOnline={() => {
+              void handleToggleOnline();
+            }}
             onResolveChat={resolveChat}
             onClaimChat={claimChat}
           />
