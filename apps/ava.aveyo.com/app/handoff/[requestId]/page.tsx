@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { HandoffWorkspaceShell } from "@/components/dashboard/handoff-workspace-shell";
+import { canAccessAvaDashboard } from "@/lib/auth/access";
 import { buildAuthLoginUrl } from "@/lib/auth/config";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
 
@@ -19,8 +20,7 @@ export default function HandoffWorkspacePage() {
   const session = useAuthSession();
   const requestId = getRequestId(params.requestId);
   const conversationId = searchParams.get("conversationId");
-  const hasDashboardAccess =
-    session.role === "support_agent" || session.role === "super_admin";
+  const hasDashboardAccess = canAccessAvaDashboard(session.role, session.access);
 
   useEffect(() => {
     if (session.loading) {

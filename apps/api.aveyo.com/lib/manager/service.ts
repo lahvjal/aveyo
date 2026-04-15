@@ -325,6 +325,44 @@ function isEmployeeConversation(
   return Boolean(email && email.endsWith("@aveyo.com"));
 }
 
+async function isOperationsManager(userId: string): Promise<boolean> {
+  const supabase = getSupabaseServiceRoleClient();
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("is_manager, department_id")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (profileError || !profile?.is_manager || !profile.department_id) {
+    return false;
+  }
+
+  const { data: departments, error: deptError } = await supabase
+    .from("departments")
+    .select("id, name, parent_id")
+    .limit(5000);
+
+  if (deptError || !departments) {
+    return false;
+  }
+
+  const departmentById = new Map(
+    (departments as DepartmentHierarchyRow[]).map((row) => [row.id, row])
+  );
+
+  let cursor = departmentById.get(profile.department_id);
+  const visited = new Set<string>();
+  while (cursor && !visited.has(cursor.id)) {
+    if (cursor.name?.trim().toLowerCase() === "operations") {
+      return true;
+    }
+    visited.add(cursor.id);
+    cursor = cursor.parent_id ? departmentById.get(cursor.parent_id) : undefined;
+  }
+
+  return false;
+}
+
 async function checkManagerAccess(actorUserId: string, actorRole: AppRole) {
   if (actorRole === "super_admin") {
     return;
@@ -337,9 +375,15 @@ async function checkManagerAccess(actorUserId: string, actorRole: AppRole) {
   if (error) {
     throw new ServiceError(500, `Unable to resolve manager access: ${error.message}`);
   }
-  if (!data) {
-    throw new ServiceError(403, "Manager dashboard access required.");
+  if (data) {
+    return;
   }
+
+  if (await isOperationsManager(actorUserId)) {
+    return;
+  }
+
+  throw new ServiceError(403, "Manager dashboard access required.");
 }
 
 async function fetchHandoffRequests() {

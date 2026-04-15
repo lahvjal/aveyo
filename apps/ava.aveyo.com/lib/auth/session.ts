@@ -9,11 +9,25 @@ export interface PlatformSessionUser {
   avatarUrl: string | null;
 }
 
+export interface PlatformDepartmentNode {
+  id: string;
+  name: string;
+}
+
+export interface PlatformAccessContext {
+  isManager: boolean;
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  departmentName: string | null;
+  departmentPath: PlatformDepartmentNode[];
+}
+
 export interface PlatformSessionPayload {
   authenticated: boolean;
   role?: string;
   userType?: PlatformUserType | string;
   user?: PlatformSessionUser | null;
+  access?: PlatformAccessContext | null;
 }
 
 const apiBaseUrl = getApiBaseUrl();

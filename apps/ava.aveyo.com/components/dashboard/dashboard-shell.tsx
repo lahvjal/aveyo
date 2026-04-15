@@ -661,7 +661,7 @@ export function DashboardShell() {
       <section className="rep-main-shell">
         <AvaSecondaryNav
           activeRoute="dashboard"
-          canAccessManagerViews={canAccessAvaManagerViews(authSession.role)}
+          canAccessManagerViews={canAccessAvaManagerViews(authSession.role, authSession.access)}
         />
         {operationError ? (
           <p className="rep-shell-error" role="alert">

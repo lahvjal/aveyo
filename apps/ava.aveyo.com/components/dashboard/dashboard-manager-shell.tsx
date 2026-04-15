@@ -711,7 +711,7 @@ export function DashboardManagerShell() {
       <section className={`rep-main-shell manager-shell-view${selectedHandoff ? " has-preview-panel" : ""}`}>
         <AvaSecondaryNav
           activeRoute="manager"
-          canAccessManagerViews={canAccessAvaManagerViews(authSession.role)}
+          canAccessManagerViews={canAccessAvaManagerViews(authSession.role, authSession.access)}
         />
         {error ? (
           <p className="rep-shell-error" role="alert">

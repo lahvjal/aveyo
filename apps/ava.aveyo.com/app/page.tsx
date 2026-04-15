@@ -2,13 +2,13 @@
 
 import { useEffect } from "react";
 import { RepDashboardShell } from "@/components/rep-dashboard-shell";
+import { canAccessAvaDashboard } from "@/lib/auth/access";
 import { buildAuthLoginUrl } from "@/lib/auth/config";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
 
 export default function HomePage() {
   const session = useAuthSession();
-  const hasDashboardAccess =
-    session.role === "support_agent" || session.role === "super_admin";
+  const hasDashboardAccess = canAccessAvaDashboard(session.role, session.access);
 
   useEffect(() => {
     if (session.loading) {

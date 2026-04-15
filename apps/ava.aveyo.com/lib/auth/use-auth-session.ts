@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   fetchAuthSession,
+  type PlatformAccessContext,
   type PlatformUserType,
   type PlatformSessionPayload,
   type PlatformSessionUser
@@ -14,6 +15,7 @@ export interface PlatformAuthSession {
   role: string;
   userType: PlatformUserType;
   user: PlatformSessionUser | null;
+  access: PlatformAccessContext | null;
 }
 
 const defaultSession: PlatformAuthSession = {
@@ -21,7 +23,8 @@ const defaultSession: PlatformAuthSession = {
   authenticated: false,
   role: "unknown",
   userType: "unknown",
-  user: null
+  user: null,
+  access: null
 };
 
 const sessionPollIntervalMs = 30000;
@@ -159,6 +162,34 @@ function deriveUserType(params: {
   return "customer";
 }
 
+function normalizeAccessContext(value: unknown): PlatformAccessContext | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const departmentName =
+    typeof record.departmentName === "string" ? record.departmentName.trim() || null : null;
+  const rawPath = Array.isArray(record.departmentPath) ? record.departmentPath : [];
+  const departmentPath = rawPath
+    .filter(
+      (node): node is Record<string, unknown> =>
+        node !== null && typeof node === "object" && typeof (node as Record<string, unknown>).id === "string"
+    )
+    .map((node) => ({
+      id: String(node.id),
+      name: typeof node.name === "string" ? node.name : ""
+    }));
+
+  return {
+    isManager: Boolean(record.isManager),
+    isAdmin: Boolean(record.isAdmin),
+    isSuperAdmin: Boolean(record.isSuperAdmin),
+    departmentName,
+    departmentPath
+  };
+}
+
 function normalizeSessionPayload(value: unknown): PlatformSessionPayload | null {
   if (!value || typeof value !== "object") {
     return null;
@@ -177,12 +208,14 @@ function normalizeSessionPayload(value: unknown): PlatformSessionPayload | null 
       : record.user === null
         ? null
         : normalizeSessionUser(record.user);
+  const access = normalizeAccessContext(record.access);
 
   return {
     authenticated: record.authenticated,
     role,
     userType,
-    user
+    user,
+    access
   };
 }
 
@@ -192,6 +225,7 @@ function toSessionState(
 ): PlatformAuthSession {
   const role = payload?.role ?? "unknown";
   const user = payload?.user ?? null;
+  const access = payload?.access ?? null;
 
   if (!requestOk || !payload?.authenticated) {
     return {
@@ -199,7 +233,8 @@ function toSessionState(
       authenticated: false,
       role,
       userType: "unknown",
-      user
+      user,
+      access
     };
   }
 
@@ -213,7 +248,8 @@ function toSessionState(
       explicitUserType: normalizeUserType(payload.userType),
       user
     }),
-    user
+    user,
+    access
   };
 }
 

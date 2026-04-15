@@ -8,7 +8,7 @@ import { useAuthSession } from "@/lib/auth/use-auth-session";
 
 export default function ManagerPage() {
   const session = useAuthSession();
-  const hasManagerAccess = canAccessAvaManagerViews(session.role);
+  const hasManagerAccess = canAccessAvaManagerViews(session.role, session.access);
 
   useEffect(() => {
     if (session.loading) {

@@ -1,3 +1,5 @@
+import type { PlatformAccessContext } from "./session";
+
 const MANAGER_VIEW_ROLE_KEYS = new Set([
   "manager",
   "support_manager",
@@ -16,7 +18,40 @@ const MANAGER_VIEW_ROLE_KEYS = new Set([
   "superadmin"
 ]);
 
-export function canAccessAvaManagerViews(role: string | null | undefined) {
+function isOperationsDepartmentManager(
+  access: PlatformAccessContext | null | undefined
+): boolean {
+  if (!access?.isManager) {
+    return false;
+  }
+
+  const pathNames = access.departmentPath.map((node) => node.name.trim().toLowerCase());
+  if (access.departmentName) {
+    pathNames.push(access.departmentName.trim().toLowerCase());
+  }
+
+  return pathNames.includes("operations");
+}
+
+export function canAccessAvaManagerViews(
+  role: string | null | undefined,
+  access?: PlatformAccessContext | null
+) {
   const normalizedRole = typeof role === "string" ? role.trim().toLowerCase() : "";
-  return MANAGER_VIEW_ROLE_KEYS.has(normalizedRole);
+  if (MANAGER_VIEW_ROLE_KEYS.has(normalizedRole)) {
+    return true;
+  }
+
+  return isOperationsDepartmentManager(access);
+}
+
+export function canAccessAvaDashboard(
+  role: string | null | undefined,
+  access?: PlatformAccessContext | null
+) {
+  if (role === "support_agent" || role === "super_admin") {
+    return true;
+  }
+
+  return isOperationsDepartmentManager(access);
 }
