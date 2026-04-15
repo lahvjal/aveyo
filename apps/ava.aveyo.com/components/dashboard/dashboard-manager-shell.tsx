@@ -4,6 +4,7 @@ import { type ConversationThread } from "@ava/chat-domain";
 import { AvaOrb } from "@ava/ui";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { canAccessAvaManagerViews } from "@/lib/auth/access";
 import { buildAuthLoginUrl } from "@/lib/auth/config";
 import { logoutAuthSession } from "@/lib/auth/session";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
@@ -708,7 +709,10 @@ export function DashboardManagerShell() {
       />
 
       <section className={`rep-main-shell manager-shell-view${selectedHandoff ? " has-preview-panel" : ""}`}>
-        <AvaSecondaryNav activeRoute="manager" />
+        <AvaSecondaryNav
+          activeRoute="manager"
+          canAccessManagerViews={canAccessAvaManagerViews(authSession.role)}
+        />
         {error ? (
           <p className="rep-shell-error" role="alert">
             {error}

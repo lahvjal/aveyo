@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { canAccessAvaManagerViews } from "@/lib/auth/access";
 import { buildAuthLoginUrl } from "@/lib/auth/config";
 import { logoutAuthSession } from "@/lib/auth/session";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
@@ -166,7 +167,10 @@ export function DashboardSettingsShell() {
       />
 
       <section className="rep-main-shell manager-shell-view">
-        <AvaSecondaryNav activeRoute="settings" />
+        <AvaSecondaryNav
+          activeRoute="settings"
+          canAccessManagerViews={canAccessAvaManagerViews(authSession.role)}
+        />
         {error ? (
           <p className="rep-shell-error" role="alert">
             {error}

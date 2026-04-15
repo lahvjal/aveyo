@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { canAccessAvaManagerViews } from "@/lib/auth/access";
 import { buildAuthLoginUrl } from "@/lib/auth/config";
 import { logoutAuthSession } from "@/lib/auth/session";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
@@ -257,7 +258,10 @@ export function DashboardResolvedShell() {
       />
 
       <section className="rep-main-shell">
-        <AvaSecondaryNav activeRoute="resolved" />
+        <AvaSecondaryNav
+          activeRoute="resolved"
+          canAccessManagerViews={canAccessAvaManagerViews(authSession.role)}
+        />
         {operationError ? (
           <p className="rep-shell-error" role="alert">
             {operationError}

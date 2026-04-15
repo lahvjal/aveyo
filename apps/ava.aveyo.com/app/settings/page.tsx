@@ -3,30 +3,12 @@
 import { useEffect } from "react";
 import { RepSettingsShell } from "@/components/rep-settings-shell";
 import { buildAuthLoginUrl } from "@/lib/auth/config";
+import { canAccessAvaManagerViews } from "@/lib/auth/access";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
-
-const MANAGER_DASHBOARD_ROLES = new Set([
-  "support_agent",
-  "support-agent",
-  "support",
-  "agent",
-  "super_admin",
-  "super-admin",
-  "superadmin",
-  "admin",
-  "manager",
-  "support_manager",
-  "org_manager"
-]);
-
-function canAccessManagerDashboard(role: string | null | undefined) {
-  const normalized = typeof role === "string" ? role.trim().toLowerCase() : "";
-  return MANAGER_DASHBOARD_ROLES.has(normalized);
-}
 
 export default function SettingsPage() {
   const session = useAuthSession();
-  const hasManagerAccess = canAccessManagerDashboard(session.role);
+  const hasManagerAccess = canAccessAvaManagerViews(session.role);
 
   useEffect(() => {
     if (session.loading) {

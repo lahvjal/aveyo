@@ -6,6 +6,7 @@ type SecondaryRoute = "dashboard" | "resolved" | "manager" | "settings";
 
 interface AvaSecondaryNavProps {
   activeRoute: SecondaryRoute;
+  canAccessManagerViews?: boolean;
 }
 
 const secondaryNavItems: Array<{ id: SecondaryRoute; label: string; href: string }> = [
@@ -15,10 +16,19 @@ const secondaryNavItems: Array<{ id: SecondaryRoute; label: string; href: string
   { id: "settings", label: "Settings", href: "/settings" }
 ];
 
-export function AvaSecondaryNav({ activeRoute }: AvaSecondaryNavProps) {
+export function AvaSecondaryNav({
+  activeRoute,
+  canAccessManagerViews = false
+}: AvaSecondaryNavProps) {
+  const showManagerViews =
+    canAccessManagerViews || activeRoute === "manager" || activeRoute === "settings";
+  const visibleItems = showManagerViews
+    ? secondaryNavItems
+    : secondaryNavItems.filter((item) => item.id !== "manager" && item.id !== "settings");
+
   return (
     <nav className="rep-secondary-nav" aria-label="Ava navigation">
-      {secondaryNavItems.map((item) => (
+      {visibleItems.map((item) => (
         <Link
           key={item.id}
           href={item.href}

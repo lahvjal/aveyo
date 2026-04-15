@@ -18,6 +18,7 @@ import {
   mapSupportAgentNoteToHistoryNote,
   normalizeDraft
 } from "@/lib/dashboard-state";
+import { canAccessAvaManagerViews } from "@/lib/auth/access";
 import { buildAuthLoginUrl } from "@/lib/auth/config";
 import { logoutAuthSession } from "@/lib/auth/session";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
@@ -658,7 +659,10 @@ export function DashboardShell() {
       />
 
       <section className="rep-main-shell">
-        <AvaSecondaryNav activeRoute="dashboard" />
+        <AvaSecondaryNav
+          activeRoute="dashboard"
+          canAccessManagerViews={canAccessAvaManagerViews(authSession.role)}
+        />
         {operationError ? (
           <p className="rep-shell-error" role="alert">
             {operationError}
