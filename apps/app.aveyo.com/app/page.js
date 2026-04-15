@@ -127,6 +127,7 @@ function AppPlatformSideNav({
   userType,
   canAccessManagerPanel,
   canAccessAdminPanel,
+  canAccessKpiDashboard,
   avatarUrl,
   initials,
   isSigningOut,
@@ -149,6 +150,7 @@ function AppPlatformSideNav({
       userType={userType}
       canAccessManagerPanel={canAccessManagerPanel}
       canAccessAdminPanel={canAccessAdminPanel}
+      canAccessKpiDashboard={canAccessKpiDashboard}
       profile={{
         displayName,
         roleLabel,
@@ -259,6 +261,11 @@ export default function HomePage() {
   );
   const canAccessAdminPanel = Boolean(
     accessSummary.flags.isAdmin || accessSummary.flags.isSuperAdmin
+  );
+  const canAccessKpiDashboard = Boolean(
+    accessSummary.flags.isExecutive ||
+      accessSummary.flags.isAdmin ||
+      accessSummary.flags.isSuperAdmin
   );
 
   const displayName = session.user?.name ?? session.user?.email ?? "Vel Fuimaono";
@@ -404,6 +411,7 @@ export default function HomePage() {
         userType={session.userType}
         canAccessManagerPanel={canAccessManagerPanel}
         canAccessAdminPanel={canAccessAdminPanel}
+        canAccessKpiDashboard={canAccessKpiDashboard}
         avatarUrl={session.user?.avatarUrl ?? null}
         initials={initials}
         isSigningOut={isSigningOut}

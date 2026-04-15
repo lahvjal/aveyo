@@ -76,6 +76,9 @@ export function EmployeeSideNav() {
   const roleLabel = toRoleLabel(role, profile?.job_title, profile?.is_executive);
   const avatarUrl = profile?.profile_photo_url?.trim() || "";
   const initials = getInitials(displayName);
+  const canAccessKpiDashboard = Boolean(
+    profile?.is_executive || profile?.is_admin || profile?.is_super_admin || role === "super_admin"
+  );
 
   async function handleSignOut() {
     if (isSigningOut) {
@@ -103,6 +106,7 @@ export function EmployeeSideNav() {
       isPrimaryItemActive={(itemId) => itemId === "kpi" && Boolean(isKpiRoute)}
       utilityItems={utilityNavItems}
       role={role}
+      canAccessKpiDashboard={canAccessKpiDashboard}
       iconPrefix="/"
       profile={{
         displayName,

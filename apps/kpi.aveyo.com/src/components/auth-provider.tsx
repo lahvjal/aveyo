@@ -16,6 +16,7 @@ export interface UserProfile {
   full_name: string | null;
   job_title: string | null;
   profile_photo_url: string | null;
+  is_admin: boolean | null;
   is_executive: boolean | null;
   is_super_admin: boolean | null;
   onboarding_completed: boolean | null;
@@ -176,7 +177,7 @@ export default function AuthProvider({ children }: { children: ReactNode }) {
           </div>
           <h1 className="text-xl font-bold text-slate-900 mb-2">Access Restricted</h1>
           <p className="text-sm text-slate-600 mb-6">
-            The KPI Dashboard is only for Aveyo Executives.
+            The KPI Dashboard is only for Aveyo Admin and Executive roles.
           </p>
           <a
             href={ORG_CHART_URL}

@@ -19,6 +19,7 @@ interface ProfileRow {
   full_name: string | null;
   job_title: string | null;
   profile_photo_url: string | null;
+  is_admin: boolean | null;
   is_executive: boolean | null;
   is_super_admin: boolean | null;
   onboarding_completed: boolean | null;
@@ -77,7 +78,9 @@ export async function requireAuthenticatedContext(
 
   const { data: profile, error: profileError } = await getServiceRoleClient()
     .from("profiles")
-    .select("full_name, job_title, profile_photo_url, is_executive, is_super_admin, onboarding_completed")
+    .select(
+      "full_name, job_title, profile_photo_url, is_admin, is_executive, is_super_admin, onboarding_completed"
+    )
     .eq("id", sessionUser.id)
     .maybeSingle();
 
@@ -90,7 +93,7 @@ export async function requireAuthenticatedContext(
     };
   }
 
-  const isAuthorized = Boolean(profile.is_executive || profile.is_super_admin);
+  const isAuthorized = Boolean(profile.is_admin || profile.is_executive || profile.is_super_admin);
   if (!isAuthorized) {
     return {
       errorResponse: NextResponse.json(

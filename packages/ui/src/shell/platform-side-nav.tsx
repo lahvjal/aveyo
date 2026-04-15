@@ -46,6 +46,7 @@ export interface PlatformSideNavProps {
   role?: string;
   canAccessManagerPanel?: boolean;
   canAccessAdminPanel?: boolean;
+  canAccessKpiDashboard?: boolean;
 }
 
 const DEFAULT_PATHNAME = "/";
@@ -84,6 +85,20 @@ const MANAGER_PANEL_ROLE_KEYS = new Set([
   "team-manager",
   "people_manager",
   "people-manager"
+]);
+
+const KPI_DASHBOARD_ROLE_KEYS = new Set([
+  "admin",
+  "org_admin",
+  "org-admin",
+  "platform_admin",
+  "platform-admin",
+  "super_admin",
+  "super-admin",
+  "superadmin",
+  "executive",
+  "org_executive",
+  "org-executive"
 ]);
 
 function joinClassNames(
@@ -157,6 +172,36 @@ function canShowUtilityItemByRole(
   }
 
   return true;
+}
+
+function canShowPrimaryItemByRole(
+  itemId: string,
+  options: {
+    userType?: string;
+    role?: string;
+    canAccessKpiDashboard?: boolean;
+  }
+): boolean {
+  if (itemId !== "kpi") {
+    return true;
+  }
+
+  if (typeof options.canAccessKpiDashboard === "boolean") {
+    return options.canAccessKpiDashboard;
+  }
+
+  const hasRoleContext = typeof options.role === "string" || typeof options.userType === "string";
+  if (!hasRoleContext) {
+    return true;
+  }
+
+  const normalizedUserType = normalizeAccessValue(options.userType);
+  if (normalizedUserType && normalizedUserType !== "employee") {
+    return false;
+  }
+
+  const normalizedRole = normalizeAccessValue(options.role);
+  return KPI_DASHBOARD_ROLE_KEYS.has(normalizedRole);
 }
 
 function resolveUtilityHref(
@@ -344,7 +389,8 @@ export function PlatformSideNav({
   userType,
   role,
   canAccessManagerPanel,
-  canAccessAdminPanel
+  canAccessAdminPanel,
+  canAccessKpiDashboard
 }: PlatformSideNavProps) {
   const classNames = SHARED_CLASS_NAMES;
   const [runtimeEnvironment, setRuntimeEnvironment] = useState<RuntimeEnvironment>(
@@ -373,6 +419,17 @@ export function PlatformSideNav({
   const primaryNavItems = useMemo(
     () => primaryItems ?? (PLATFORM_PRIMARY_NAV_ITEMS as PlatformPrimaryNavItem[]),
     [primaryItems]
+  );
+  const visiblePrimaryNavItems = useMemo(
+    () =>
+      primaryNavItems.filter((item) =>
+        canShowPrimaryItemByRole(item.id, {
+          userType,
+          role,
+          canAccessKpiDashboard
+        })
+      ),
+    [primaryNavItems, userType, role, canAccessKpiDashboard]
   );
   const configuredUtilityItems = useMemo(
     () => {
@@ -422,12 +479,12 @@ export function PlatformSideNav({
   const profileInitials = profile.initials?.trim() || getInitials(profile.displayName);
   const profileHref = resolveProfileHref(runtimeEnvironment, sameAppHrefByItemId);
   const mobileDashboardTarget = resolveMobileDashboardTarget(
-    primaryNavItems,
+    visiblePrimaryNavItems,
     runtimeEnvironment,
     sameAppHrefByItemId
   );
   const mobileDashboardHref = mobileDashboardTarget?.href || "/";
-  const mobileMenuPrimaryItems = primaryNavItems.filter(
+  const mobileMenuPrimaryItems = visiblePrimaryNavItems.filter(
     (item) => item.id !== mobileDashboardTarget?.item.id
   );
   const panelUtilityItem =
@@ -500,7 +557,7 @@ export function PlatformSideNav({
       </div>
 
       <nav className={classNames.primaryNav} aria-label="Primary navigation">
-        {primaryNavItems.map((item) => {
+        {visiblePrimaryNavItems.map((item) => {
           const href = resolvePlatformNavHref(item, runtimeEnvironment, {
             sameAppHrefByItemId
           });
