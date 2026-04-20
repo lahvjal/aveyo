@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
+import Image from "next/image";
 import SolarSavingsEstimator from "@/components/site/solar-savings-estimator";
 import {
   SiteCard,
   SiteCardGrid,
   SiteHero,
+  SiteImageBreak,
   SitePageShell,
   SiteSection,
   SiteSplitSection
@@ -78,27 +80,8 @@ export default function WhySolarPage() {
           { value: "3", label: "Core Solar Benefits" },
           { value: "1", label: "Customized System Per Home" }
         ]}
-        visual={
-          <div className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-white/[0.06] p-[var(--site-card-padding-comfortable)] shadow-[0_28px_80px_rgba(0,0,0,0.24)] backdrop-blur-[12px]">
-            <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-            <div className="relative z-[2]">
-              <p className="text-sm text-[length:var(--site-paragraph)] font-bold uppercase tracking-[0.28em] text-white/60">
-                What Better Design Means
-              </p>
-              <div className="mt-6 grid gap-4">
-                {["Optimize sunlight", "Maximize conversion", "Design for real household usage"].map((item) => (
-                  <div
-                    key={item}
-                    className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-[#10223b] bg-[color:var(--site-navy-soft)] p-[var(--site-card-padding-tight)] text-[length:var(--site-body)] font-semibold"
-                  >
-                    <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-                    <div className="relative z-[2]">{item}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        }
+        backgroundSrc="/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior.jpg"
+        backgroundAlt="Modern home with dark solar panels on roof, golden hour, lush landscaping"
       />
 
       <SiteSection
@@ -108,6 +91,13 @@ export default function WhySolarPage() {
       >
         <SolarSavingsEstimator />
       </SiteSection>
+
+      <SiteImageBreak
+        images={[
+          { src: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone.jpg", alt: "Aerial view of suburban home with solar panels on roof, bright sunny day" },
+          { alt: "Family in bright modern kitchen, morning light, casual and relaxed" }
+        ]}
+      />
 
       <SiteSplitSection
         eyebrow="System Design"
@@ -179,11 +169,15 @@ export default function WhySolarPage() {
           </>
         }
         visual={
-          <SiteCard
-            eyebrow="Panel Priorities"
-            title="Built around quality components and better long-term performance."
-            description="US-made options, high-end photovoltaics, and a stronger design standard all help shape a system that feels better from day one."
-          />
+          <div className="relative h-[400px] overflow-hidden rounded-[var(--site-radius-corner)]">
+            <Image
+              src="/images/web_photos/WhySolar_02_System-Design-CloseUp.jpg"
+              alt="Close-up of black monocrystalline solar panels in clean grid pattern on roof, overhead angle"
+              fill
+              className="object-cover"
+              sizes="(min-width: 1024px) 50vw, 100vw"
+            />
+          </div>
         }
       />
     </SitePageShell>

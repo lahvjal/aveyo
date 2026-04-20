@@ -6,8 +6,10 @@ const publicApiPaths = new Set([
   "/api/health",
   "/api/auth/session",
   "/api/auth/session/bootstrap",
-  "/api/auth/session/logout"
+  "/api/auth/session/logout",
+  "/api/marketing/news/posts"
 ]);
+const publicApiPathPrefixes = ["/api/marketing/news/posts/slug/"];
 const defaultAllowedOrigins = [
   "http://localhost:4001",
   "http://localhost:4002",
@@ -79,7 +81,7 @@ function isAllowedLocalDevOrigin(origin: string) {
 }
 
 function isPublicPath(pathname: string) {
-  return publicApiPaths.has(pathname);
+  return publicApiPaths.has(pathname) || publicApiPathPrefixes.some((prefix) => pathname.startsWith(prefix));
 }
 
 function getAllowedOrigins() {

@@ -15,12 +15,12 @@ import { canAccessAvaManagerViews } from "@/lib/auth/access";
 import { buildAuthLoginUrl } from "@/lib/auth/config";
 import { logoutAuthSession } from "@/lib/auth/session";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
+import { useRealtimeInvalidation } from "@/lib/use-realtime-invalidation";
 import {
   createRepresentativeMessageApi,
   createSupportNoteApi,
   getConversationApi,
   getConversationCustomerDetailsApi,
-  getRealtimeEventsApi,
   listQueueApi,
   listSupportNotesApi,
   publishRepresentativeTypingApi,
@@ -116,7 +116,6 @@ export function HandoffWorkspaceShell({
   const [resolvePending, setResolvePending] = useState(false);
   const [signOutPending, setSignOutPending] = useState(false);
   const [isNavCollapsed, setIsNavCollapsed] = useState(true);
-  const realtimeCursorRef = useRef<string | undefined>(undefined);
   const realtimeBusyRef = useRef(false);
   const closingTabRef = useRef(false);
   const representativeTypingSentRef = useRef(false);
@@ -214,8 +213,6 @@ export function HandoffWorkspaceShell({
   }, [refreshWorkspaceData]);
 
   useEffect(() => {
-    realtimeCursorRef.current = undefined;
-
     if (authSession.loading) {
       return;
     }
@@ -262,57 +259,43 @@ export function HandoffWorkspaceShell({
     });
   }, [authSession.authenticated, refreshWorkspaceDataSafely, requestId]);
 
-  useEffect(() => {
-    if (!authSession.authenticated) {
-      return;
-    }
-
-    let cancelled = false;
-    const pollRealtime = async () => {
+  const handleRealtimeInvalidation = useCallback(
+    async (conversationId?: string | null) => {
       if (realtimeBusyRef.current) {
+        return;
+      }
+
+      if (conversationId && workspaceConversationId && conversationId !== workspaceConversationId) {
         return;
       }
 
       realtimeBusyRef.current = true;
       try {
-        const result = await getRealtimeEventsApi(realtimeCursorRef.current);
-        if (cancelled) {
-          return;
-        }
-
-        realtimeCursorRef.current = result.cursor;
-        const relevantEvent = result.events.some(
-          (event) =>
-            event.conversationId === workspaceConversationId ||
-            event.type === "handoff_claimed" ||
-            event.type === "handoff_resolved"
-        );
-        if (result.cursorStale || relevantEvent) {
-          await refreshWorkspaceData();
-        }
+        await refreshWorkspaceData();
       } catch (error) {
-        if (!cancelled) {
-          setOperationError(
-            error instanceof Error
-              ? error.message
-              : "Realtime updates are temporarily unavailable."
-          );
-        }
+        setOperationError(
+          error instanceof Error ? error.message : "Realtime updates are temporarily unavailable."
+        );
       } finally {
         realtimeBusyRef.current = false;
       }
-    };
+    },
+    [refreshWorkspaceData, workspaceConversationId]
+  );
 
-    void pollRealtime();
-    const intervalId = window.setInterval(() => {
-      void pollRealtime();
-    }, 2500);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, [authSession.authenticated, refreshWorkspaceData, workspaceConversationId]);
+  useRealtimeInvalidation({
+    enabled: authSession.authenticated,
+    debounceMs: 200,
+    onInvalidate: (payload) => {
+      void handleRealtimeInvalidation(payload.conversationId);
+    },
+    onHeartbeat: () => {
+      void handleRealtimeInvalidation();
+    },
+    onError: () => {
+      setOperationError("Realtime updates are temporarily unavailable.");
+    }
+  });
 
   useEffect(() => {
     if (!authSession.authenticated || !workspaceConversationId || !isConversationLoaded) {
@@ -544,6 +527,7 @@ export function HandoffWorkspaceShell({
           activeRoute="dashboard"
           canAccessManagerViews={canAccessAvaManagerViews(authSession.role, authSession.access)}
         />
+        <div className="rep-main-scroll">
         {operationError ? (
           <p className="rep-shell-error" role="alert">
             {operationError}
@@ -639,6 +623,7 @@ export function HandoffWorkspaceShell({
             />
           </div>
         )}
+        </div>
       </section>
     </div>
   );

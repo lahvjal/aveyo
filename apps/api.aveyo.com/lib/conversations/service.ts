@@ -1,4 +1,13 @@
+import { randomUUID } from "node:crypto";
 import { type TimelineMessage } from "@ava/chat-domain";
+import {
+  cancelAvaReplyJob,
+  claimAvaReplyJobs,
+  completeAvaReplyJob,
+  enqueueAvaReplyJob,
+  failAvaReplyJob,
+  isAvaReplyJobsUnavailableError
+} from "@/lib/ava/reply-jobs";
 import {
   generateAvaReplyText,
   generateRepresentativeReplySuggestionText
@@ -13,9 +22,9 @@ import {
   getConversation,
   listConversations,
   publishTypingEvent,
-  runCustomerSessionIdleAutomation,
   StoreError
 } from "@/lib/store/mock-store";
+import { incrementPerfCounter, runWithPerfContext, setPerfMeta } from "@/lib/perf/metrics";
 import { ServiceError } from "@/lib/service-error";
 
 export interface MessageBody {
@@ -30,6 +39,28 @@ export interface CreateConversationBody {
   subject?: string;
   projectRef?: string;
   greetingText?: string;
+}
+
+interface AvaReplyAttemptResult {
+  status: "completed" | "cancelled";
+  replyMessageId: string | null;
+}
+
+export interface AvaReplyJobSweepResult {
+  claimedJobs: number;
+  completedJobs: number;
+  cancelledJobs: number;
+  failedJobs: number;
+}
+
+const AVA_REPLY_JOB_PAYLOAD_SOURCE = "ava_reply_job_v1";
+
+function createAvaReplyWorkerId() {
+  return `ava-reply:${process.pid}:${randomUUID()}`;
+}
+
+function computeAvaReplyRetryAfterMs(attempts: number) {
+  return Math.min(60_000, Math.max(5_000, attempts * 5_000));
 }
 
 function allowsAvaReply(
@@ -329,10 +360,12 @@ function sanitizeAvaReplyEscalation(params: {
   return stripEscalationOfferFromReply(params.replyText);
 }
 
-async function tryGenerateAvaReply(params: {
+async function tryGenerateAvaReplyInternal(params: {
   conversationId: string;
   actorUserId: string;
-}) {
+  triggerMessageId?: string;
+  replyJobId?: string;
+}): Promise<AvaReplyAttemptResult> {
   const publishAvaTyping = async (isTyping: boolean) => {
     try {
       await publishTypingEvent(
@@ -350,13 +383,31 @@ async function tryGenerateAvaReply(params: {
 
   const thread = await getConversation(params.conversationId, params.actorUserId);
   if (!thread || !allowsAvaReply(thread.handoff.state)) {
+    incrementPerfCounter("avaReply.suppressed");
+    setPerfMeta("avaReplySuppressed", true);
     await publishAvaTyping(false);
-    return;
+    return {
+      status: "cancelled",
+      replyMessageId: null
+    };
+  }
+
+  const latestMessage = thread.messages[thread.messages.length - 1];
+  if (
+    params.triggerMessageId &&
+    (latestMessage?.kind !== "customer" || latestMessage.id !== params.triggerMessageId)
+  ) {
+    incrementPerfCounter("avaReply.superseded");
+    setPerfMeta("avaReplySuperseded", true);
+    await publishAvaTyping(false);
+    return {
+      status: "cancelled",
+      replyMessageId: null
+    };
   }
 
   await publishAvaTyping(true);
 
-  const latestMessage = thread.messages[thread.messages.length - 1];
   const previousAvaMessage =
     latestMessage?.kind === "customer"
       ? [...thread.messages]
@@ -371,27 +422,56 @@ async function tryGenerateAvaReply(params: {
     isPostHandoffRatingHelpCheckPrompt(previousAvaMessage.text) &&
     isNoMoreHelpResponse(latestMessage.text)
   ) {
+    incrementPerfCounter("avaReply.postHandoffClose");
     try {
-      await appendAvaMessage(params.conversationId, "Thanks for confirming. I am closing this chat now.");
+      const replyMessage = await appendAvaMessage(
+        params.conversationId,
+        "Thanks for confirming. I am closing this chat now.",
+        params.replyJobId
+          ? {
+              automation: {
+                source: AVA_REPLY_JOB_PAYLOAD_SOURCE,
+                replyJobId: params.replyJobId,
+                triggerMessageId: params.triggerMessageId ?? null
+              }
+            }
+          : undefined
+      );
       await closeConversationSession(params.conversationId, {
         reason: "post_handoff_no_more_help"
       });
+      return {
+        status: "completed",
+        replyMessageId: replyMessage.id
+      };
     } finally {
       await publishAvaTyping(false);
     }
-    return;
   }
 
   if (latestMessage?.kind === "customer" && isHumanAgentRequest(latestMessage.text)) {
+    incrementPerfCounter("avaReply.humanRequestBypass");
     try {
-      await appendAvaMessage(
+      const replyMessage = await appendAvaMessage(
         params.conversationId,
-        "I understand you want to speak with a customer care agent. Would you like to be connected to a customer care agent now?"
+        "I understand you want to speak with a customer care agent. Would you like to be connected to a customer care agent now?",
+        params.replyJobId
+          ? {
+              automation: {
+                source: AVA_REPLY_JOB_PAYLOAD_SOURCE,
+                replyJobId: params.replyJobId,
+                triggerMessageId: params.triggerMessageId ?? null
+              }
+            }
+          : undefined
       );
+      return {
+        status: "completed",
+        replyMessageId: replyMessage.id
+      };
     } finally {
       await publishAvaTyping(false);
     }
-    return;
   }
 
   const abortController = new AbortController();
@@ -406,10 +486,15 @@ async function tryGenerateAvaReply(params: {
     } catch {
       context = undefined;
     }
+    setPerfMeta("avaReplyHasContext", Boolean(context));
 
     const replyText = await generateAvaReplyText(thread, context, abortController.signal);
     if (!replyText) {
-      return;
+      incrementPerfCounter("avaReply.empty");
+      return {
+        status: "cancelled",
+        replyMessageId: null
+      };
     }
 
     const latestCustomerMessage =
@@ -425,14 +510,127 @@ async function tryGenerateAvaReply(params: {
       thread
     });
     if (!sanitizedReplyText.trim()) {
-      return;
+      incrementPerfCounter("avaReply.sanitizedEmpty");
+      return {
+        status: "cancelled",
+        replyMessageId: null
+      };
     }
 
-    await appendAvaMessage(params.conversationId, sanitizedReplyText);
+    incrementPerfCounter("avaReply.sent");
+    const replyMessage = await appendAvaMessage(
+      params.conversationId,
+      sanitizedReplyText,
+      params.replyJobId
+        ? {
+            automation: {
+              source: AVA_REPLY_JOB_PAYLOAD_SOURCE,
+              replyJobId: params.replyJobId,
+              triggerMessageId: params.triggerMessageId ?? null
+            }
+          }
+        : undefined
+    );
+    return {
+      status: "completed",
+      replyMessageId: replyMessage.id
+    };
   } finally {
     clearTimeout(timeoutId);
     await publishAvaTyping(false);
   }
+}
+
+async function tryGenerateAvaReply(params: {
+  conversationId: string;
+  actorUserId: string;
+  triggerMessageId?: string;
+  replyJobId?: string;
+}): Promise<AvaReplyAttemptResult> {
+  const perfResult = await runWithPerfContext(
+    "ava.reply",
+    () => tryGenerateAvaReplyInternal(params),
+    {
+      conversationId: params.conversationId,
+      triggerMessageId: params.triggerMessageId ?? null
+    }
+  );
+
+  if (perfResult.error) {
+    throw perfResult.error;
+  }
+
+  return (
+    perfResult.value ?? {
+      status: "cancelled",
+      replyMessageId: null
+    }
+  );
+}
+
+export async function runAvaReplyJobSweep(options?: {
+  limit?: number;
+  conversationId?: string;
+}): Promise<AvaReplyJobSweepResult> {
+  const owner = createAvaReplyWorkerId();
+  const claimedJobs = await claimAvaReplyJobs({
+    owner,
+    limit: options?.limit ?? 10,
+    conversationId: options?.conversationId
+  });
+  const summary: AvaReplyJobSweepResult = {
+    claimedJobs: claimedJobs.length,
+    completedJobs: 0,
+    cancelledJobs: 0,
+    failedJobs: 0
+  };
+
+  for (const job of claimedJobs) {
+    try {
+      const result = await tryGenerateAvaReply({
+        conversationId: job.conversationId,
+        actorUserId: job.requestedByAuthUserId,
+        triggerMessageId: job.triggerMessageId,
+        replyJobId: job.id
+      });
+      if (result.status === "completed") {
+        await completeAvaReplyJob({
+          jobId: job.id,
+          owner,
+          replyMessageId: result.replyMessageId
+        });
+        summary.completedJobs += 1;
+        continue;
+      }
+
+      await cancelAvaReplyJob({
+        jobId: job.id,
+        owner,
+        reason: "Reply job was superseded or no Ava reply was required."
+      });
+      summary.cancelledJobs += 1;
+    } catch (error) {
+      summary.failedJobs += 1;
+      await failAvaReplyJob({
+        jobId: job.id,
+        owner,
+        errorMessage: error instanceof Error ? error.message : "Unknown Ava reply job failure.",
+        retryAfterMs: computeAvaReplyRetryAfterMs(job.attempts + 1)
+      }).catch((markError) => {
+        console.error("Unable to mark Ava reply job as failed", {
+          jobId: job.id,
+          error: markError
+        });
+      });
+      console.error("Ava reply job failed", {
+        jobId: job.id,
+        conversationId: job.conversationId,
+        error
+      });
+    }
+  }
+
+  return summary;
 }
 
 export async function getConversationsResult(
@@ -443,12 +641,6 @@ export async function getConversationsResult(
   }
 ) {
   try {
-    try {
-      await runCustomerSessionIdleAutomation(actorUserId);
-    } catch (automationError) {
-      console.error("Session idle automation check failed", automationError);
-    }
-
     return {
       conversations: await listConversations(actorUserId, {
         excludeImpersonation: options?.excludeImpersonation,
@@ -483,12 +675,6 @@ export async function createConversationResult(
 }
 
 export async function getConversationResult(conversationId: string, actorUserId: string) {
-  try {
-    await runCustomerSessionIdleAutomation(actorUserId);
-  } catch (automationError) {
-    console.error("Session idle automation check failed", automationError);
-  }
-
   const conversation = await getConversation(conversationId, actorUserId);
   if (!conversation) {
     throw new ServiceError(404, "Conversation not found.");
@@ -586,6 +772,8 @@ export async function createMessageResult(body: MessageBody, actorUserId: string
     throw new ServiceError(400, "Use handoff endpoints for system status updates.");
   }
 
+  const conversationId = body.conversationId;
+
   const payload =
     body.kind === "representative"
       ? {
@@ -601,16 +789,43 @@ export async function createMessageResult(body: MessageBody, actorUserId: string
         };
 
   try {
-    const message = await appendMessage(body.conversationId, payload, actorUserId);
+    const message = await appendMessage(conversationId, payload, actorUserId);
 
     if (body.kind === "customer") {
-      // Do not block customer send latency on AI generation.
-      void tryGenerateAvaReply({
-        conversationId: body.conversationId,
-        actorUserId
-      }).catch(() => {
-        // Keep customer messaging reliable even if AI generation fails.
-      });
+      const fallbackToDirectReply = () => {
+        // Keep customer send latency detached from Ava generation even during migration rollout.
+        void tryGenerateAvaReply({
+          conversationId,
+          actorUserId,
+          triggerMessageId: message.id
+        }).catch(() => {
+          // Keep customer messaging reliable even if fallback AI generation fails.
+        });
+      };
+
+      try {
+        await enqueueAvaReplyJob({
+          conversationId,
+          triggerMessageId: message.id,
+          requestedByAuthUserId: actorUserId
+        });
+
+        // Do not block customer send latency on background reply processing.
+        void runAvaReplyJobSweep({
+          limit: 1,
+          conversationId
+        }).catch((error) => {
+          if (isAvaReplyJobsUnavailableError(error)) {
+            fallbackToDirectReply();
+          }
+        });
+      } catch (error) {
+        if (isAvaReplyJobsUnavailableError(error)) {
+          fallbackToDirectReply();
+        } else {
+          throw error;
+        }
+      }
     }
 
     return { message };

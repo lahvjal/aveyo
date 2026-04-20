@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ServiceError } from "@/lib/service-error";
 import { getRealtimeEventsResult } from "@/lib/realtime/service";
-import { listRealtimeEvents, runCustomerSessionIdleAutomation, StoreError } from "@/lib/store/mock-store";
+import { listRealtimeEvents, StoreError } from "@/lib/store/mock-store";
 
 vi.mock("@/lib/store/mock-store", () => {
   class MockStoreError extends Error {
@@ -16,19 +16,15 @@ vi.mock("@/lib/store/mock-store", () => {
   return {
     listRealtimeEvents: vi.fn(),
     publishTypingEvent: vi.fn(),
-    runCustomerSessionIdleAutomation: vi.fn(),
     StoreError: MockStoreError
   };
 });
 
 const mockedListRealtimeEvents = vi.mocked(listRealtimeEvents);
-const mockedRunCustomerSessionIdleAutomation = vi.mocked(runCustomerSessionIdleAutomation);
 
 describe("getRealtimeEventsResult", () => {
   beforeEach(() => {
     mockedListRealtimeEvents.mockReset();
-    mockedRunCustomerSessionIdleAutomation.mockReset();
-    mockedRunCustomerSessionIdleAutomation.mockResolvedValue(undefined);
   });
 
   it("returns newest event id as cursor", async () => {
@@ -79,18 +75,6 @@ describe("getRealtimeEventsResult", () => {
       status: 403,
       message: "forbidden"
     } as Partial<ServiceError>);
-  });
-
-  it("continues when idle automation check fails", async () => {
-    mockedRunCustomerSessionIdleAutomation.mockRejectedValue(new Error("automation unavailable"));
-    mockedListRealtimeEvents.mockResolvedValue({
-      events: [],
-      latestEventId: "evt-latest",
-      cursorFound: true
-    });
-
-    const result = await getRealtimeEventsResult("user-1");
-    expect(result.cursor).toBe("evt-latest");
   });
 });
 

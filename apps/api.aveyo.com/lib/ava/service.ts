@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { type ConversationThread } from "@ava/chat-domain";
 import { getOpenAiApiKey } from "@/lib/ai/config";
+import { createInstrumentedFetch } from "@/lib/perf/metrics";
 
 export interface AvaReplyContext {
   conversationId: string;
@@ -29,7 +30,12 @@ function getOpenAiClient() {
   }
 
   const apiKey = getOpenAiApiKey();
-  cachedOpenAiClient = apiKey ? new OpenAI({ apiKey }) : null;
+  cachedOpenAiClient = apiKey
+    ? new OpenAI({
+        apiKey,
+        fetch: createInstrumentedFetch("openai")
+      })
+    : null;
   return cachedOpenAiClient;
 }
 

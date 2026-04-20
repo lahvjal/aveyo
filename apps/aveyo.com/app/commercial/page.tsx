@@ -4,6 +4,7 @@ import {
   SiteCardGrid,
   SiteFaq,
   SiteHero,
+  SiteImageBreak,
   SitePageShell,
   SiteSection,
   SiteSplitSection
@@ -129,34 +130,8 @@ export default function CommercialPage() {
           { value: "5", label: "Project Stages" },
           { value: "6", label: "Flexible Funding Paths" }
         ]}
-        visual={
-          <div className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-white/[0.06] p-[var(--site-card-padding-comfortable)] shadow-[0_28px_80px_rgba(0,0,0,0.24)] backdrop-blur-[12px]">
-            <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-            <div className="relative z-[2]">
-              <p className="text-sm text-[length:var(--site-paragraph)] font-bold uppercase tracking-[0.28em] text-white/60">
-                What We Evaluate
-              </p>
-              <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                {[
-                  "Energy profile",
-                  "Available space",
-                  "Incentive fit",
-                  "System type",
-                  "Timeline",
-                  "Financing strategy"
-                ].map((item) => (
-                  <div
-                    key={item}
-                    className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-[#10223b] bg-[color:var(--site-navy-soft)] p-[var(--site-card-padding-tight)] text-[length:var(--site-body)] font-semibold"
-                  >
-                    <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-                    <div className="relative z-[2]">{item}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        }
+        backgroundSrc="/images/web_photos/Commercial_02_Ground-Mounted-Array.jpg"
+        backgroundAlt="Large commercial ground-mounted solar array on gravel with clear blue sky"
       />
 
       <SiteSection
@@ -176,6 +151,13 @@ export default function CommercialPage() {
           ))}
         </SiteCardGrid>
       </SiteSection>
+
+      <SiteImageBreak
+        images={[
+          { src: "/images/web_photos/Commercial_02_Ground-Mounted-Array_ALT.jpg", alt: "Ground-mounted solar array on open grassland, afternoon light, dramatic sky" },
+          { alt: "Modern solar carport covering commercial parking lot, sleek steel structure, cars parked underneath" }
+        ]}
+      />
 
       <SiteSection
         eyebrow="How It Works"
@@ -215,9 +197,26 @@ export default function CommercialPage() {
         description="Commercial sites vary widely, so we shape the system strategy around your footprint, energy profile, and operating reality."
         visual={
           <SiteCardGrid columns={2}>
-            {systemTypes.map((item) => (
-              <SiteCard key={item.title} title={item.title} description={item.description} />
-            ))}
+            <SiteCard
+              title={systemTypes[0].title}
+              description={systemTypes[0].description}
+              imageSrc="/images/web_photos/Commercial_01_Rooftop-System-Commercial-Building.jpeg"
+              imageAlt="Commercial flat roof with rows of solar panels"
+            />
+            <SiteCard
+              title={systemTypes[1].title}
+              description={systemTypes[1].description}
+              imageSrc="/images/web_photos/Commercial_02_Ground-Mounted-Array.jpg"
+              imageAlt="Large ground-mounted solar array on grassland"
+            />
+            <SiteCard
+              title={systemTypes[2].title}
+              description={systemTypes[2].description}
+            />
+            <SiteCard
+              title={systemTypes[3].title}
+              description={systemTypes[3].description}
+            />
           </SiteCardGrid>
         }
         body={
@@ -240,22 +239,18 @@ export default function CommercialPage() {
         description="A strong commercial install depends on real coordination across design, permitting, build quality, and long-term support."
       >
         <SiteCardGrid>
-          {[
-            {
-              title: "Warehouse Rooftop Build",
-              description: "Designed to maximize available roof area while minimizing disruption to ongoing operations."
-            },
-            {
-              title: "Open-Land Ground Array",
-              description: "Configured for high production on a site with room to scale and optimize orientation."
-            },
-            {
-              title: "Customer-Facing Carport",
-              description: "Balanced energy generation, brand presence, and visitor comfort in a parking-heavy environment."
-            }
-          ].map((item) => (
-            <SiteCard key={item.title} title={item.title} description={item.description} />
-          ))}
+          <SiteCard
+            title="Gaslamp Restaurant"
+            description="Designed to maximize available roof area while minimizing disruption to ongoing operations."
+            imageSrc="/images/web_photos/Commercial_05_Our-Work-Gallery-1-Warehouse-Install.jpeg"
+            imageAlt="Solar installers on commercial flat roof positioning panels in long rows"
+          />
+          <SiteCard
+            title="Escondido Church"
+            description="Full rooftop coverage configured for high production and long-term performance."
+            imageSrc="/images/web_photos/Commercial_06_Our-Work-Gallery-2-Completed-Building.jpeg"
+            imageAlt="Completed commercial rooftop solar installation on church building"
+          />
         </SiteCardGrid>
       </SiteSection>
 
@@ -297,7 +292,7 @@ export default function CommercialPage() {
               title={item}
               description="Request a tailored evaluation to see how solar could fit your site, usage profile, and investment goals."
               footer={
-                <SiteButtonLink href="/contact#sales-form" variant="ghost" className="px-0 py-0">
+                <SiteButtonLink href="/contact#sales-form" variant="ghost">
                   View Project Fit
                 </SiteButtonLink>
               }

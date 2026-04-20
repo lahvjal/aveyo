@@ -7,9 +7,32 @@ export interface PlatformSessionUser {
   avatarUrl: string | null;
 }
 
+export interface PlatformDepartmentNode {
+  id: string;
+  name: string;
+  parentId: string | null;
+}
+
+export type PlatformUserType = "employee" | "customer" | "unknown";
+
+export interface PlatformSessionAccess {
+  userType: PlatformUserType;
+  departmentId: string | null;
+  departmentName: string | null;
+  departmentPath: PlatformDepartmentNode[];
+  subDepartments: PlatformDepartmentNode[];
+  subDepartmentIds: string[];
+  isManager: boolean;
+  isAdmin: boolean;
+  isExecutive: boolean;
+  isSuperAdmin: boolean;
+}
+
 export interface PlatformSessionPayload {
   authenticated: boolean;
   role?: string;
+  userType?: PlatformUserType;
+  access?: PlatformSessionAccess;
   user?: PlatformSessionUser | null;
 }
 

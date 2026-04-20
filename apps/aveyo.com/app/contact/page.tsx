@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import ContactInquiryForms from "@/app/contact/contact-inquiry-forms";
 import {
   SiteCard,
@@ -71,6 +72,8 @@ export default function ContactPage() {
           { value: AVEYO_CUSTOMER_CARE_PHONE, label: "Customer Care" },
           { value: AVEYO_INFO_EMAIL, label: "Email" }
         ]}
+        backgroundSrc="/images/web_photos/Contact_01_Office-Location-Utah-Mountains.jpg"
+        backgroundAlt="Aveyo office building with Wasatch mountains in background, clear day"
       />
 
       <SiteSection
@@ -147,16 +150,27 @@ export default function ContactPage() {
         description="Aveyo works across sales, install, engineering, roofing, and activation disciplines so customers get a more coordinated experience."
         tone="navy"
       >
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {["Sales", "Engineering", "Roofing", "Installation"].map((item) => (
-            <div
-              key={item}
-              className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-white/[0.05] p-[var(--site-card-padding-tight)] text-center text-[length:var(--site-body-large)] font-semibold text-white"
-            >
-              <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-              <div className="relative z-[2]">{item}</div>
-            </div>
-          ))}
+        <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
+          <div className="relative h-[300px] overflow-hidden rounded-[var(--site-radius-corner)] lg:h-auto">
+            <Image
+              src="/images/web_photos/Newsfeed_02_Featured-Article-New-Office.jpg"
+              alt="Aveyo office building exterior with branded signage, modern glass facade"
+              fill
+              className="object-cover"
+              sizes="(min-width: 1024px) 50vw, 100vw"
+            />
+          </div>
+          <div className="grid gap-4">
+            {["Sales", "Engineering", "Roofing", "Installation"].map((item) => (
+              <div
+                key={item}
+                className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-white/[0.05] p-[var(--site-card-padding-tight)] text-[length:var(--site-body-large)] font-semibold text-white"
+              >
+                <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
+                <div className="relative z-[2]">{item}</div>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="mt-8 flex flex-wrap gap-4 text-[length:var(--site-body)] text-white/72">

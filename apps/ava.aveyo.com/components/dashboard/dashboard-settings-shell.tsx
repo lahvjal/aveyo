@@ -171,6 +171,7 @@ export function DashboardSettingsShell() {
           activeRoute="settings"
           canAccessManagerViews={canAccessAvaManagerViews(authSession.role, authSession.access)}
         />
+        <div className="rep-main-scroll">
         {error ? (
           <p className="rep-shell-error" role="alert">
             {error}
@@ -401,6 +402,7 @@ export function DashboardSettingsShell() {
               </div>
             )}
           </section>
+        </div>
         </div>
       </section>
     </div>

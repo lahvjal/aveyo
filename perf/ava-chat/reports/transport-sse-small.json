@@ -1,0 +1,594 @@
+{
+  "createdAt": "2026-04-17T16:25:45.636Z",
+  "tier": "small",
+  "transport": "sse",
+  "apiBaseUrl": "http://localhost:4002",
+  "sessions": {
+    "customers": 25,
+    "agents": 3,
+    "managers": 2
+  },
+  "scenarios": {
+    "messageRoundtrip": {
+      "summary": {
+        "total": 25,
+        "succeeded": 0,
+        "failed": 25,
+        "metrics": {
+          "createConversationPerfMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          },
+          "fetchConversationPerfMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          },
+          "sendRequestMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          },
+          "sendServerMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          },
+          "eventVisibleMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          },
+          "eventServerMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          },
+          "avaReplyVisibleMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          },
+          "replyConversationPerfMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          }
+        },
+        "failures": [
+          {
+            "error": "This operation was aborted"
+          },
+          {
+            "error": "This operation was aborted"
+          },
+          {
+            "error": "This operation was aborted"
+          },
+          {
+            "error": "This operation was aborted"
+          },
+          {
+            "error": "This operation was aborted"
+          },
+          {
+            "error": "This operation was aborted"
+          },
+          {
+            "error": "This operation was aborted"
+          },
+          {
+            "error": "This operation was aborted"
+          },
+          {
+            "error": "This operation was aborted"
+          },
+          {
+            "error": "This operation was aborted"
+          }
+        ]
+      },
+      "samples": [
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        },
+        {
+          "error": "This operation was aborted"
+        }
+      ]
+    },
+    "handoffRoundtrip": {
+      "summary": {
+        "total": 8,
+        "succeeded": 8,
+        "failed": 0,
+        "metrics": {
+          "handoffRequestMs": {
+            "count": 8,
+            "min": 1401.16,
+            "p50": 1685.69,
+            "p95": 3545.36,
+            "p99": 3545.36,
+            "max": 3545.36,
+            "average": 2365.88
+          },
+          "queueVisibleMs": {
+            "count": 8,
+            "min": 1240.3,
+            "p50": 1310.36,
+            "p95": 1674.26,
+            "p99": 1674.26,
+            "max": 1674.26,
+            "average": 1389.31
+          },
+          "managerVisibleMs": {
+            "count": 8,
+            "min": 1350,
+            "p50": 1461.12,
+            "p95": 2170.1,
+            "p99": 2170.1,
+            "max": 2170.1,
+            "average": 1697.65
+          },
+          "claimMs": {
+            "count": 8,
+            "min": 1696.18,
+            "p50": 1743.47,
+            "p95": 2369.29,
+            "p99": 2369.29,
+            "max": 2369.29,
+            "average": 1838.55
+          },
+          "repMessageMs": {
+            "count": 8,
+            "min": 598.56,
+            "p50": 708.81,
+            "p95": 1964.46,
+            "p99": 1964.46,
+            "max": 1964.46,
+            "average": 901.79
+          },
+          "resolveMs": {
+            "count": 8,
+            "min": 1444.46,
+            "p50": 1774.53,
+            "p95": 2678.76,
+            "p99": 2678.76,
+            "max": 2678.76,
+            "average": 2018.2
+          },
+          "ratingMs": {
+            "count": 8,
+            "min": 1149.52,
+            "p50": 1578.99,
+            "p95": 2608.62,
+            "p99": 2608.62,
+            "max": 2608.62,
+            "average": 1785.8
+          },
+          "followUpMessageMs": {
+            "count": 8,
+            "min": 2295.28,
+            "p50": 2481.59,
+            "p95": 3622.03,
+            "p99": 3622.03,
+            "max": 3622.03,
+            "average": 2808.37
+          },
+          "returnToAiMs": {
+            "count": 8,
+            "min": 2625.35,
+            "p50": 3916.54,
+            "p95": 6083.67,
+            "p99": 6083.67,
+            "max": 6083.67,
+            "average": 4096.22
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "conversationId": "55221f7f-8126-407f-b25a-c5289ba0f63b",
+          "handoffRequestMs": 1543.6,
+          "queueVisibleMs": 1310.36,
+          "managerVisibleMs": 1426.32,
+          "claimMs": 1735.06,
+          "repMessageMs": 708.81,
+          "resolveMs": 1617.86,
+          "ratingMs": 1228.47,
+          "followUpMessageMs": 2471.86,
+          "returnToAiMs": 3603.24
+        },
+        {
+          "conversationId": "e7eb48fa-b657-494d-962b-5ff1e82438cb",
+          "handoffRequestMs": 1631.8,
+          "queueVisibleMs": 1241.57,
+          "managerVisibleMs": 1406.46,
+          "claimMs": 1736.3,
+          "repMessageMs": 598.56,
+          "resolveMs": 1726.48,
+          "ratingMs": 1149.52,
+          "followUpMessageMs": 2481.59,
+          "returnToAiMs": 3673.41
+        },
+        {
+          "conversationId": "b4b072d4-ddee-434b-8b99-12c01de1bb96",
+          "handoffRequestMs": 1685.69,
+          "queueVisibleMs": 1408.27,
+          "managerVisibleMs": 1350,
+          "claimMs": 1696.18,
+          "repMessageMs": 715.23,
+          "resolveMs": 1444.46,
+          "ratingMs": 1340.13,
+          "followUpMessageMs": 2466.23,
+          "returnToAiMs": 2625.35
+        },
+        {
+          "conversationId": "c7a6755c-cc23-43cf-8134-f1c9bb59832d",
+          "handoffRequestMs": 1401.16,
+          "queueVisibleMs": 1674.26,
+          "managerVisibleMs": 2170.1,
+          "claimMs": 2369.29,
+          "repMessageMs": 834.11,
+          "resolveMs": 1819.81,
+          "ratingMs": 2221.23,
+          "followUpMessageMs": 3287.88,
+          "returnToAiMs": 6083.67
+        },
+        {
+          "conversationId": "c7ff3654-8692-4361-926f-95f9c4fbde12",
+          "handoffRequestMs": 2894.04,
+          "queueVisibleMs": 1240.3,
+          "managerVisibleMs": 2159.14,
+          "claimMs": 1757.58,
+          "repMessageMs": 1964.46,
+          "resolveMs": 1774.53,
+          "ratingMs": 2608.62,
+          "followUpMessageMs": 2295.28,
+          "returnToAiMs": 3916.54
+        },
+        {
+          "conversationId": "d6eb0cdf-3705-4cef-b88d-3f18429ec98b",
+          "handoffRequestMs": 2725.6,
+          "queueVisibleMs": 1279.35,
+          "managerVisibleMs": 2130.41,
+          "claimMs": 1753.93,
+          "repMessageMs": 1013.58,
+          "resolveMs": 2483.94,
+          "ratingMs": 2550.71,
+          "followUpMessageMs": 2506.9,
+          "returnToAiMs": 4356.64
+        },
+        {
+          "conversationId": "b7474ab2-7596-4e27-92c8-df994415d01d",
+          "handoffRequestMs": 3545.36,
+          "queueVisibleMs": 1469.15,
+          "managerVisibleMs": 1477.64,
+          "claimMs": 1916.6,
+          "repMessageMs": 687.24,
+          "resolveMs": 2678.76,
+          "ratingMs": 1608.73,
+          "followUpMessageMs": 3622.03,
+          "returnToAiMs": 4304.89
+        },
+        {
+          "conversationId": "0c58ed7a-fa13-434e-9c3f-2895b8f10e36",
+          "handoffRequestMs": 3499.77,
+          "queueVisibleMs": 1491.21,
+          "managerVisibleMs": 1461.12,
+          "claimMs": 1743.47,
+          "repMessageMs": 692.31,
+          "resolveMs": 2599.73,
+          "ratingMs": 1578.99,
+          "followUpMessageMs": 3335.18,
+          "returnToAiMs": 4205.98
+        }
+      ]
+    },
+    "managerRefresh": {
+      "summary": {
+        "total": 12,
+        "succeeded": 12,
+        "failed": 0,
+        "metrics": {
+          "requestMs": {
+            "count": 12,
+            "min": 1046.48,
+            "p50": 1213.37,
+            "p95": 2691.67,
+            "p99": 2691.67,
+            "max": 2691.67,
+            "average": 1473.9
+          },
+          "serverMs": {
+            "count": 12,
+            "min": 810.91,
+            "p50": 975.02,
+            "p95": 2494.18,
+            "p99": 2494.18,
+            "max": 2494.18,
+            "average": 1252.62
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "requestMs": 1081.67,
+          "serverMs": 906.41
+        },
+        {
+          "requestMs": 1149.54,
+          "serverMs": 975.02
+        },
+        {
+          "requestMs": 1189.44,
+          "serverMs": 962.27
+        },
+        {
+          "requestMs": 1213.37,
+          "serverMs": 935.69
+        },
+        {
+          "requestMs": 1402.16,
+          "serverMs": 1221.97
+        },
+        {
+          "requestMs": 1415.42,
+          "serverMs": 1130.45
+        },
+        {
+          "requestMs": 2681.94,
+          "serverMs": 2481.07
+        },
+        {
+          "requestMs": 2691.67,
+          "serverMs": 2494.18
+        },
+        {
+          "requestMs": 1046.48,
+          "serverMs": 836.04
+        },
+        {
+          "requestMs": 1107.13,
+          "serverMs": 810.91
+        },
+        {
+          "requestMs": 1294.54,
+          "serverMs": 1103.32
+        },
+        {
+          "requestMs": 1413.38,
+          "serverMs": 1174.1
+        }
+      ]
+    },
+    "agentRefresh": {
+      "summary": {
+        "total": 12,
+        "succeeded": 12,
+        "failed": 0,
+        "metrics": {
+          "queueRequestMs": {
+            "count": 12,
+            "min": 993.97,
+            "p50": 1123.7,
+            "p95": 1356.51,
+            "p99": 1356.51,
+            "max": 1356.51,
+            "average": 1157.67
+          },
+          "queueServerMs": {
+            "count": 12,
+            "min": 800.55,
+            "p50": 935.58,
+            "p95": 1183.31,
+            "p99": 1183.31,
+            "max": 1183.31,
+            "average": 973.59
+          },
+          "realtimeRequestMs": {
+            "count": 12,
+            "min": 2934.43,
+            "p50": 5224.99,
+            "p95": 6708.75,
+            "p99": 6708.75,
+            "max": 6708.75,
+            "average": 4880.96
+          },
+          "realtimeServerMs": {
+            "count": 12,
+            "min": 2748.72,
+            "p50": 4517.99,
+            "p95": 6471.07,
+            "p99": 6471.07,
+            "max": 6471.07,
+            "average": 4521.93
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "queueRequestMs": 1162.68,
+          "queueServerMs": 986.2,
+          "realtimeRequestMs": 5537.61,
+          "realtimeServerMs": 4849.09
+        },
+        {
+          "queueRequestMs": 1123.7,
+          "queueServerMs": 926.58,
+          "realtimeRequestMs": 5579.79,
+          "realtimeServerMs": 4517.99
+        },
+        {
+          "queueRequestMs": 1105.39,
+          "queueServerMs": 925.27,
+          "realtimeRequestMs": 5224.99,
+          "realtimeServerMs": 4532.04
+        },
+        {
+          "queueRequestMs": 1356.51,
+          "queueServerMs": 1183.31,
+          "realtimeRequestMs": 4166.82,
+          "realtimeServerMs": 3955.92
+        },
+        {
+          "queueRequestMs": 1318.66,
+          "queueServerMs": 1128.55,
+          "realtimeRequestMs": 5553.49,
+          "realtimeServerMs": 5349.87
+        },
+        {
+          "queueRequestMs": 1276.39,
+          "queueServerMs": 1105.12,
+          "realtimeRequestMs": 4248.98,
+          "realtimeServerMs": 4080.93
+        },
+        {
+          "queueRequestMs": 1116.05,
+          "queueServerMs": 956.64,
+          "realtimeRequestMs": 6708.75,
+          "realtimeServerMs": 6471.07
+        },
+        {
+          "queueRequestMs": 993.97,
+          "queueServerMs": 800.55,
+          "realtimeRequestMs": 6354.29,
+          "realtimeServerMs": 6129.31
+        },
+        {
+          "queueRequestMs": 1130.38,
+          "queueServerMs": 904.6,
+          "realtimeRequestMs": 5896.65,
+          "realtimeServerMs": 5623.61
+        },
+        {
+          "queueRequestMs": 1010.68,
+          "queueServerMs": 817.57,
+          "realtimeRequestMs": 3234.49,
+          "realtimeServerMs": 3041.29
+        },
+        {
+          "queueRequestMs": 1100.45,
+          "queueServerMs": 935.58,
+          "realtimeRequestMs": 3131.24,
+          "realtimeServerMs": 2963.26
+        },
+        {
+          "queueRequestMs": 1197.14,
+          "queueServerMs": 1013.1,
+          "realtimeRequestMs": 2934.43,
+          "realtimeServerMs": 2748.72
+        }
+      ]
+    }
+  },
+  "perfSnapshots": {
+    "count": 0,
+    "grouped": {}
+  }
+}

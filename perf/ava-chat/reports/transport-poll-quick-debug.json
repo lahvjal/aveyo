@@ -1,0 +1,856 @@
+{
+  "createdAt": "2026-04-17T16:34:17.818Z",
+  "tier": "small",
+  "transport": "poll",
+  "apiBaseUrl": "http://localhost:4002",
+  "sessions": {
+    "customers": 2,
+    "agents": 1,
+    "managers": 1
+  },
+  "scenarios": {
+    "messageRoundtrip": {
+      "summary": {
+        "total": 2,
+        "succeeded": 2,
+        "failed": 0,
+        "metrics": {
+          "createConversationPerfMs": {
+            "count": 2,
+            "min": 653.31,
+            "p50": 653.31,
+            "p95": 954.32,
+            "p99": 954.32,
+            "max": 954.32,
+            "average": 803.82
+          },
+          "fetchConversationPerfMs": {
+            "count": 2,
+            "min": 1005.04,
+            "p50": 1005.04,
+            "p95": 1071.13,
+            "p99": 1071.13,
+            "max": 1071.13,
+            "average": 1038.09
+          },
+          "sendRequestMs": {
+            "count": 2,
+            "min": 2817.01,
+            "p50": 2817.01,
+            "p95": 3063.96,
+            "p99": 3063.96,
+            "max": 3063.96,
+            "average": 2940.49
+          },
+          "sendServerMs": {
+            "count": 2,
+            "min": 2495.1,
+            "p50": 2495.1,
+            "p95": 2809.46,
+            "p99": 2809.46,
+            "max": 2809.46,
+            "average": 2652.28
+          },
+          "eventVisibleMs": {
+            "count": 2,
+            "min": 3173.66,
+            "p50": 3173.66,
+            "p95": 3548.28,
+            "p99": 3548.28,
+            "max": 3548.28,
+            "average": 3360.97
+          },
+          "eventServerMs": {
+            "count": 2,
+            "min": 2821.9,
+            "p50": 2821.9,
+            "p95": 2947.44,
+            "p99": 2947.44,
+            "max": 2947.44,
+            "average": 2884.67
+          },
+          "avaReplyVisibleMs": {
+            "count": 2,
+            "min": 1109.96,
+            "p50": 1109.96,
+            "p95": 1277.43,
+            "p99": 1277.43,
+            "max": 1277.43,
+            "average": 1193.7
+          },
+          "replyConversationPerfMs": {
+            "count": 2,
+            "min": 919.27,
+            "p50": 919.27,
+            "p95": 1024,
+            "p99": 1024,
+            "max": 1024,
+            "average": 971.63
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "conversationId": "77af711d-e224-4804-a83d-411b657805fa",
+          "createConversationPerfMs": 954.32,
+          "fetchConversationPerfMs": 1005.04,
+          "sendRequestMs": 3063.96,
+          "sendServerMs": 2809.46,
+          "eventVisibleMs": 3548.28,
+          "eventServerMs": 2821.9,
+          "avaReplyVisibleMs": 1109.96,
+          "replyConversationPerfMs": 919.27
+        },
+        {
+          "conversationId": "6859e1b3-eba5-4ab6-bdf7-f924e8f6e0be",
+          "createConversationPerfMs": 653.31,
+          "fetchConversationPerfMs": 1071.13,
+          "sendRequestMs": 2817.01,
+          "sendServerMs": 2495.1,
+          "eventVisibleMs": 3173.66,
+          "eventServerMs": 2947.44,
+          "avaReplyVisibleMs": 1277.43,
+          "replyConversationPerfMs": 1024
+        }
+      ]
+    },
+    "handoffRoundtrip": {
+      "summary": {
+        "total": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "metrics": {
+          "handoffRequestMs": {
+            "count": 1,
+            "min": 1734.97,
+            "p50": 1734.97,
+            "p95": 1734.97,
+            "p99": 1734.97,
+            "max": 1734.97,
+            "average": 1734.97
+          },
+          "queueVisibleMs": {
+            "count": 1,
+            "min": 1365.62,
+            "p50": 1365.62,
+            "p95": 1365.62,
+            "p99": 1365.62,
+            "max": 1365.62,
+            "average": 1365.62
+          },
+          "managerVisibleMs": {
+            "count": 1,
+            "min": 2142.36,
+            "p50": 2142.36,
+            "p95": 2142.36,
+            "p99": 2142.36,
+            "max": 2142.36,
+            "average": 2142.36
+          },
+          "claimMs": {
+            "count": 1,
+            "min": 1897.45,
+            "p50": 1897.45,
+            "p95": 1897.45,
+            "p99": 1897.45,
+            "max": 1897.45,
+            "average": 1897.45
+          },
+          "repMessageMs": {
+            "count": 1,
+            "min": 861.11,
+            "p50": 861.11,
+            "p95": 861.11,
+            "p99": 861.11,
+            "max": 861.11,
+            "average": 861.11
+          },
+          "resolveMs": {
+            "count": 1,
+            "min": 1949.99,
+            "p50": 1949.99,
+            "p95": 1949.99,
+            "p99": 1949.99,
+            "max": 1949.99,
+            "average": 1949.99
+          },
+          "ratingMs": {
+            "count": 1,
+            "min": 1545.11,
+            "p50": 1545.11,
+            "p95": 1545.11,
+            "p99": 1545.11,
+            "max": 1545.11,
+            "average": 1545.11
+          },
+          "followUpMessageMs": {
+            "count": 1,
+            "min": 2369.46,
+            "p50": 2369.46,
+            "p95": 2369.46,
+            "p99": 2369.46,
+            "max": 2369.46,
+            "average": 2369.46
+          },
+          "returnToAiMs": {
+            "count": 1,
+            "min": 5562.33,
+            "p50": 5562.33,
+            "p95": 5562.33,
+            "p99": 5562.33,
+            "max": 5562.33,
+            "average": 5562.33
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "conversationId": "77af711d-e224-4804-a83d-411b657805fa",
+          "handoffRequestMs": 1734.97,
+          "queueVisibleMs": 1365.62,
+          "managerVisibleMs": 2142.36,
+          "claimMs": 1897.45,
+          "repMessageMs": 861.11,
+          "resolveMs": 1949.99,
+          "ratingMs": 1545.11,
+          "followUpMessageMs": 2369.46,
+          "returnToAiMs": 5562.33
+        }
+      ]
+    },
+    "managerRefresh": {
+      "summary": {
+        "total": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "metrics": {
+          "requestMs": {
+            "count": 1,
+            "min": 1588.63,
+            "p50": 1588.63,
+            "p95": 1588.63,
+            "p99": 1588.63,
+            "max": 1588.63,
+            "average": 1588.63
+          },
+          "serverMs": {
+            "count": 1,
+            "min": 1364.5,
+            "p50": 1364.5,
+            "p95": 1364.5,
+            "p99": 1364.5,
+            "max": 1364.5,
+            "average": 1364.5
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "requestMs": 1588.63,
+          "serverMs": 1364.5
+        }
+      ]
+    },
+    "agentRefresh": {
+      "summary": {
+        "total": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "metrics": {
+          "queueRequestMs": {
+            "count": 1,
+            "min": 1352.79,
+            "p50": 1352.79,
+            "p95": 1352.79,
+            "p99": 1352.79,
+            "max": 1352.79,
+            "average": 1352.79
+          },
+          "queueServerMs": {
+            "count": 1,
+            "min": 1049.32,
+            "p50": 1049.32,
+            "p95": 1049.32,
+            "p99": 1049.32,
+            "max": 1049.32,
+            "average": 1049.32
+          },
+          "realtimeRequestMs": {
+            "count": 1,
+            "min": 2831.08,
+            "p50": 2831.08,
+            "p95": 2831.08,
+            "p99": 2831.08,
+            "max": 2831.08,
+            "average": 2831.08
+          },
+          "realtimeServerMs": {
+            "count": 1,
+            "min": 2578.38,
+            "p50": 2578.38,
+            "p95": 2578.38,
+            "p99": 2578.38,
+            "max": 2578.38,
+            "average": 2578.38
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "queueRequestMs": 1352.79,
+          "queueServerMs": 1049.32,
+          "realtimeRequestMs": 2831.08,
+          "realtimeServerMs": 2578.38
+        }
+      ]
+    }
+  },
+  "perfSnapshots": {
+    "count": 30,
+    "grouped": {
+      "api.conversations.list": {
+        "count": 3,
+        "totalMs": {
+          "count": 3,
+          "min": 838.82,
+          "p50": 1326.39,
+          "p95": 1343.65,
+          "p99": 1343.65,
+          "max": 1343.65,
+          "average": 1169.62
+        },
+        "dbQueryCount": {
+          "count": 3,
+          "min": 5,
+          "p50": 5,
+          "p95": 10,
+          "p99": 10,
+          "max": 10,
+          "average": 6.67
+        },
+        "dbTotalMs": {
+          "count": 3,
+          "min": 828.26,
+          "p50": 1338.08,
+          "p95": 1750.7,
+          "p99": 1750.7,
+          "max": 1750.7,
+          "average": 1305.68
+        },
+        "openAiTotalMs": {
+          "count": 3,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 3,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "errors": []
+      },
+      "api.conversations.create": {
+        "count": 2,
+        "totalMs": {
+          "count": 2,
+          "min": 653.31,
+          "p50": 653.31,
+          "p95": 954.32,
+          "p99": 954.32,
+          "max": 954.32,
+          "average": 803.82
+        },
+        "dbQueryCount": {
+          "count": 2,
+          "min": 8,
+          "p50": 8,
+          "p95": 8,
+          "p99": 8,
+          "max": 8,
+          "average": 8
+        },
+        "dbTotalMs": {
+          "count": 2,
+          "min": 841.03,
+          "p50": 841.03,
+          "p95": 1315.44,
+          "p99": 1315.44,
+          "max": 1315.44,
+          "average": 1078.24
+        },
+        "openAiTotalMs": {
+          "count": 2,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 2,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "errors": []
+      },
+      "api.conversation.get": {
+        "count": 8,
+        "totalMs": {
+          "count": 8,
+          "min": 764.5,
+          "p50": 884.3,
+          "p95": 1071.13,
+          "p99": 1071.13,
+          "max": 1071.13,
+          "average": 911.53
+        },
+        "dbQueryCount": {
+          "count": 8,
+          "min": 9,
+          "p50": 10,
+          "p95": 10,
+          "p99": 10,
+          "max": 10,
+          "average": 9.75
+        },
+        "dbTotalMs": {
+          "count": 8,
+          "min": 904.84,
+          "p50": 1052.06,
+          "p95": 1424.58,
+          "p99": 1424.58,
+          "max": 1424.58,
+          "average": 1110.16
+        },
+        "openAiTotalMs": {
+          "count": 8,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 8,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "errors": []
+      },
+      "api.realtime.events": {
+        "count": 5,
+        "totalMs": {
+          "count": 5,
+          "min": 2578.38,
+          "p50": 2947.44,
+          "p95": 5055.39,
+          "p99": 5055.39,
+          "max": 5055.39,
+          "average": 3520.98
+        },
+        "dbQueryCount": {
+          "count": 5,
+          "min": 19,
+          "p50": 20,
+          "p95": 20,
+          "p99": 20,
+          "max": 20,
+          "average": 19.6
+        },
+        "dbTotalMs": {
+          "count": 5,
+          "min": 2721.61,
+          "p50": 3008.79,
+          "p95": 5159.5,
+          "p99": 5159.5,
+          "max": 5159.5,
+          "average": 3658.37
+        },
+        "openAiTotalMs": {
+          "count": 5,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 5,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "errors": []
+      },
+      "api.messages.create": {
+        "count": 4,
+        "totalMs": {
+          "count": 4,
+          "min": 598.91,
+          "p50": 2118.31,
+          "p95": 2809.46,
+          "p99": 2809.46,
+          "max": 2809.46,
+          "average": 2005.44
+        },
+        "dbQueryCount": {
+          "count": 4,
+          "min": 5,
+          "p50": 10,
+          "p95": 10,
+          "p99": 10,
+          "max": 10,
+          "average": 8.75
+        },
+        "dbTotalMs": {
+          "count": 4,
+          "min": 593.34,
+          "p50": 1128.99,
+          "p95": 1809.69,
+          "p99": 1809.69,
+          "max": 1809.69,
+          "average": 1254.3
+        },
+        "openAiTotalMs": {
+          "count": 4,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 4,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "errors": []
+      },
+      "api.handoff.request": {
+        "count": 1,
+        "totalMs": {
+          "count": 1,
+          "min": 1510.97,
+          "p50": 1510.97,
+          "p95": 1510.97,
+          "p99": 1510.97,
+          "max": 1510.97,
+          "average": 1510.97
+        },
+        "dbQueryCount": {
+          "count": 1,
+          "min": 15,
+          "p50": 15,
+          "p95": 15,
+          "p99": 15,
+          "max": 15,
+          "average": 15
+        },
+        "dbTotalMs": {
+          "count": 1,
+          "min": 1718.35,
+          "p50": 1718.35,
+          "p95": 1718.35,
+          "p99": 1718.35,
+          "max": 1718.35,
+          "average": 1718.35
+        },
+        "openAiTotalMs": {
+          "count": 1,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 1,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "errors": []
+      },
+      "api.handoff.queue": {
+        "count": 2,
+        "totalMs": {
+          "count": 2,
+          "min": 1049.32,
+          "p50": 1049.32,
+          "p95": 1068.76,
+          "p99": 1068.76,
+          "max": 1068.76,
+          "average": 1059.04
+        },
+        "dbQueryCount": {
+          "count": 2,
+          "min": 10,
+          "p50": 10,
+          "p95": 10,
+          "p99": 10,
+          "max": 10,
+          "average": 10
+        },
+        "dbTotalMs": {
+          "count": 2,
+          "min": 1031.69,
+          "p50": 1031.69,
+          "p95": 1038.51,
+          "p99": 1038.51,
+          "max": 1038.51,
+          "average": 1035.1
+        },
+        "openAiTotalMs": {
+          "count": 2,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 2,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "errors": []
+      },
+      "api.manager.handoffs": {
+        "count": 2,
+        "totalMs": {
+          "count": 2,
+          "min": 1364.5,
+          "p50": 1364.5,
+          "p95": 1788.21,
+          "p99": 1788.21,
+          "max": 1788.21,
+          "average": 1576.36
+        },
+        "dbQueryCount": {
+          "count": 2,
+          "min": 11,
+          "p50": 11,
+          "p95": 12,
+          "p99": 12,
+          "max": 12,
+          "average": 11.5
+        },
+        "dbTotalMs": {
+          "count": 2,
+          "min": 1620.3,
+          "p50": 1620.3,
+          "p95": 2004.39,
+          "p99": 2004.39,
+          "max": 2004.39,
+          "average": 1812.35
+        },
+        "openAiTotalMs": {
+          "count": 2,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 2,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "errors": []
+      },
+      "api.handoff.claim": {
+        "count": 1,
+        "totalMs": {
+          "count": 1,
+          "min": 1575.16,
+          "p50": 1575.16,
+          "p95": 1575.16,
+          "p99": 1575.16,
+          "max": 1575.16,
+          "average": 1575.16
+        },
+        "dbQueryCount": {
+          "count": 1,
+          "min": 16,
+          "p50": 16,
+          "p95": 16,
+          "p99": 16,
+          "max": 16,
+          "average": 16
+        },
+        "dbTotalMs": {
+          "count": 1,
+          "min": 1744.5,
+          "p50": 1744.5,
+          "p95": 1744.5,
+          "p99": 1744.5,
+          "max": 1744.5,
+          "average": 1744.5
+        },
+        "openAiTotalMs": {
+          "count": 1,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 1,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "errors": []
+      },
+      "api.handoff.resolve": {
+        "count": 1,
+        "totalMs": {
+          "count": 1,
+          "min": 1576.42,
+          "p50": 1576.42,
+          "p95": 1576.42,
+          "p99": 1576.42,
+          "max": 1576.42,
+          "average": 1576.42
+        },
+        "dbQueryCount": {
+          "count": 1,
+          "min": 16,
+          "p50": 16,
+          "p95": 16,
+          "p99": 16,
+          "max": 16,
+          "average": 16
+        },
+        "dbTotalMs": {
+          "count": 1,
+          "min": 1733.11,
+          "p50": 1733.11,
+          "p95": 1733.11,
+          "p99": 1733.11,
+          "max": 1733.11,
+          "average": 1733.11
+        },
+        "openAiTotalMs": {
+          "count": 1,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 1,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "errors": []
+      },
+      "api.handoff.rating": {
+        "count": 1,
+        "totalMs": {
+          "count": 1,
+          "min": 1269.94,
+          "p50": 1269.94,
+          "p95": 1269.94,
+          "p99": 1269.94,
+          "max": 1269.94,
+          "average": 1269.94
+        },
+        "dbQueryCount": {
+          "count": 1,
+          "min": 13,
+          "p50": 13,
+          "p95": 13,
+          "p99": 13,
+          "max": 13,
+          "average": 13
+        },
+        "dbTotalMs": {
+          "count": 1,
+          "min": 1416.33,
+          "p50": 1416.33,
+          "p95": 1416.33,
+          "p99": 1416.33,
+          "max": 1416.33,
+          "average": 1416.33
+        },
+        "openAiTotalMs": {
+          "count": 1,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 1,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "errors": []
+      }
+    }
+  }
+}

@@ -19,6 +19,16 @@ import {
   getCustomerSentimentForMessage,
   serializeCustomerSentimentPayload
 } from "@/lib/sentiment/customer-sentiment";
+import {
+  getIdleAutomationDecision,
+  RESOLVED_SESSION_AUTO_CLOSE_AFTER_MS,
+  RESOLVED_SESSION_CLOSE_MESSAGE,
+  SESSION_IDLE_AUTOMATION_SOURCE,
+  SESSION_IDLE_CLOSE_MESSAGE,
+  SESSION_IDLE_PROMPT_AFTER_MS,
+  SESSION_IDLE_PROMPT_MESSAGE,
+  shouldAutoCloseResolvedConversation
+} from "@/lib/automation/session-automation-logic";
 import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 type AppendableMessageInput =
@@ -170,6 +180,15 @@ interface HandoffEventRow {
   created_at: string;
 }
 
+interface TypingEventRow {
+  id: string;
+  conversation_id: string;
+  actor_kind: "customer" | "representative" | "ava";
+  actor_auth_user_id: string | null;
+  is_typing: boolean;
+  created_at: string;
+}
+
 interface SupportAgentNoteRow {
   id: string;
   conversation_id: string;
@@ -238,16 +257,7 @@ interface ResolvedCustomerProjectDetails {
 }
 
 const typingEvents: RealtimeEvent[] = [];
-const SESSION_IDLE_PROMPT_AFTER_MS = 60_000;
-const SESSION_IDLE_CLOSE_AFTER_PROMPT_MS = 60_000;
-const SESSION_IDLE_AUTOMATION_SOURCE = "session_idle_automation_v1";
-const SESSION_IDLE_PROMPT_MESSAGE =
-  "Are you still there? If I don't hear from you, I'll close this conversation.";
-const SESSION_IDLE_CLOSE_MESSAGE =
-  "You didn't respond, so I will be closing this conversation.";
 const SESSION_CLOSED_STATUS_MESSAGE = "Chat ended.";
-const RESOLVED_SESSION_AUTO_CLOSE_AFTER_MS = 30 * 60 * 1000;
-const RESOLVED_SESSION_CLOSE_MESSAGE = "This handoff has been resolved, so I am closing this chat.";
 
 const systemEventValues: SystemEvent[] = [
   "request_sent",
@@ -260,17 +270,6 @@ const systemEventValues: SystemEvent[] = [
 
 function nowIso() {
   return new Date().toISOString();
-}
-
-function parseIsoToMs(value: string | null | undefined) {
-  if (!value) {
-    return null;
-  }
-  const parsed = new Date(value).getTime();
-  if (Number.isNaN(parsed)) {
-    return null;
-  }
-  return parsed;
 }
 
 function elapsedSeconds(fromIso: string) {
@@ -325,6 +324,55 @@ function isMissingClientMessageIdColumnError(error: unknown) {
 
   const message = "message" in error ? (error as { message?: string }).message : undefined;
   return typeof message === "string" && message.includes("client_message_id") && message.includes("does not exist");
+}
+
+function isAvaTypingEventsUnavailableError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = "code" in error ? (error as { code?: string }).code : undefined;
+  if (code === "42P01" || code === "42703" || code === "42883") {
+    return true;
+  }
+
+  const message = "message" in error ? (error as { message?: string }).message : undefined;
+  return typeof message === "string" && message.toLowerCase().includes("typing_events");
+}
+
+function isAvaHandoffRpcUnavailableError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = "code" in error ? (error as { code?: string }).code : undefined;
+  if (code === "42883") {
+    return true;
+  }
+
+  const message = "message" in error ? (error as { message?: string }).message : undefined;
+  return (
+    typeof message === "string" &&
+    (message.includes("claim_ava_handoff_request") || message.includes("resolve_ava_handoff_request"))
+  );
+}
+
+function isAvaQueueOptimizationRpcUnavailableError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = "code" in error ? (error as { code?: string }).code : undefined;
+  if (code === "42883") {
+    return true;
+  }
+
+  const message = "message" in error ? (error as { message?: string }).message : undefined;
+  return (
+    typeof message === "string" &&
+    (message.includes("list_ava_latest_handoff_requests") ||
+      message.includes("list_ava_pending_queue_positions"))
+  );
 }
 
 let supportsClientMessageIdColumn: boolean | undefined;
@@ -567,21 +615,14 @@ interface ResolvedAutomationConversationRow extends ConversationRow {
   last_message_at: string | null;
 }
 
-function readSessionAutomationKind(message: MessageRow): "idle_prompt" | "idle_close" | null {
-  const automationValue = message.payload?.automation;
-  if (!automationValue || typeof automationValue !== "object") {
-    return null;
-  }
-  const automation = automationValue as Record<string, unknown>;
-  const source = typeof automation.source === "string" ? automation.source : "";
-  const kind = typeof automation.kind === "string" ? automation.kind : "";
-  if (source !== SESSION_IDLE_AUTOMATION_SOURCE) {
-    return null;
-  }
-  if (kind === "idle_prompt" || kind === "idle_close") {
-    return kind;
-  }
-  return null;
+export interface SessionAutomationBatchResult {
+  idleCandidates: number;
+  idlePrompted: number;
+  idleClosed: number;
+  idleFailures: number;
+  resolvedCandidates: number;
+  resolvedClosed: number;
+  resolvedFailures: number;
 }
 
 async function listIdleAutomationConversationRows(
@@ -642,6 +683,46 @@ async function listGlobalIdleAutomationConversationRows(): Promise<IdleAutomatio
   return deduped;
 }
 
+async function listDueIdleAutomationConversationRows(
+  limit: number = 200,
+  nowMs: number = Date.now()
+): Promise<IdleAutomationConversationRow[]> {
+  const supabase = getSupabaseServiceRoleClient();
+  const cutoffIso = new Date(nowMs - SESSION_IDLE_PROMPT_AFTER_MS).toISOString();
+  const { data, error } = await supabase
+    .schema("ava")
+    .from("conversations")
+    .select(
+      "id, customer_auth_user_id, status, handoff_state, active_support_agent_auth_user_id, channel, project_ref, created_at, updated_at, last_message_at"
+    )
+    .eq("status", "open")
+    .eq("handoff_state", "none")
+    .neq("channel", "agent_impersonation")
+    .lt("updated_at", cutoffIso)
+    .order("updated_at", { ascending: true })
+    .limit(Math.max(limit * 2, limit));
+
+  if (error) {
+    throw new StoreError(500, `Unable to load due idle automation conversations: ${error.message}`);
+  }
+
+  const rows = (data ?? []) as IdleAutomationConversationRow[];
+  const seenCustomerIds = new Set<string>();
+  const deduped: IdleAutomationConversationRow[] = [];
+  for (const row of rows) {
+    if (!row.customer_auth_user_id || seenCustomerIds.has(row.customer_auth_user_id)) {
+      continue;
+    }
+    seenCustomerIds.add(row.customer_auth_user_id);
+    deduped.push(row);
+    if (deduped.length >= limit) {
+      break;
+    }
+  }
+
+  return deduped;
+}
+
 function resolvedSessionAutoCloseCutoffIso(nowMs: number = Date.now()) {
   return new Date(nowMs - RESOLVED_SESSION_AUTO_CLOSE_AFTER_MS).toISOString();
 }
@@ -698,6 +779,35 @@ async function listGlobalResolvedAutomationConversationRows(): Promise<ResolvedA
   return (data ?? []) as ResolvedAutomationConversationRow[];
 }
 
+async function listDueResolvedAutomationConversationRows(
+  limit: number = 200,
+  nowMs: number = Date.now()
+): Promise<ResolvedAutomationConversationRow[]> {
+  const supabase = getSupabaseServiceRoleClient();
+  const cutoffIso = resolvedSessionAutoCloseCutoffIso(nowMs);
+  const { data, error } = await supabase
+    .schema("ava")
+    .from("conversations")
+    .select(
+      "id, customer_auth_user_id, status, handoff_state, active_support_agent_auth_user_id, channel, project_ref, updated_at, last_message_at"
+    )
+    .eq("status", "resolved")
+    .eq("handoff_state", "resolved")
+    .neq("channel", "agent_impersonation")
+    .lt("updated_at", cutoffIso)
+    .order("updated_at", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw new StoreError(
+      500,
+      `Unable to load due resolved automation conversations: ${error.message}`
+    );
+  }
+
+  return (data ?? []) as ResolvedAutomationConversationRow[];
+}
+
 async function getRecentMessagesForConversation(
   conversationId: string,
   limit: number = 200
@@ -716,6 +826,37 @@ async function getRecentMessagesForConversation(
   }
 
   return (data ?? []) as MessageRow[];
+}
+
+async function listRecentMessagesForConversations(
+  conversationIds: string[],
+  limitPerConversation: number = 40
+) {
+  const result = new Map<string, MessageRow[]>();
+  if (conversationIds.length === 0) {
+    return result;
+  }
+
+  const supabase = getSupabaseServiceRoleClient();
+  const { data, error } = await supabase.rpc("list_ava_recent_messages_for_conversations", {
+    p_conversation_ids: conversationIds,
+    p_limit_per_conversation: limitPerConversation
+  });
+
+  if (error) {
+    throw new StoreError(
+      500,
+      `Unable to load recent automation messages for conversations: ${error.message}`
+    );
+  }
+
+  for (const row of (data ?? []) as MessageRow[]) {
+    const messages = result.get(row.conversation_id) ?? [];
+    messages.push(row);
+    result.set(row.conversation_id, messages);
+  }
+
+  return result;
 }
 
 async function appendAvaAutomationMessage(
@@ -874,91 +1015,118 @@ export async function closeConversationSession(
   return true;
 }
 
-async function runIdleAutomationForConversation(conversation: IdleAutomationConversationRow) {
-  const recentMessages = await getRecentMessagesForConversation(conversation.id);
-  if (recentMessages.length === 0) {
-    return;
-  }
+async function runIdleAutomationForConversation(
+  conversation: IdleAutomationConversationRow,
+  recentMessages?: MessageRow[],
+  nowMs: number = Date.now()
+) {
+  const messages = recentMessages ?? (await getRecentMessagesForConversation(conversation.id));
+  const decision = getIdleAutomationDecision(
+    messages.map((message) => ({
+      senderKind: message.sender_kind,
+      createdAt: message.created_at,
+      payload: message.payload
+    })),
+    nowMs
+  );
 
-  const lastCustomerMessage = recentMessages.find((message) => message.sender_kind === "customer");
-  if (!lastCustomerMessage) {
-    // Session has not started until the customer sends the first message.
-    return;
-  }
-
-  const lastCustomerMessageMs = parseIsoToMs(lastCustomerMessage.created_at);
-  if (lastCustomerMessageMs === null) {
-    return;
-  }
-
-  const latestPromptAfterCustomer = recentMessages.find((message) => {
-    if (readSessionAutomationKind(message) !== "idle_prompt") {
-      return false;
-    }
-    const messageMs = parseIsoToMs(message.created_at);
-    return messageMs !== null && messageMs > lastCustomerMessageMs;
-  });
-
-  const nowMs = Date.now();
-  if (!latestPromptAfterCustomer) {
-    if (nowMs - lastCustomerMessageMs < SESSION_IDLE_PROMPT_AFTER_MS) {
-      return;
-    }
-
+  if (decision.action === "prompt") {
     await appendAvaAutomationMessage(conversation.id, SESSION_IDLE_PROMPT_MESSAGE, "idle_prompt");
-    return;
+    return "prompt";
   }
 
-  const promptMs = parseIsoToMs(latestPromptAfterCustomer.created_at);
-  if (promptMs === null) {
-    return;
+  if (decision.action === "close") {
+    await appendAvaAutomationMessage(conversation.id, SESSION_IDLE_CLOSE_MESSAGE, "idle_close");
+    await closeConversationSession(conversation.id, {
+      reason: "idle_timeout"
+    });
+    return "close";
   }
 
-  const customerRepliedAfterPrompt = recentMessages.some((message) => {
-    if (message.sender_kind !== "customer") {
-      return false;
-    }
-    const messageMs = parseIsoToMs(message.created_at);
-    return messageMs !== null && messageMs > promptMs;
-  });
-  if (customerRepliedAfterPrompt) {
-    return;
-  }
-
-  if (nowMs - promptMs < SESSION_IDLE_CLOSE_AFTER_PROMPT_MS) {
-    return;
-  }
-
-  const alreadyClosedAfterPrompt = recentMessages.some((message) => {
-    if (readSessionAutomationKind(message) !== "idle_close") {
-      return false;
-    }
-    const messageMs = parseIsoToMs(message.created_at);
-    return messageMs !== null && messageMs > promptMs;
-  });
-  if (alreadyClosedAfterPrompt) {
-    return;
-  }
-
-  await appendAvaAutomationMessage(conversation.id, SESSION_IDLE_CLOSE_MESSAGE, "idle_close");
-  await closeConversationSession(conversation.id, {
-    reason: "idle_timeout"
-  });
+  return "none";
 }
 
-async function runResolvedAutomationForConversation(conversation: ResolvedAutomationConversationRow) {
-  const lastActivityMs = parseIsoToMs(conversation.last_message_at ?? conversation.updated_at);
-  if (lastActivityMs === null) {
-    return;
-  }
-  if (Date.now() - lastActivityMs < RESOLVED_SESSION_AUTO_CLOSE_AFTER_MS) {
-    return;
+async function runResolvedAutomationForConversation(
+  conversation: ResolvedAutomationConversationRow,
+  nowMs: number = Date.now()
+) {
+  if (!shouldAutoCloseResolvedConversation(conversation.last_message_at ?? conversation.updated_at, nowMs)) {
+    return false;
   }
 
-  await closeConversationSession(conversation.id, {
+  return closeConversationSession(conversation.id, {
     allowResolvedState: true,
     closingNoticeText: RESOLVED_SESSION_CLOSE_MESSAGE
   });
+}
+
+export async function runDueSessionAutomationBatch(options?: {
+  idleLimit?: number;
+  resolvedLimit?: number;
+  recentMessagesPerConversation?: number;
+  nowMs?: number;
+}): Promise<SessionAutomationBatchResult> {
+  const nowMs = options?.nowMs ?? Date.now();
+  const idleLimit = options?.idleLimit ?? 200;
+  const resolvedLimit = options?.resolvedLimit ?? 200;
+  const recentMessagesPerConversation = options?.recentMessagesPerConversation ?? 40;
+
+  const [idleConversations, resolvedConversations] = await Promise.all([
+    listDueIdleAutomationConversationRows(idleLimit, nowMs),
+    listDueResolvedAutomationConversationRows(resolvedLimit, nowMs)
+  ]);
+  const recentMessagesByConversation = await listRecentMessagesForConversations(
+    idleConversations.map((conversation) => conversation.id),
+    recentMessagesPerConversation
+  );
+
+  const summary: SessionAutomationBatchResult = {
+    idleCandidates: idleConversations.length,
+    idlePrompted: 0,
+    idleClosed: 0,
+    idleFailures: 0,
+    resolvedCandidates: resolvedConversations.length,
+    resolvedClosed: 0,
+    resolvedFailures: 0
+  };
+
+  for (const conversation of idleConversations) {
+    try {
+      const outcome = await runIdleAutomationForConversation(
+        conversation,
+        recentMessagesByConversation.get(conversation.id) ?? [],
+        nowMs
+      );
+      if (outcome === "prompt") {
+        summary.idlePrompted += 1;
+      } else if (outcome === "close") {
+        summary.idleClosed += 1;
+      }
+    } catch (error) {
+      summary.idleFailures += 1;
+      console.error("Idle automation failed for conversation", {
+        conversationId: conversation.id,
+        error
+      });
+    }
+  }
+
+  for (const conversation of resolvedConversations) {
+    try {
+      const closed = await runResolvedAutomationForConversation(conversation, nowMs);
+      if (closed) {
+        summary.resolvedClosed += 1;
+      }
+    } catch (error) {
+      summary.resolvedFailures += 1;
+      console.error("Resolved automation failed for conversation", {
+        conversationId: conversation.id,
+        error
+      });
+    }
+  }
+
+  return summary;
 }
 
 export async function runGlobalResolvedSessionAutoCloseAutomation() {
@@ -1236,29 +1404,46 @@ async function getLatestHandoffByConversationIds(conversationIds: string[]) {
   }
 
   const supabase = getSupabaseServiceRoleClient();
-  const { data, error } = await supabase
-    .schema("ava")
-    .from("handoff_requests")
-    .select(
-      "id, conversation_id, status, reason, requested_at, claimed_at, claimed_by_auth_user_id, resolved_at"
-    )
-    .in("conversation_id", conversationIds)
-    .order("requested_at", { ascending: false });
+  const uniqueConversationIds = Array.from(new Set(conversationIds.filter(Boolean)));
+  const { data, error } = await supabase.rpc("list_ava_latest_handoff_requests", {
+    p_conversation_ids: uniqueConversationIds
+  });
 
   if (error) {
-    throw new StoreError(500, `Unable to load handoff requests: ${error.message}`);
+    if (!isAvaQueueOptimizationRpcUnavailableError(error)) {
+      throw new StoreError(500, `Unable to load handoff requests: ${error.message}`);
+    }
+
+    const fallbackResult = await supabase
+      .schema("ava")
+      .from("handoff_requests")
+      .select(
+        "id, conversation_id, status, reason, requested_at, claimed_at, claimed_by_auth_user_id, resolved_at"
+      )
+      .in("conversation_id", uniqueConversationIds)
+      .order("requested_at", { ascending: false });
+
+    if (fallbackResult.error) {
+      throw new StoreError(500, `Unable to load handoff requests: ${fallbackResult.error.message}`);
+    }
+
+    const latestByConversation = new Map<string, HandoffRequestRow>();
+    for (const row of (fallbackResult.data ?? []) as HandoffRequestRow[]) {
+      if (!latestByConversation.has(row.conversation_id)) {
+        latestByConversation.set(row.conversation_id, row);
+      }
+    }
+    return latestByConversation;
   }
 
   const latestByConversation = new Map<string, HandoffRequestRow>();
   for (const row of (data ?? []) as HandoffRequestRow[]) {
-    if (!latestByConversation.has(row.conversation_id)) {
-      latestByConversation.set(row.conversation_id, row);
-    }
+    latestByConversation.set(row.conversation_id, row);
   }
   return latestByConversation;
 }
 
-async function getPendingQueuePositions() {
+async function getAllPendingQueuePositions() {
   const supabase = getSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .schema("ava")
@@ -1275,6 +1460,39 @@ async function getPendingQueuePositions() {
   ((data ?? []) as Array<{ id: string }>).forEach((row, index) => {
     positions.set(row.id, index + 1);
   });
+  return positions;
+}
+
+async function getPendingQueuePositionsForRequestIds(requestIds: string[]) {
+  const uniqueRequestIds = Array.from(new Set(requestIds.filter(Boolean)));
+  if (uniqueRequestIds.length === 0) {
+    return new Map<string, number>();
+  }
+
+  const supabase = getSupabaseServiceRoleClient();
+  const { data, error } = await supabase.rpc("list_ava_pending_queue_positions", {
+    p_request_ids: uniqueRequestIds
+  });
+
+  if (error) {
+    if (!isAvaQueueOptimizationRpcUnavailableError(error)) {
+      throw new StoreError(500, `Unable to compute queue positions: ${error.message}`);
+    }
+    const fallbackPositions = await getAllPendingQueuePositions();
+    return new Map(
+      uniqueRequestIds
+        .map((requestId) => [requestId, fallbackPositions.get(requestId)])
+        .filter((entry): entry is [string, number] => typeof entry[1] === "number")
+    );
+  }
+
+  const positions = new Map<string, number>();
+  for (const row of (data ?? []) as Array<{ id: string; queue_position?: number; position?: number }>) {
+    const pos = row.queue_position ?? row.position;
+    if (row.id && typeof pos === "number") {
+      positions.set(row.id, pos);
+    }
+  }
   return positions;
 }
 
@@ -1585,11 +1803,15 @@ async function buildThreadList(conversationRows: ConversationRow[]) {
   }
 
   const conversationIds = conversationRows.map((item) => item.id);
-  const [messagesByConversation, latestRequestByConversation, pendingPositions] = await Promise.all([
+  const [messagesByConversation, latestRequestByConversation] = await Promise.all([
     getMessagesByConversationIds(conversationIds),
-    getLatestHandoffByConversationIds(conversationIds),
-    getPendingQueuePositions()
+    getLatestHandoffByConversationIds(conversationIds)
   ]);
+  const pendingPositions = await getPendingQueuePositionsForRequestIds(
+    Array.from(latestRequestByConversation.values())
+      .filter((request) => request.status === "pending")
+      .map((request) => request.id)
+  );
 
   const supportAgentIds = new Set<string>();
   for (const conversation of conversationRows) {
@@ -1904,12 +2126,6 @@ export async function listQueue(
     throw new StoreError(403, "Support-agent role required.");
   }
 
-  try {
-    await runResolvedSessionAutoCloseAutomation(actorUserId, true);
-  } catch (automationError) {
-    console.error("Resolved session auto-close check failed", automationError);
-  }
-
   const supabase = getSupabaseServiceRoleClient();
   const { data, error } = await supabase
     .schema("ava")
@@ -1930,7 +2146,6 @@ export async function listQueue(
   }
 
   const conversationIds = queueRows.map((item) => item.conversation_id);
-  const pendingPositions = await getPendingQueuePositions();
 
   const { data: conversationRows, error: conversationError } = await supabase
     .schema("ava")
@@ -1996,8 +2211,6 @@ export async function listQueue(
         .filter((value): value is string => Boolean(value))
     )
   );
-  const customerNameMap = await getCustomerNameMapByAuthUserId(customerAuthIds);
-
   const representativeIds = dedupedQueueRows
     .map((item) => item.claimed_by_auth_user_id)
     .filter((value): value is string => Boolean(value));
@@ -2005,13 +2218,14 @@ export async function listQueue(
     .filter((row) => row.channel === "agent_impersonation")
     .map((row) => row.customer_auth_user_id)
     .filter((value): value is string => Boolean(value));
-  const profileMap = await getSupportAgentMap([...representativeIds, ...impersonatorIds]);
-  const resolvedByRequestId = await getResolvedActorByRequestIds(
-    dedupedQueueRows.map((row) => row.id)
-  );
-  const customerRatingByRequestId = await getLatestCustomerRatingByRequestIds(
-    dedupedQueueRows.map((row) => row.id)
-  );
+  const requestIds = dedupedQueueRows.map((row) => row.id);
+  const [customerNameMap, profileMap, resolvedByRequestId, customerRatingByRequestId] =
+    await Promise.all([
+      getCustomerNameMapByAuthUserId(customerAuthIds),
+      getSupportAgentMap([...representativeIds, ...impersonatorIds]),
+      getResolvedActorByRequestIds(requestIds),
+      getLatestCustomerRatingByRequestIds(requestIds)
+    ]);
 
   const records = dedupedQueueRows.map((row) => {
     const conversation = conversationById.get(row.conversation_id);
@@ -2050,7 +2264,7 @@ export async function listQueue(
         row.status === "cancelled"
           ? "resolved"
           : (row.status as "pending" | "claimed" | "active" | "resolved"),
-      position: dedupedPendingPositionByRequestId.get(row.id) ?? pendingPositions.get(row.id) ?? 0,
+      position: dedupedPendingPositionByRequestId.get(row.id) ?? 0,
       estimatedWaitSeconds: estimatedWaitSeconds(row.status),
       elapsedWaitSeconds: elapsedSeconds(row.requested_at),
       representative: rep,
@@ -2095,7 +2309,7 @@ export async function listRealtimeEvents(
   }
 
   const supabase = getSupabaseServiceRoleClient();
-  const [messageResult, handoffEventResult] = await Promise.all([
+  const [messageResult, handoffEventResult, typingEventResult] = await Promise.all([
     supabase
       .schema("ava")
       .from("messages")
@@ -2107,6 +2321,13 @@ export async function listRealtimeEvents(
       .schema("ava")
       .from("handoff_events")
       .select("id, handoff_request_id, conversation_id, event_type, payload, created_at")
+      .in("conversation_id", conversationIds)
+      .order("created_at", { ascending: false })
+      .limit(500),
+    supabase
+      .schema("ava")
+      .from("typing_events")
+      .select("id, conversation_id, actor_kind, actor_auth_user_id, is_typing, created_at")
       .in("conversation_id", conversationIds)
       .order("created_at", { ascending: false })
       .limit(500)
@@ -2121,6 +2342,18 @@ export async function listRealtimeEvents(
 
   const messageRows = (messageResult.data ?? []) as MessageRow[];
   const handoffRows = (handoffEventResult.data ?? []) as HandoffEventRow[];
+  const typingEventsUnavailable =
+    Boolean(typingEventResult.error) && isAvaTypingEventsUnavailableError(typingEventResult.error);
+  const typingRows = typingEventResult.error
+    ? typingEventsUnavailable
+      ? []
+      : (() => {
+          throw new StoreError(
+            500,
+            `Unable to load realtime typing events: ${typingEventResult.error.message}`
+          );
+        })()
+    : ((typingEventResult.data ?? []) as TypingEventRow[]);
 
   const supportAgentIds = messageRows
     .map((row) => row.sender_auth_user_id)
@@ -2177,7 +2410,22 @@ export async function listRealtimeEvents(
     })
     .filter(Boolean);
 
-  const typing = typingEvents.filter((event) => conversationIds.includes(event.conversationId));
+  const persistedTypingEvents: RealtimeEvent[] = typingRows.map((row) => ({
+    id: `typing-${row.id}`,
+    type: "typing",
+    conversationId: row.conversation_id,
+    createdAt: row.created_at,
+    payload: {
+      conversationId: row.conversation_id,
+      actor: row.actor_kind,
+      actorUserId: row.actor_auth_user_id,
+      isTyping: row.is_typing
+    }
+  }));
+  const typing =
+    typingEventsUnavailable
+      ? typingEvents.filter((event) => conversationIds.includes(event.conversationId))
+      : persistedTypingEvents;
   const merged = [...messageEvents, ...handoffEvents, ...typing].sort((a, b) => {
     if (a.createdAt === b.createdAt) {
       return a.id.localeCompare(b.id);
@@ -2537,7 +2785,7 @@ export async function requestHandoff(
   const now = nowIso();
   const supabase = getSupabaseServiceRoleClient();
   const buildExistingOpenResponse = async (request: HandoffRequestRow) => {
-    const pendingPositions = await getPendingQueuePositions();
+    const pendingPositions = await getPendingQueuePositionsForRequestIds([request.id]);
     const representativeMap = request.claimed_by_auth_user_id
       ? await getSupportAgentMap([request.claimed_by_auth_user_id])
       : new Map<string, RepresentativeProfile>();
@@ -2607,7 +2855,7 @@ export async function requestHandoff(
     requestRow = data as HandoffRequestRow;
   }
 
-  const pendingPositions = await getPendingQueuePositions();
+  const pendingPositions = await getPendingQueuePositionsForRequestIds([requestRow.id]);
   const position = pendingPositions.get(requestRow.id) ?? 0;
 
   const queueSnapshot: QueueSnapshot = {
@@ -2719,6 +2967,111 @@ export async function claimHandoff(
   }
 
   const supabase = getSupabaseServiceRoleClient();
+  const representativeName = params.representative.name || "Representative";
+  const { data: claimedRequestRows, error: claimRpcError } = await supabase.rpc(
+    "claim_ava_handoff_request",
+    {
+      p_request_id: params.requestId,
+      p_actor_user_id: actorUserId,
+      p_representative_name: representativeName,
+      p_representative_avatar_url: params.representative.avatarUrl ?? null
+    }
+  );
+  if (claimRpcError && !isAvaHandoffRpcUnavailableError(claimRpcError)) {
+    throw new StoreError(500, `Unable to claim handoff request: ${claimRpcError.message}`);
+  }
+
+  if (!claimRpcError) {
+    const updatedRequest = (((claimedRequestRows as HandoffRequestRow[] | null) ?? [])[0] ??
+      null) as HandoffRequestRow | null;
+    if (updatedRequest) {
+      const thread = await getConversation(updatedRequest.conversation_id, actorUserId);
+      if (!thread) {
+        throw new StoreError(404, "Conversation not found.");
+      }
+      const queuePresentation = await getQueueCustomerPresentationByConversationId(
+        updatedRequest.conversation_id
+      );
+
+      return {
+        thread,
+        queue: {
+          ...toQueueRecordFromRequest({
+            request: updatedRequest,
+            conversationId: updatedRequest.conversation_id,
+            customerName: queuePresentation.customerLabel,
+            impersonationByName: queuePresentation.impersonationByName,
+            representative: {
+              id: actorUserId,
+              name: representativeName,
+              avatarUrl: params.representative.avatarUrl
+            }
+          }),
+          status: "active",
+          position: 0,
+          estimatedWaitSeconds: 0,
+          elapsedWaitSeconds: elapsedSeconds(updatedRequest.requested_at),
+          representative: {
+            id: actorUserId,
+            name: representativeName,
+            avatarUrl: params.representative.avatarUrl
+          },
+          requestedAt: updatedRequest.requested_at
+        } as QueueRecord
+      };
+    }
+
+    const { data: existingRequest, error: existingRequestError } = await supabase
+      .schema("ava")
+      .from("handoff_requests")
+      .select(
+        "id, conversation_id, status, reason, requested_at, claimed_at, claimed_by_auth_user_id, resolved_at"
+      )
+      .eq("id", params.requestId)
+      .maybeSingle();
+
+    if (existingRequestError) {
+      throw new StoreError(500, `Unable to claim handoff: ${existingRequestError.message}`);
+    }
+
+    const requestRow = existingRequest as HandoffRequestRow | null;
+    if (!requestRow) {
+      throw new StoreError(404, `Handoff request not found: ${params.requestId}`);
+    }
+    if (requestRow.status === "resolved" || requestRow.status === "cancelled") {
+      throw new StoreError(409, "Handoff request is already closed.");
+    }
+
+    if (
+      requestRow.claimed_by_auth_user_id === actorUserId &&
+      (requestRow.status === "claimed" || requestRow.status === "active")
+    ) {
+      const thread = await getConversation(requestRow.conversation_id, actorUserId);
+      if (!thread) {
+        throw new StoreError(404, "Conversation not found.");
+      }
+      const queuePresentation = await getQueueCustomerPresentationByConversationId(
+        requestRow.conversation_id
+      );
+      return {
+        thread,
+        queue: toQueueRecordFromRequest({
+          request: requestRow,
+          conversationId: requestRow.conversation_id,
+          customerName: queuePresentation.customerLabel,
+          impersonationByName: queuePresentation.impersonationByName,
+          representative: {
+            id: actorUserId,
+            name: representativeName,
+            avatarUrl: params.representative.avatarUrl
+          }
+        })
+      };
+    }
+
+    throw new StoreError(409, "Handoff request already claimed or no longer pending.");
+  }
+
   const now = nowIso();
   const { data: claimedRequest, error: claimRequestError } = await supabase
     .schema("ava")
@@ -2792,7 +3145,6 @@ export async function claimHandoff(
     throw new StoreError(409, "Handoff request already claimed or no longer pending.");
   }
 
-  const representativeName = params.representative.name || "Representative";
   const queueSnapshot: QueueSnapshot = {
     requestId: updatedRequest.id,
     position: 0,
@@ -2934,6 +3286,63 @@ export async function resolveHandoff(
   requireConversationAccess(await getConversationRow(params.conversationId), actorUserId, supportAgent);
 
   const supabase = getSupabaseServiceRoleClient();
+  const adminOverride = await isAdminLike(actorUserId);
+  const { data: resolvedRequestRows, error: resolveRpcError } = await supabase.rpc(
+    "resolve_ava_handoff_request",
+    {
+      p_conversation_id: params.conversationId,
+      p_actor_user_id: actorUserId,
+      p_allow_admin_override: adminOverride,
+      p_resolution_note: params.resolutionNote ?? null
+    }
+  );
+  if (resolveRpcError && !isAvaHandoffRpcUnavailableError(resolveRpcError)) {
+    throw new StoreError(500, `Unable to resolve handoff request: ${resolveRpcError.message}`);
+  }
+
+  if (!resolveRpcError) {
+    const resolvedRow =
+      (((resolvedRequestRows as Array<{ request_id: string | null }> | null) ?? [])[0] ?? null) as
+        | { request_id: string | null }
+        | null;
+    if (resolvedRow) {
+      const thread = await getConversation(params.conversationId, actorUserId);
+      if (!thread) {
+        throw new StoreError(404, "Conversation not found.");
+      }
+
+      return {
+        thread
+      };
+    }
+
+    const { data: latestRequestRows, error: latestRequestError } = await supabase
+      .schema("ava")
+      .from("handoff_requests")
+      .select(
+        "id, conversation_id, status, reason, requested_at, claimed_at, claimed_by_auth_user_id, resolved_at"
+      )
+      .eq("conversation_id", params.conversationId)
+      .in("status", ["pending", "claimed", "active"])
+      .order("requested_at", { ascending: false })
+      .limit(1);
+
+    if (latestRequestError) {
+      throw new StoreError(500, `Unable to resolve handoff request state: ${latestRequestError.message}`);
+    }
+
+    const latestRequest = (latestRequestRows ?? [])[0] as HandoffRequestRow | undefined;
+    if (
+      latestRequest?.claimed_by_auth_user_id &&
+      latestRequest.claimed_by_auth_user_id !== actorUserId &&
+      !adminOverride
+    ) {
+      throw new StoreError(409, "Only the assigned representative can resolve this handoff.");
+    }
+
+    throw new StoreError(409, "Handoff request is already resolved.");
+  }
+
   const now = nowIso();
   const { data: latestRequestRows, error: latestRequestError } = await supabase
     .schema("ava")
@@ -2952,7 +3361,6 @@ export async function resolveHandoff(
 
   const latestRequest = (latestRequestRows ?? [])[0] as HandoffRequestRow | undefined;
   if (latestRequest) {
-    const adminOverride = await isAdminLike(actorUserId);
     if (
       latestRequest.claimed_by_auth_user_id &&
       latestRequest.claimed_by_auth_user_id !== actorUserId &&
@@ -3748,17 +4156,35 @@ export async function publishTypingEvent(
     throw new StoreError(403, "Support-agent role required.");
   }
 
-  typingEvents.push({
-    id: randomId("typing"),
-    type: "typing",
-    conversationId: params.conversationId,
-    createdAt: nowIso(),
-    payload: {
-      ...params
-    }
-  });
+  const supabase = getSupabaseServiceRoleClient();
+  const { error } = await supabase
+    .schema("ava")
+    .from("typing_events")
+    .insert({
+      conversation_id: params.conversationId,
+      actor_kind: params.actor,
+      actor_auth_user_id: params.actor === "ava" ? null : actorUserId,
+      is_typing: params.isTyping
+    });
 
-  if (typingEvents.length > 500) {
-    typingEvents.splice(0, typingEvents.length - 500);
+  if (error) {
+    if (!isAvaTypingEventsUnavailableError(error)) {
+      throw new StoreError(500, `Unable to publish typing event: ${error.message}`);
+    }
+
+    typingEvents.push({
+      id: randomId("typing"),
+      type: "typing",
+      conversationId: params.conversationId,
+      createdAt: nowIso(),
+      payload: {
+        ...params,
+        actorUserId: params.actor === "ava" ? null : actorUserId
+      }
+    });
+
+    if (typingEvents.length > 500) {
+      typingEvents.splice(0, typingEvents.length - 500);
+    }
   }
 }

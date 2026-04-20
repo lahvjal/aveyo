@@ -1,3 +1,4 @@
+import { memo, useSyncExternalStore } from "react";
 import { type Ticket } from "@/lib/dashboard-types";
 import { InitialChip } from "./initial-chip";
 
@@ -11,7 +12,7 @@ interface QueueBoardColumnsProps {
   onSplitChat: (ticketId: string) => void;
 }
 
-function QueueLaneCard(props: {
+interface QueueLaneCardProps {
   ticket: Ticket;
   lane: "pending" | "active";
   isSelected?: boolean;
@@ -19,20 +20,158 @@ function QueueLaneCard(props: {
   onClaimChat: (ticketId: string) => void;
   onSelectActiveChat: (ticketId: string) => void;
   onSplitChat: (ticketId: string) => void;
-}) {
-  const {
-    ticket,
-    lane,
-    isSelected = false,
-    claimPendingTicketId = null,
-    onClaimChat,
-    onSelectActiveChat,
-    onSplitChat
-  } = props;
+}
+
+interface QueueLaneProps {
+  title: string;
+  count: number;
+  lane: "pending" | "active";
+  emptyCopy: string;
+  tickets: Ticket[];
+  selectedActiveTicketId: string | null;
+  claimPendingTicketId?: string | null;
+  onClaimChat: (ticketId: string) => void;
+  onSelectActiveChat: (ticketId: string) => void;
+  onSplitChat: (ticketId: string) => void;
+}
+
+function getWaitTimerClassName(waitSeconds: number) {
+  if (waitSeconds > 40) {
+    return "board-queue-wait timer-critical";
+  }
+  if (waitSeconds > 30) {
+    return "board-queue-wait timer-warning";
+  }
+  return "board-queue-wait";
+}
+
+function getSentimentDisplay(rating: "thumbs_up" | "thumbs_down" | null) {
+  if (rating === "thumbs_up") {
+    return { tone: "positive" as const, label: "Positive" };
+  }
+  if (rating === "thumbs_down") {
+    return { tone: "negative" as const, label: "Negative" };
+  }
+  return null;
+}
+
+function parseIsoToMs(value: string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function formatDuration(totalSeconds: number) {
+  const seconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const remainderSeconds = seconds % 60;
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${remainderSeconds}s`;
+  }
+  if (minutes > 0) {
+    return `${minutes}m ${remainderSeconds}s`;
+  }
+  return `${remainderSeconds}s`;
+}
+
+function toElapsedSeconds(startMs: number, endMs: number) {
+  return Math.max(0, Math.floor((endMs - startMs) / 1000));
+}
+
+function getTicketTimerLabels(ticket: Ticket, nowMs: number) {
+  const requestedAtMs = parseIsoToMs(ticket.requestedAt) ?? nowMs;
+  const claimedAtMs = parseIsoToMs(ticket.claimedAt);
+  const resolvedAtMs = parseIsoToMs(ticket.resolvedAt);
+
+  const waitedSeconds =
+    ticket.status === "pending"
+      ? toElapsedSeconds(requestedAtMs, nowMs)
+      : claimedAtMs !== null
+        ? toElapsedSeconds(requestedAtMs, claimedAtMs)
+        : Math.max(0, Math.floor(ticket.elapsedWaitSeconds));
+
+  const waitLabel = `${ticket.status === "pending" ? "Waiting" : "Waited"}: ${formatDuration(waitedSeconds)}`;
+
+  if (claimedAtMs === null || ticket.status === "pending") {
+    return { waitLabel, waitSeconds: waitedSeconds, lapsedLabel: null as string | null };
+  }
+
+  const lapsedEndMs = ticket.status === "resolved" ? (resolvedAtMs ?? claimedAtMs) : nowMs;
+  return {
+    waitLabel,
+    waitSeconds: waitedSeconds,
+    lapsedLabel: `Time lapsed: ${formatDuration(toElapsedSeconds(claimedAtMs, lapsedEndMs))}`
+  };
+}
+
+const secondTickListeners = new Set<() => void>();
+let secondTickIntervalId: number | null = null;
+
+function subscribeToSecondTick(listener: () => void) {
+  secondTickListeners.add(listener);
+  if (typeof window !== "undefined" && secondTickIntervalId === null) {
+    secondTickIntervalId = window.setInterval(() => {
+      secondTickListeners.forEach((subscriber) => subscriber());
+    }, 1000);
+  }
+
+  return () => {
+    secondTickListeners.delete(listener);
+    if (secondTickListeners.size === 0 && secondTickIntervalId !== null && typeof window !== "undefined") {
+      window.clearInterval(secondTickIntervalId);
+      secondTickIntervalId = null;
+    }
+  };
+}
+
+function getSecondTickSnapshot() {
+  return Date.now();
+}
+
+function getSecondTickServerSnapshot() {
+  return Date.now();
+}
+
+function useSecondTick(enabled: boolean) {
+  return useSyncExternalStore(
+    enabled ? subscribeToSecondTick : () => () => {},
+    getSecondTickSnapshot,
+    getSecondTickServerSnapshot
+  );
+}
+
+const QueueTimerLabels = memo(function QueueTimerLabels({ ticket }: { ticket: Ticket }) {
+  const live = ticket.status === "pending" || ticket.status === "claimed" || ticket.status === "active";
+  const nowMs = useSecondTick(live);
+  const { waitLabel, waitSeconds, lapsedLabel } = getTicketTimerLabels(ticket, nowMs);
+
+  return (
+    <>
+      <p className={getWaitTimerClassName(waitSeconds)}>{waitLabel}</p>
+      {lapsedLabel ? <p className="board-queue-lapsed">{lapsedLabel}</p> : null}
+    </>
+  );
+});
+
+const QueueLaneCard = memo(function QueueLaneCard({
+  ticket,
+  lane,
+  isSelected = false,
+  claimPendingTicketId = null,
+  onClaimChat,
+  onSelectActiveChat,
+  onSplitChat
+}: QueueLaneCardProps) {
   const secondaryLine =
     ticket.email.trim() && ticket.email.trim() !== ticket.fullName.trim() ? ticket.email : null;
   const interactiveCard = lane === "active";
   const claimPending = lane === "pending" && claimPendingTicketId === ticket.id;
+  const sentiment = getSentimentDisplay(ticket.customerRating);
 
   const selectCard = () => {
     if (!interactiveCard) {
@@ -67,8 +206,13 @@ function QueueLaneCard(props: {
           {secondaryLine ? <p>{secondaryLine}</p> : null}
         </div>
       </div>
-      <p className="board-queue-wait">{ticket.waitLabel}</p>
-      {ticket.lapsedLabel ? <p className="board-queue-lapsed">{ticket.lapsedLabel}</p> : null}
+      <QueueTimerLabels ticket={ticket} />
+      {sentiment ? (
+        <p className="board-queue-sentiment">
+          <span className={`board-queue-sentiment-dot ${sentiment.tone}`} aria-hidden="true" />
+          {sentiment.label}
+        </p>
+      ) : null}
       <p className="board-queue-preview">{`"${ticket.preview}"`}</p>
       {lane === "pending" ? (
         <button
@@ -100,32 +244,20 @@ function QueueLaneCard(props: {
       )}
     </article>
   );
-}
+});
 
-function QueueLane(props: {
-  title: string;
-  count: number;
-  lane: "pending" | "active";
-  emptyCopy: string;
-  tickets: Ticket[];
-  selectedActiveTicketId: string | null;
-  claimPendingTicketId?: string | null;
-  onClaimChat: (ticketId: string) => void;
-  onSelectActiveChat: (ticketId: string) => void;
-  onSplitChat: (ticketId: string) => void;
-}) {
-  const {
-    title,
-    count,
-    lane,
-    emptyCopy,
-    tickets,
-    selectedActiveTicketId,
-    claimPendingTicketId,
-    onClaimChat,
-    onSelectActiveChat,
-    onSplitChat
-  } = props;
+const QueueLane = memo(function QueueLane({
+  title,
+  count,
+  lane,
+  emptyCopy,
+  tickets,
+  selectedActiveTicketId,
+  claimPendingTicketId,
+  onClaimChat,
+  onSelectActiveChat,
+  onSplitChat
+}: QueueLaneProps) {
   return (
     <section className={`board-lane ${lane}`}>
       <header className="board-lane-head">
@@ -152,9 +284,9 @@ function QueueLane(props: {
       </div>
     </section>
   );
-}
+});
 
-export function QueueBoardColumns({
+export const QueueBoardColumns = memo(function QueueBoardColumns({
   pendingQueue,
   activeQueue,
   selectedActiveTicketId,
@@ -191,4 +323,4 @@ export function QueueBoardColumns({
       />
     </div>
   );
-}
+});

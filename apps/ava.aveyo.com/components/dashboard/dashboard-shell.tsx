@@ -22,6 +22,7 @@ import { canAccessAvaManagerViews } from "@/lib/auth/access";
 import { buildAuthLoginUrl } from "@/lib/auth/config";
 import { logoutAuthSession } from "@/lib/auth/session";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
+import { useRealtimeInvalidation } from "@/lib/use-realtime-invalidation";
 import { useSupportPresence } from "@/lib/use-support-presence";
 import {
   claimHandoffApi,
@@ -29,7 +30,6 @@ import {
   createSupportNoteApi,
   getConversationCustomerDetailsApi,
   getConversationApi,
-  getRealtimeEventsApi,
   listConversationsApi,
   listQueueApi,
   listSupportNotesApi,
@@ -129,7 +129,6 @@ export function DashboardShell() {
   const [operationError, setOperationError] = useState<string | null>(null);
   const [signOutPending, setSignOutPending] = useState(false);
   const [isNavCollapsed, setIsNavCollapsed] = useState(true);
-  const realtimeCursorRef = useRef<string | undefined>(undefined);
   const realtimeBusyRef = useRef(false);
   const representativeTypingSentRef = useRef(false);
   const representativeTypingConversationRef = useRef<string | null>(null);
@@ -303,8 +302,6 @@ export function DashboardShell() {
   );
 
   useEffect(() => {
-    realtimeCursorRef.current = undefined;
-
     if (authSession.loading) {
       return;
     }
@@ -383,72 +380,40 @@ export function DashboardShell() {
     publishRepresentativeTyping(composerConversationId, hasDraft);
   }, [authSession.authenticated, composerConversationId, composeNote, publishRepresentativeTyping]);
 
-  useEffect(() => {
-    if (!authSession.authenticated || !isOnline) {
+  const handleRealtimeInvalidation = useCallback(async () => {
+    if (realtimeBusyRef.current) {
       return;
     }
 
-    let cancelled = false;
-    const pollRealtime = async () => {
-      if (realtimeBusyRef.current) {
-        return;
-      }
+    realtimeBusyRef.current = true;
+    try {
+      await refreshDashboardData({
+        preferredConversationId:
+          activeRecord?.conversationId ??
+          (conversation.id !== seededConversation.id ? conversation.id : undefined)
+      });
+    } catch (error) {
+      setOperationError(
+        error instanceof Error ? error.message : "Realtime updates are temporarily unavailable."
+      );
+    } finally {
+      realtimeBusyRef.current = false;
+    }
+  }, [activeRecord?.conversationId, conversation.id, refreshDashboardData, seededConversation.id]);
 
-      realtimeBusyRef.current = true;
-      try {
-        const result = await getRealtimeEventsApi(realtimeCursorRef.current);
-        if (cancelled) {
-          return;
-        }
-
-        realtimeCursorRef.current = result.cursor;
-        if (result.cursorStale) {
-          await refreshDashboardData({
-            preferredConversationId:
-              activeRecord?.conversationId ??
-              (conversation.id !== seededConversation.id ? conversation.id : undefined)
-          });
-          return;
-        }
-        if (result.events.length === 0) {
-          return;
-        }
-
-        await refreshDashboardData({
-          preferredConversationId:
-            activeRecord?.conversationId ??
-            (conversation.id !== seededConversation.id ? conversation.id : undefined)
-        });
-      } catch (error) {
-        if (!cancelled) {
-          setOperationError(
-            error instanceof Error
-              ? error.message
-              : "Realtime updates are temporarily unavailable."
-          );
-        }
-      } finally {
-        realtimeBusyRef.current = false;
-      }
-    };
-
-    void pollRealtime();
-    const intervalId = window.setInterval(() => {
-      void pollRealtime();
-    }, 2500);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, [
-    activeRecord?.conversationId,
-    authSession.authenticated,
-    conversation.id,
-    isOnline,
-    refreshDashboardData,
-    seededConversation.id
-  ]);
+  useRealtimeInvalidation({
+    enabled: authSession.authenticated && isOnline,
+    debounceMs: 250,
+    onInvalidate: () => {
+      void handleRealtimeInvalidation();
+    },
+    onHeartbeat: () => {
+      void handleRealtimeInvalidation();
+    },
+    onError: () => {
+      setOperationError("Realtime updates are temporarily unavailable.");
+    }
+  });
 
   useEffect(() => {
     if (!authSession.authenticated || conversation.id === seededConversation.id) {
@@ -663,6 +628,7 @@ export function DashboardShell() {
           activeRoute="dashboard"
           canAccessManagerViews={canAccessAvaManagerViews(authSession.role, authSession.access)}
         />
+        <div className="rep-main-scroll">
         {operationError ? (
           <p className="rep-shell-error" role="alert">
             {operationError}
@@ -723,6 +689,7 @@ export function DashboardShell() {
               void addSidebarNote();
             }}
           />
+        </div>
         </div>
       </section>
     </div>

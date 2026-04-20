@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/internal/ava/automation",
+      "schedule": "*/1 * * * *"
+    }
+  ]
+}

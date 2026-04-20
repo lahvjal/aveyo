@@ -4,16 +4,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type ConversationThread } from "@ava/chat-domain";
 import { getLocalAppUrl } from "@ava/config/runtime/app-urls";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
+import { useRealtimeInvalidation } from "@/lib/use-realtime-invalidation";
 import {
   createImpersonationConversationApi,
   createConversationApi,
   createCustomerMessageApi,
   getConversationApi,
-  getRealtimeEventsApi,
   listImpersonationCustomersApi,
   listConversationsApi,
   type ImpersonationCustomer,
-  type RealtimeEvent,
   requestHandoffApi
 } from "@/lib/widget-api";
 import {
@@ -126,8 +125,6 @@ function personalizeInitialGreeting(
   };
 }
 
-type TypingActor = "customer" | "representative" | "ava";
-
 const AVA_TYPING_FALLBACK_MS = 15_000;
 const AVA_TYPING_STOP_GRACE_MS = 3_200;
 const REPRESENTATIVE_TYPING_FALLBACK_MS = 15_000;
@@ -138,44 +135,6 @@ const HANDOFF_QUEUE_STATUS_TEXT =
 
 function allowsAvaReplyForThread(thread: ConversationThread) {
   return thread.handoff.state === "none" || thread.handoff.state === "resolved";
-}
-
-function parseTypingPayload(payload: unknown): { actor: TypingActor; isTyping: boolean } | null {
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-  const record = payload as Record<string, unknown>;
-  const actor = record.actor;
-  const isTyping = record.isTyping;
-  if (
-    (actor === "customer" || actor === "representative" || actor === "ava") &&
-    typeof isTyping === "boolean"
-  ) {
-    return {
-      actor,
-      isTyping
-    };
-  }
-  return null;
-}
-
-function getLatestTypingState(
-  events: RealtimeEvent[],
-  conversationId: string,
-  actor: TypingActor
-) {
-  let latestState: boolean | null = null;
-  for (const event of events) {
-    if (event.conversationId !== conversationId || event.type !== "typing") {
-      continue;
-    }
-    const payload = parseTypingPayload(event.payload);
-    if (!payload || payload.actor !== actor) {
-      continue;
-    }
-    latestState = payload.isTyping;
-  }
-  return latestState;
 }
 
 export function WidgetShell({
@@ -217,7 +176,6 @@ export function WidgetShell({
   const representativeTypingTimeoutRef = useRef<number | null>(null);
   const representativeTypingStopTimeoutRef = useRef<number | null>(null);
   const handoffQueueStatusTimeoutRef = useRef<number | null>(null);
-  const realtimeCursorRef = useRef<string | undefined>(undefined);
   const realtimeBusyRef = useRef(false);
 
   const clearAvaTypingStopTimeout = useCallback(() => {
@@ -609,8 +567,6 @@ export function WidgetShell({
   }, [isOpen]);
 
   useEffect(() => {
-    realtimeCursorRef.current = undefined;
-
     if (authSession.loading) {
       return;
     }
@@ -706,116 +662,78 @@ export function WidgetShell({
     setTestModeBusy(false);
   }, [canUseTestMode]);
 
-  useEffect(() => {
-    if (!authSession.authenticated || !conversationReady) {
+  const syncConversationFromRealtime = useCallback(async () => {
+    if (realtimeBusyRef.current) {
       return;
     }
 
-    let cancelled = false;
-    const conversationId = thread.id;
+    realtimeBusyRef.current = true;
+    try {
+      const refreshed = await getConversationApi(thread.id);
+      setThread(refreshed.conversation);
+      const latestMessage = refreshed.conversation.messages[refreshed.conversation.messages.length - 1];
+      if (latestMessage?.kind === "ava") {
+        clearAvaTypingState();
+      }
+      if (latestMessage?.kind === "representative") {
+        clearRepresentativeTypingState();
+      }
+    } catch (error) {
+      setRequestError(
+        error instanceof Error ? error.message : "Realtime sync is temporarily unavailable."
+      );
+    } finally {
+      realtimeBusyRef.current = false;
+    }
+  }, [clearAvaTypingState, clearRepresentativeTypingState, thread.id]);
 
-    const syncRealtime = async () => {
-      if (realtimeBusyRef.current) {
+  const handleRealtimeTyping = useCallback(
+    (payload: { actor: "customer" | "representative" | "ava"; isTyping: boolean; conversationId: string }) => {
+      if (payload.conversationId !== thread.id) {
         return;
       }
 
-      realtimeBusyRef.current = true;
-      try {
-        const result = await getRealtimeEventsApi(realtimeCursorRef.current);
-        if (cancelled) {
-          return;
+      if (payload.actor === "ava") {
+        if (payload.isTyping) {
+          updateAvaTyping(true);
+        } else {
+          scheduleAvaTypingStop();
         }
-
-        realtimeCursorRef.current = result.cursor;
-        const latestAvaTypingState = getLatestTypingState(result.events, conversationId, "ava");
-        const latestRepresentativeTypingState = getLatestTypingState(
-          result.events,
-          conversationId,
-          "representative"
-        );
-        if (latestAvaTypingState !== null) {
-          if (latestAvaTypingState) {
-            updateAvaTyping(true);
-          } else {
-            scheduleAvaTypingStop();
-          }
-        }
-        if (latestRepresentativeTypingState !== null) {
-          if (latestRepresentativeTypingState) {
-            updateRepresentativeTyping(true);
-          } else {
-            scheduleRepresentativeTypingStop();
-          }
-        }
-
-        if (result.cursorStale) {
-          const refreshed = await getConversationApi(conversationId);
-          if (cancelled) {
-            return;
-          }
-          setThread(refreshed.conversation);
-          const latestMessage = refreshed.conversation.messages[refreshed.conversation.messages.length - 1];
-          if (latestMessage?.kind === "ava") {
-            clearAvaTypingState();
-          }
-          if (latestMessage?.kind === "representative") {
-            clearRepresentativeTypingState();
-          }
-          return;
-        }
-        const hasConversationUpdate = result.events.some(
-          (event) => event.conversationId === conversationId && event.type !== "typing"
-        );
-
-        if (!hasConversationUpdate) {
-          return;
-        }
-
-        const refreshed = await getConversationApi(conversationId);
-        if (cancelled) {
-          return;
-        }
-        setThread(refreshed.conversation);
-        const latestMessage = refreshed.conversation.messages[refreshed.conversation.messages.length - 1];
-        if (latestMessage?.kind === "ava") {
-          clearAvaTypingState();
-        }
-        if (latestMessage?.kind === "representative") {
-          clearRepresentativeTypingState();
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setRequestError(
-            error instanceof Error
-              ? error.message
-              : "Realtime sync is temporarily unavailable."
-          );
-        }
-      } finally {
-        realtimeBusyRef.current = false;
+        return;
       }
-    };
 
-    void syncRealtime();
-    const intervalId = window.setInterval(() => {
-      void syncRealtime();
-    }, 2500);
+      if (payload.actor === "representative") {
+        if (payload.isTyping) {
+          updateRepresentativeTyping(true);
+        } else {
+          scheduleRepresentativeTypingStop();
+        }
+      }
+    },
+    [
+      scheduleAvaTypingStop,
+      scheduleRepresentativeTypingStop,
+      thread.id,
+      updateAvaTyping,
+      updateRepresentativeTyping
+    ]
+  );
 
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, [
-    authSession.authenticated,
-    conversationReady,
-    thread.id,
-    clearAvaTypingState,
-    clearRepresentativeTypingState,
-    scheduleAvaTypingStop,
-    scheduleRepresentativeTypingStop,
-    updateAvaTyping,
-    updateRepresentativeTyping
-  ]);
+  useRealtimeInvalidation({
+    enabled: authSession.authenticated && conversationReady,
+    conversationId: thread.id,
+    debounceMs: 150,
+    onInvalidate: () => {
+      void syncConversationFromRealtime();
+    },
+    onHeartbeat: () => {
+      void syncConversationFromRealtime();
+    },
+    onTyping: handleRealtimeTyping,
+    onError: () => {
+      setRequestError("Realtime sync is temporarily unavailable.");
+    }
+  });
 
   const openPanel = useCallback(() => {
     if (closeTimerRef.current !== null) {

@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
 import {
   createConversationResult,
   getConversationsResult,
   type CreateConversationBody
 } from "@/lib/conversations/service";
 import { requireAuthenticatedRequest } from "@/lib/auth/require-auth";
+import { perfErrorJson, runPerfRoute } from "@/lib/perf/route";
 import { ServiceError } from "@/lib/service-error";
 
 export async function GET(request: Request) {
@@ -17,14 +17,30 @@ export async function GET(request: Request) {
     const ownOnly =
       searchParams.get("ownOnly") === "1" ||
       searchParams.get("ownOnly") === "true";
-    return NextResponse.json(
-      await getConversationsResult(auth.user.id, { excludeImpersonation, ownOnly })
+    const timedResult = await runPerfRoute(
+      request,
+      "api.conversations.list",
+      () => getConversationsResult(auth.user.id, { excludeImpersonation, ownOnly }),
+      {
+        excludeImpersonation,
+        ownOnly
+      }
     );
-  } catch (error) {
-    if (error instanceof ServiceError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+    if (timedResult.error) {
+      throw Object.assign(timedResult.error, {
+        perfSnapshot: timedResult.snapshot
+      });
     }
-    return NextResponse.json({ error: "Unable to load conversations." }, { status: 500 });
+    return timedResult.response;
+  } catch (error) {
+    const perfSnapshot =
+      error && typeof error === "object" && "perfSnapshot" in error
+        ? (error as { perfSnapshot?: Parameters<typeof perfErrorJson>[2] }).perfSnapshot
+        : undefined;
+    if (error instanceof ServiceError) {
+      return perfErrorJson({ error: error.message }, { status: error.status }, perfSnapshot);
+    }
+    return perfErrorJson({ error: "Unable to load conversations." }, { status: 500 }, perfSnapshot);
   }
 }
 
@@ -32,11 +48,29 @@ export async function POST(request: Request) {
   try {
     const auth = await requireAuthenticatedRequest(request);
     const body = (await request.json().catch(() => ({}))) as CreateConversationBody;
-    return NextResponse.json(await createConversationResult(auth.user.id, body));
-  } catch (error) {
-    if (error instanceof ServiceError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+    const timedResult = await runPerfRoute(
+      request,
+      "api.conversations.create",
+      () => createConversationResult(auth.user.id, body),
+      {
+        hasProjectRef: Boolean(body.projectRef),
+        hasSubject: Boolean(body.subject)
+      }
+    );
+    if (timedResult.error) {
+      throw Object.assign(timedResult.error, {
+        perfSnapshot: timedResult.snapshot
+      });
     }
-    return NextResponse.json({ error: "Unable to create conversation." }, { status: 500 });
+    return timedResult.response;
+  } catch (error) {
+    const perfSnapshot =
+      error && typeof error === "object" && "perfSnapshot" in error
+        ? (error as { perfSnapshot?: Parameters<typeof perfErrorJson>[2] }).perfSnapshot
+        : undefined;
+    if (error instanceof ServiceError) {
+      return perfErrorJson({ error: error.message }, { status: error.status }, perfSnapshot);
+    }
+    return perfErrorJson({ error: "Unable to create conversation." }, { status: 500 }, perfSnapshot);
   }
 }

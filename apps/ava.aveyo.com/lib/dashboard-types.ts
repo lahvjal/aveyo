@@ -9,10 +9,13 @@ export interface Ticket {
   email: string;
   initials: string;
   waitLabel: string;
+  waitSeconds: number;
   lapsedLabel?: string;
   preview: string;
   chipTone: TicketTone;
   requestedAt: string;
+  claimedAt: string | null;
+  elapsedWaitSeconds: number;
   claimedByAuthUserId: string | null;
   resolvedAt: string | null;
   resolvedByAuthUserId: string | null;

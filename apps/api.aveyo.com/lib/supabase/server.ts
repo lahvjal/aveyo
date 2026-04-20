@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getSupabaseServerConfig, getSupabaseServiceRoleKey } from "./config";
+import { createInstrumentedFetch } from "@/lib/perf/metrics";
 
 let cachedClient: SupabaseClient | undefined;
 let cachedServiceRoleClient: SupabaseClient | undefined;
@@ -10,6 +11,9 @@ function createSupabaseServerClient() {
     auth: {
       persistSession: false,
       autoRefreshToken: false
+    },
+    global: {
+      fetch: createInstrumentedFetch("supabase")
     }
   });
 }
@@ -30,6 +34,9 @@ export function getSupabaseServiceRoleClient(): SupabaseClient {
       auth: {
         persistSession: false,
         autoRefreshToken: false
+      },
+      global: {
+        fetch: createInstrumentedFetch("supabase")
       }
     });
   }

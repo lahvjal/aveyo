@@ -1,7 +1,6 @@
 import {
   listRealtimeEvents,
   publishTypingEvent,
-  runCustomerSessionIdleAutomation,
   StoreError
 } from "@/lib/store/mock-store";
 import { ServiceError } from "@/lib/service-error";
@@ -14,12 +13,6 @@ export interface TypingBody {
 
 export async function getRealtimeEventsResult(actorUserId: string, afterEventId?: string) {
   try {
-    try {
-      await runCustomerSessionIdleAutomation(actorUserId);
-    } catch (automationError) {
-      console.error("Session idle automation check failed", automationError);
-    }
-
     const page = await listRealtimeEvents(actorUserId, afterEventId);
     let cursor = afterEventId;
     if (page.events.length > 0) {

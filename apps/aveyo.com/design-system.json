@@ -150,7 +150,7 @@
     },
     "spacing": {
       "buttonHorizontal": 22,
-      "buttonVertical": 18,
+      "buttonVertical": 8,
       "cardPadding": 40,
       "footerHorizontal": 64,
       "footerVertical": 80

@@ -49,10 +49,11 @@ body.ava-embed-mode nextjs-portal {
 }
 
 .rep-shell {
-  min-height: 100vh;
+  height: 100vh;
   display: grid;
   grid-template-columns: 220px minmax(0, 1fr);
   background: #ffffff;
+  overflow: hidden;
 }
 
 .rep-shell.primary-collapsed {
@@ -77,8 +78,21 @@ body.ava-embed-mode nextjs-portal {
   background: #ffffff;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100%;
   min-width: 0;
+  overflow: hidden;
+}
+
+/* Scrollable main column below secondary nav (all Ava rep shells). Nav stays fixed; body scrolls here. */
+.rep-main-scroll {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 .rep-shell-error {
@@ -132,12 +146,16 @@ body.ava-embed-mode nextjs-portal {
   flex: 1 1 auto;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(620px, 760px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 420px) minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .dashboard-queue-pane {
   min-width: 0;
+  min-height: 0;
   border-right: 1px solid #e6e6e6;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .dashboard-inline-workspace {
@@ -145,6 +163,7 @@ body.ava-embed-mode nextjs-portal {
   min-height: 0;
   display: grid;
   grid-template-rows: auto 1fr;
+  overflow: hidden;
 }
 
 .dashboard-queue-pane.is-offline,
@@ -158,6 +177,7 @@ body.ava-embed-mode nextjs-portal {
 
 .dashboard-inline-columns {
   min-height: 0;
+  overflow: hidden;
 }
 
 .board-lane {
@@ -292,6 +312,40 @@ body.ava-embed-mode nextjs-portal {
   color: #027a48;
   font-size: 12px;
   font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.board-queue-wait.timer-warning {
+  color: #b54708;
+}
+
+.board-queue-wait.timer-critical {
+  color: #b42318;
+}
+
+.board-queue-sentiment {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -4px 0 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475467;
+}
+
+.board-queue-sentiment-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.board-queue-sentiment-dot.positive {
+  background: #12b76a;
+}
+
+.board-queue-sentiment-dot.negative {
+  background: #f04438;
 }
 
 .board-queue-lapsed {
@@ -1515,9 +1569,10 @@ body.ava-embed-mode nextjs-portal {
 
 .rep-workspace-columns {
   display: grid;
-  grid-template-columns: minmax(640px, 1fr) 357px;
+  grid-template-columns: minmax(0, 1fr) 320px;
   min-height: 0;
   flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .workspace-status-bar {
@@ -1606,11 +1661,20 @@ body.ava-embed-mode nextjs-portal {
 
 .rep-secondary-nav {
   align-items: stretch;
+  background-color: #ffffff;
   border-bottom: 1px solid #e6e6e6;
   display: flex;
+  flex-shrink: 0;
   gap: 34px;
   min-height: 70px;
   padding: 0 16px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.manager-shell-view .rep-secondary-nav {
+  background-color: #f5f6f8;
 }
 
 .rep-secondary-nav-link {
@@ -1824,6 +1888,8 @@ body.ava-embed-mode nextjs-portal {
   border-right: 1px solid #e6e6e6;
   display: grid;
   grid-template-rows: 70px 1fr 167px;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .chat-topbar {
@@ -1850,7 +1916,9 @@ body.ava-embed-mode nextjs-portal {
   flex-direction: column;
   justify-content: flex-end;
   gap: 10px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
   background: #ffffff;
 }
 
@@ -3412,11 +3480,13 @@ body.ava-embed-mode nextjs-portal {
 
   .dashboard-board-layout {
     grid-template-columns: 1fr;
+    overflow-y: auto;
   }
 
   .dashboard-queue-pane {
     border-right: none;
     border-bottom: 1px solid #e6e6e6;
+    max-height: 50vh;
   }
 
   .rep-workspace-columns {

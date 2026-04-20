@@ -1,0 +1,1894 @@
+{
+  "createdAt": "2026-04-17T19:13:43.646Z",
+  "tier": "small",
+  "transport": "poll",
+  "apiBaseUrl": "http://localhost:4002",
+  "sessions": {
+    "customers": 25,
+    "agents": 3,
+    "managers": 2
+  },
+  "scenarios": {
+    "messageRoundtrip": {
+      "summary": {
+        "total": 25,
+        "succeeded": 25,
+        "failed": 0,
+        "metrics": {
+          "createConversationPerfMs": {
+            "count": 25,
+            "min": 615.68,
+            "p50": 714.6,
+            "p95": 1768.31,
+            "p99": 1810.37,
+            "max": 1810.37,
+            "average": 875.16
+          },
+          "fetchConversationPerfMs": {
+            "count": 25,
+            "min": 305.85,
+            "p50": 406.18,
+            "p95": 966.15,
+            "p99": 1042.82,
+            "max": 1042.82,
+            "average": 484.11
+          },
+          "sendRequestMs": {
+            "count": 25,
+            "min": 1745.86,
+            "p50": 2609,
+            "p95": 3809.47,
+            "p99": 4095.12,
+            "max": 4095.12,
+            "average": 2702.28
+          },
+          "sendServerMs": {
+            "count": 25,
+            "min": 1558.92,
+            "p50": 2264.66,
+            "p95": 3615.4,
+            "p99": 3718.21,
+            "max": 3718.21,
+            "average": 2445.69
+          },
+          "sendDbQueryCount": {
+            "count": 25,
+            "min": 11,
+            "p50": 11,
+            "p95": 12,
+            "p99": 12,
+            "max": 12,
+            "average": 11.08
+          },
+          "eventVisibleMs": {
+            "count": 25,
+            "min": 595.49,
+            "p50": 775.72,
+            "p95": 1133.24,
+            "p99": 1575.71,
+            "max": 1575.71,
+            "average": 823.43
+          },
+          "eventServerMs": {
+            "count": 25,
+            "min": 343.27,
+            "p50": 522.44,
+            "p95": 732.76,
+            "p99": 951.78,
+            "max": 951.78,
+            "average": 535.94
+          },
+          "eventDbQueryCount": {
+            "count": 25,
+            "min": 6,
+            "p50": 6,
+            "p95": 6,
+            "p99": 6,
+            "max": 6,
+            "average": 6
+          },
+          "avaReplyVisibleMs": {
+            "count": 25,
+            "min": 1793.65,
+            "p50": 2121.53,
+            "p95": 4600.76,
+            "p99": 4792.21,
+            "max": 4792.21,
+            "average": 2778.87
+          },
+          "replyConversationPerfMs": {
+            "count": 25,
+            "min": 377.75,
+            "p50": 491.9,
+            "p95": 1586.95,
+            "p99": 1631.17,
+            "max": 1631.17,
+            "average": 609.96
+          },
+          "replyConversationDbQueryCount": {
+            "count": 25,
+            "min": 6,
+            "p50": 6,
+            "p95": 6,
+            "p99": 6,
+            "max": 6,
+            "average": 6
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "conversationId": "922154fb-5020-4c41-a756-caf7d58231c0",
+          "createConversationPerfMs": 775.12,
+          "fetchConversationPerfMs": 381.42,
+          "sendRequestMs": 3469.25,
+          "sendServerMs": 3087.03,
+          "sendDbQueryCount": 12,
+          "eventVisibleMs": 1055.22,
+          "eventServerMs": 518.54,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 2079.57,
+          "replyConversationPerfMs": 572.81,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "ab000ba9-685a-4c96-a66c-bae7583fea8e",
+          "createConversationPerfMs": 765.45,
+          "fetchConversationPerfMs": 425.54,
+          "sendRequestMs": 3489.33,
+          "sendServerMs": 3223.12,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 813.83,
+          "eventServerMs": 496.47,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 4792.21,
+          "replyConversationPerfMs": 1631.17,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "8162a85f-371c-4b90-a244-6e121528b2dd",
+          "createConversationPerfMs": 687.27,
+          "fetchConversationPerfMs": 558.19,
+          "sendRequestMs": 3603.28,
+          "sendServerMs": 3372.98,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 822.07,
+          "eventServerMs": 626.19,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 1939.2,
+          "replyConversationPerfMs": 553.36,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "6df8cce2-b515-4b78-b38e-cd69d4a43989",
+          "createConversationPerfMs": 681.52,
+          "fetchConversationPerfMs": 381.03,
+          "sendRequestMs": 4095.12,
+          "sendServerMs": 3718.21,
+          "sendDbQueryCount": 12,
+          "eventVisibleMs": 716.35,
+          "eventServerMs": 504.34,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 3649.76,
+          "replyConversationPerfMs": 803.48,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "41e0bf28-561a-4023-8b4a-38971ec37e66",
+          "createConversationPerfMs": 818.35,
+          "fetchConversationPerfMs": 509.49,
+          "sendRequestMs": 3762.49,
+          "sendServerMs": 3544.1,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 615.06,
+          "eventServerMs": 343.27,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 4600.76,
+          "replyConversationPerfMs": 751.61,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "311bcc37-3d0f-4ed5-8996-c31dfbcc718c",
+          "createConversationPerfMs": 633.75,
+          "fetchConversationPerfMs": 389.61,
+          "sendRequestMs": 3803.34,
+          "sendServerMs": 3615.4,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 729.97,
+          "eventServerMs": 475.48,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 4511.92,
+          "replyConversationPerfMs": 1586.95,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "24e52fae-5700-4090-a02b-1d2be072d05d",
+          "createConversationPerfMs": 1429.83,
+          "fetchConversationPerfMs": 397.79,
+          "sendRequestMs": 2609,
+          "sendServerMs": 2340.88,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 1575.71,
+          "eventServerMs": 732.76,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 1821.27,
+          "replyConversationPerfMs": 491.9,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "7e27a13c-1e82-4a46-8c24-6e1f1ca9a86f",
+          "createConversationPerfMs": 624.78,
+          "fetchConversationPerfMs": 497.6,
+          "sendRequestMs": 3809.47,
+          "sendServerMs": 3614.35,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 766.25,
+          "eventServerMs": 518.93,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 3986.9,
+          "replyConversationPerfMs": 946.5,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "9030043e-a0da-40de-a5ec-47648302bb3e",
+          "createConversationPerfMs": 1810.37,
+          "fetchConversationPerfMs": 400.77,
+          "sendRequestMs": 2650.89,
+          "sendServerMs": 2264.66,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 975.28,
+          "eventServerMs": 522.44,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 3728.75,
+          "replyConversationPerfMs": 481.35,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "d80ddea6-78fd-46dc-bf5e-2e21c9f23181",
+          "createConversationPerfMs": 1768.31,
+          "fetchConversationPerfMs": 413.09,
+          "sendRequestMs": 2646.35,
+          "sendServerMs": 2328.74,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 595.49,
+          "eventServerMs": 389.36,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 2121.53,
+          "replyConversationPerfMs": 577.64,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "3418ae58-70be-4f8f-94a6-05953f1f8b86",
+          "createConversationPerfMs": 1569.33,
+          "fetchConversationPerfMs": 342.2,
+          "sendRequestMs": 2449.09,
+          "sendServerMs": 2154.84,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 1065.99,
+          "eventServerMs": 549.27,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 1982.7,
+          "replyConversationPerfMs": 442.73,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "d0e7ddfa-41d1-49bf-b4d2-68cb875ae550",
+          "createConversationPerfMs": 650.07,
+          "fetchConversationPerfMs": 966.15,
+          "sendRequestMs": 2391.42,
+          "sendServerMs": 2155.12,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 924.54,
+          "eventServerMs": 533.95,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 1943.6,
+          "replyConversationPerfMs": 403.31,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "5dbbd447-ad93-4967-b7db-ec91002eafb3",
+          "createConversationPerfMs": 615.68,
+          "fetchConversationPerfMs": 431.25,
+          "sendRequestMs": 2672.89,
+          "sendServerMs": 2450.06,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 825.88,
+          "eventServerMs": 568,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 2860.56,
+          "replyConversationPerfMs": 377.75,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "fd1ededc-b1eb-4135-be09-569863ef6144",
+          "createConversationPerfMs": 1132.66,
+          "fetchConversationPerfMs": 558.09,
+          "sendRequestMs": 2464.24,
+          "sendServerMs": 2252.66,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 835.92,
+          "eventServerMs": 668.94,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 1793.65,
+          "replyConversationPerfMs": 474.72,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "a561fa44-4582-4089-8b49-6f9eb258c2c6",
+          "createConversationPerfMs": 925.92,
+          "fetchConversationPerfMs": 920.75,
+          "sendRequestMs": 3032.38,
+          "sendServerMs": 2633.69,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 775.72,
+          "eventServerMs": 577.25,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 1820.36,
+          "replyConversationPerfMs": 424.16,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "a090857b-e007-4240-8e72-6ce51f599888",
+          "createConversationPerfMs": 774.24,
+          "fetchConversationPerfMs": 1042.82,
+          "sendRequestMs": 2665.11,
+          "sendServerMs": 2403.78,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 786.97,
+          "eventServerMs": 544.69,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 3081.94,
+          "replyConversationPerfMs": 516.03,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "087a483c-4b7c-4a3f-905b-7fe261e83200",
+          "createConversationPerfMs": 622.86,
+          "fetchConversationPerfMs": 352.35,
+          "sendRequestMs": 1937.05,
+          "sendServerMs": 1719.76,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 727.34,
+          "eventServerMs": 567.22,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 1917.8,
+          "replyConversationPerfMs": 525.16,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "0927f469-bd76-4f9b-bf81-c8bcaeb58fc3",
+          "createConversationPerfMs": 650.39,
+          "fetchConversationPerfMs": 434.18,
+          "sendRequestMs": 1745.86,
+          "sendServerMs": 1558.92,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 675.02,
+          "eventServerMs": 428.39,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 3053.86,
+          "replyConversationPerfMs": 497.67,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "a7a78e90-a18b-4584-8c12-954bcfb805a7",
+          "createConversationPerfMs": 711.1,
+          "fetchConversationPerfMs": 406.18,
+          "sendRequestMs": 2014.5,
+          "sendServerMs": 1750.22,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 735.43,
+          "eventServerMs": 551.14,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 1873.02,
+          "replyConversationPerfMs": 458.62,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "957a35b6-2391-47a3-b854-ab1833c9a768",
+          "createConversationPerfMs": 752.36,
+          "fetchConversationPerfMs": 404.19,
+          "sendRequestMs": 2468.71,
+          "sendServerMs": 2176.21,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 1133.24,
+          "eventServerMs": 951.78,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 1822.73,
+          "replyConversationPerfMs": 439.2,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "6335b72a-d1ea-42a0-989f-170aec307324",
+          "createConversationPerfMs": 645.45,
+          "fetchConversationPerfMs": 453.53,
+          "sendRequestMs": 1909.76,
+          "sendServerMs": 1713.1,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 643.25,
+          "eventServerMs": 456.8,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 3017.38,
+          "replyConversationPerfMs": 456.69,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "ceb20835-7469-4c41-97ab-b984b0c0ffb0",
+          "createConversationPerfMs": 667.2,
+          "fetchConversationPerfMs": 374.43,
+          "sendRequestMs": 1882.98,
+          "sendServerMs": 1719.43,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 734.86,
+          "eventServerMs": 521.84,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 1855.1,
+          "replyConversationPerfMs": 405.15,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "cc0221f9-d4bf-4853-ba38-df41b716d7e3",
+          "createConversationPerfMs": 693.53,
+          "fetchConversationPerfMs": 398.47,
+          "sendRequestMs": 2082.98,
+          "sendServerMs": 1854.32,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 780.13,
+          "eventServerMs": 537.08,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 3031.52,
+          "replyConversationPerfMs": 432.03,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "60f9bdf8-d448-4f55-9be1-0c89f07d949c",
+          "createConversationPerfMs": 714.6,
+          "fetchConversationPerfMs": 305.85,
+          "sendRequestMs": 1935.94,
+          "sendServerMs": 1693.6,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 661.87,
+          "eventServerMs": 386.17,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 1797.95,
+          "replyConversationPerfMs": 465.85,
+          "replyConversationDbQueryCount": 6
+        },
+        {
+          "conversationId": "d03dd3b2-8742-4028-9568-e3f520e9754c",
+          "createConversationPerfMs": 758.95,
+          "fetchConversationPerfMs": 357.77,
+          "sendRequestMs": 1965.63,
+          "sendServerMs": 1796.97,
+          "sendDbQueryCount": 11,
+          "eventVisibleMs": 614.38,
+          "eventServerMs": 428.18,
+          "eventDbQueryCount": 6,
+          "avaReplyVisibleMs": 4387.68,
+          "replyConversationPerfMs": 533.19,
+          "replyConversationDbQueryCount": 6
+        }
+      ]
+    },
+    "handoffRoundtrip": {
+      "summary": {
+        "total": 8,
+        "succeeded": 8,
+        "failed": 0,
+        "metrics": {
+          "handoffRequestMs": {
+            "count": 8,
+            "min": 1775.69,
+            "p50": 1957.56,
+            "p95": 2244.95,
+            "p99": 2244.95,
+            "max": 2244.95,
+            "average": 1975.15
+          },
+          "handoffRequestDbQueryCount": {
+            "count": 8,
+            "min": 18,
+            "p50": 18,
+            "p95": 18,
+            "p99": 18,
+            "max": 18,
+            "average": 18
+          },
+          "queueVisibleMs": {
+            "count": 8,
+            "min": 614.45,
+            "p50": 772.9,
+            "p95": 1427.5,
+            "p99": 1427.5,
+            "max": 1427.5,
+            "average": 857.1
+          },
+          "queueDbQueryCount": {
+            "count": 8,
+            "min": 8,
+            "p50": 8,
+            "p95": 8,
+            "p99": 8,
+            "max": 8,
+            "average": 8
+          },
+          "managerVisibleMs": {
+            "count": 8,
+            "min": 842.35,
+            "p50": 1049.96,
+            "p95": 2378.01,
+            "p99": 2378.01,
+            "max": 2378.01,
+            "average": 1168.83
+          },
+          "managerDbQueryCount": {
+            "count": 8,
+            "min": 11,
+            "p50": 11,
+            "p95": 11,
+            "p99": 11,
+            "max": 11,
+            "average": 11
+          },
+          "claimMs": {
+            "count": 8,
+            "min": 1657.1,
+            "p50": 1778.38,
+            "p95": 2897.62,
+            "p99": 2897.62,
+            "max": 2897.62,
+            "average": 2024.52
+          },
+          "claimDbQueryCount": {
+            "count": 8,
+            "min": 17,
+            "p50": 17,
+            "p95": 17,
+            "p99": 17,
+            "max": 17,
+            "average": 17
+          },
+          "repMessageMs": {
+            "count": 8,
+            "min": 596.35,
+            "p50": 709.55,
+            "p95": 1823.98,
+            "p99": 1823.98,
+            "max": 1823.98,
+            "average": 847.58
+          },
+          "resolveMs": {
+            "count": 8,
+            "min": 1646.94,
+            "p50": 1759.86,
+            "p95": 2079.87,
+            "p99": 2079.87,
+            "max": 2079.87,
+            "average": 1811.46
+          },
+          "resolveDbQueryCount": {
+            "count": 8,
+            "min": 17,
+            "p50": 17,
+            "p95": 17,
+            "p99": 17,
+            "max": 17,
+            "average": 17
+          },
+          "ratingMs": {
+            "count": 8,
+            "min": 1266.67,
+            "p50": 1430.14,
+            "p95": 2809.53,
+            "p99": 2809.53,
+            "max": 2809.53,
+            "average": 1731.32
+          },
+          "followUpMessageMs": {
+            "count": 8,
+            "min": 2232.32,
+            "p50": 2370.67,
+            "p95": 3653.41,
+            "p99": 3653.41,
+            "max": 3653.41,
+            "average": 2722.17
+          },
+          "returnToAiMs": {
+            "count": 8,
+            "min": 3000.66,
+            "p50": 3022.64,
+            "p95": 3883.19,
+            "p99": 3883.19,
+            "max": 3883.19,
+            "average": 3186.66
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "conversationId": "922154fb-5020-4c41-a756-caf7d58231c0",
+          "handoffRequestMs": 1928.45,
+          "handoffRequestDbQueryCount": 18,
+          "queueVisibleMs": 757.49,
+          "queueDbQueryCount": 8,
+          "managerVisibleMs": 1070.52,
+          "managerDbQueryCount": 11,
+          "claimMs": 1823.51,
+          "claimDbQueryCount": 17,
+          "repMessageMs": 714.02,
+          "resolveMs": 1646.94,
+          "resolveDbQueryCount": 17,
+          "ratingMs": 1306.27,
+          "followUpMessageMs": 3635.51,
+          "returnToAiMs": 3023.12
+        },
+        {
+          "conversationId": "ab000ba9-685a-4c96-a66c-bae7583fea8e",
+          "handoffRequestMs": 1775.69,
+          "handoffRequestDbQueryCount": 18,
+          "queueVisibleMs": 772.9,
+          "queueDbQueryCount": 8,
+          "managerVisibleMs": 1049.96,
+          "managerDbQueryCount": 11,
+          "claimMs": 1741.61,
+          "claimDbQueryCount": 17,
+          "repMessageMs": 596.35,
+          "resolveMs": 1695.66,
+          "resolveDbQueryCount": 17,
+          "ratingMs": 1430.14,
+          "followUpMessageMs": 2402.94,
+          "returnToAiMs": 3005.29
+        },
+        {
+          "conversationId": "8162a85f-371c-4b90-a244-6e121528b2dd",
+          "handoffRequestMs": 2244.95,
+          "handoffRequestDbQueryCount": 18,
+          "queueVisibleMs": 673.46,
+          "queueDbQueryCount": 8,
+          "managerVisibleMs": 948.09,
+          "managerDbQueryCount": 11,
+          "claimMs": 1708.97,
+          "claimDbQueryCount": 17,
+          "repMessageMs": 718.77,
+          "resolveMs": 1759.86,
+          "resolveDbQueryCount": 17,
+          "ratingMs": 1403.05,
+          "followUpMessageMs": 2930.55,
+          "returnToAiMs": 3000.66
+        },
+        {
+          "conversationId": "6df8cce2-b515-4b78-b38e-cd69d4a43989",
+          "handoffRequestMs": 1826.9,
+          "handoffRequestDbQueryCount": 18,
+          "queueVisibleMs": 794.3,
+          "queueDbQueryCount": 8,
+          "managerVisibleMs": 1050.49,
+          "managerDbQueryCount": 11,
+          "claimMs": 1657.1,
+          "claimDbQueryCount": 17,
+          "repMessageMs": 680.74,
+          "resolveMs": 1744.02,
+          "resolveDbQueryCount": 17,
+          "ratingMs": 1464.23,
+          "followUpMessageMs": 2313.96,
+          "returnToAiMs": 3014.73
+        },
+        {
+          "conversationId": "41e0bf28-561a-4023-8b4a-38971ec37e66",
+          "handoffRequestMs": 1957.56,
+          "handoffRequestDbQueryCount": 18,
+          "queueVisibleMs": 614.45,
+          "queueDbQueryCount": 8,
+          "managerVisibleMs": 842.35,
+          "managerDbQueryCount": 11,
+          "claimMs": 1818.13,
+          "claimDbQueryCount": 17,
+          "repMessageMs": 709.55,
+          "resolveMs": 1785.82,
+          "resolveDbQueryCount": 17,
+          "ratingMs": 1530.37,
+          "followUpMessageMs": 2232.32,
+          "returnToAiMs": 3027.9
+        },
+        {
+          "conversationId": "311bcc37-3d0f-4ed5-8996-c31dfbcc718c",
+          "handoffRequestMs": 2000.7,
+          "handoffRequestDbQueryCount": 18,
+          "queueVisibleMs": 800.81,
+          "queueDbQueryCount": 8,
+          "managerVisibleMs": 910.84,
+          "managerDbQueryCount": 11,
+          "claimMs": 1778.38,
+          "claimDbQueryCount": 17,
+          "repMessageMs": 616.71,
+          "resolveMs": 1809.82,
+          "resolveDbQueryCount": 17,
+          "ratingMs": 1266.67,
+          "followUpMessageMs": 2238,
+          "returnToAiMs": 3022.64
+        },
+        {
+          "conversationId": "24e52fae-5700-4090-a02b-1d2be072d05d",
+          "handoffRequestMs": 2010.32,
+          "handoffRequestDbQueryCount": 18,
+          "queueVisibleMs": 1427.5,
+          "queueDbQueryCount": 8,
+          "managerVisibleMs": 1100.36,
+          "managerDbQueryCount": 11,
+          "claimMs": 2897.62,
+          "claimDbQueryCount": 17,
+          "repMessageMs": 1823.98,
+          "resolveMs": 1969.66,
+          "resolveDbQueryCount": 17,
+          "ratingMs": 2640.27,
+          "followUpMessageMs": 2370.67,
+          "returnToAiMs": 3883.19
+        },
+        {
+          "conversationId": "7e27a13c-1e82-4a46-8c24-6e1f1ca9a86f",
+          "handoffRequestMs": 2056.6,
+          "handoffRequestDbQueryCount": 18,
+          "queueVisibleMs": 1015.89,
+          "queueDbQueryCount": 8,
+          "managerVisibleMs": 2378.01,
+          "managerDbQueryCount": 11,
+          "claimMs": 2770.87,
+          "claimDbQueryCount": 17,
+          "repMessageMs": 920.55,
+          "resolveMs": 2079.87,
+          "resolveDbQueryCount": 17,
+          "ratingMs": 2809.53,
+          "followUpMessageMs": 3653.41,
+          "returnToAiMs": 3515.78
+        }
+      ]
+    },
+    "managerRefresh": {
+      "summary": {
+        "total": 12,
+        "succeeded": 12,
+        "failed": 0,
+        "metrics": {
+          "requestMs": {
+            "count": 12,
+            "min": 931.21,
+            "p50": 1118.16,
+            "p95": 1646.42,
+            "p99": 1646.42,
+            "max": 1646.42,
+            "average": 1204.57
+          },
+          "serverMs": {
+            "count": 12,
+            "min": 660.23,
+            "p50": 818.16,
+            "p95": 1355.66,
+            "p99": 1355.66,
+            "max": 1355.66,
+            "average": 918.2
+          },
+          "dbQueryCount": {
+            "count": 12,
+            "min": 10,
+            "p50": 10,
+            "p95": 10,
+            "p99": 10,
+            "max": 10,
+            "average": 10
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "requestMs": 1451.78,
+          "serverMs": 1237.21,
+          "dbQueryCount": 10
+        },
+        {
+          "requestMs": 1454.47,
+          "serverMs": 1242.38,
+          "dbQueryCount": 10
+        },
+        {
+          "requestMs": 1035.86,
+          "serverMs": 699.69,
+          "dbQueryCount": 10
+        },
+        {
+          "requestMs": 981.26,
+          "serverMs": 660.23,
+          "dbQueryCount": 10
+        },
+        {
+          "requestMs": 1118.16,
+          "serverMs": 858.76,
+          "dbQueryCount": 10
+        },
+        {
+          "requestMs": 1278.56,
+          "serverMs": 1068.74,
+          "dbQueryCount": 10
+        },
+        {
+          "requestMs": 1266.54,
+          "serverMs": 905.36,
+          "dbQueryCount": 10
+        },
+        {
+          "requestMs": 1209.73,
+          "serverMs": 755.99,
+          "dbQueryCount": 10
+        },
+        {
+          "requestMs": 931.21,
+          "serverMs": 745.85,
+          "dbQueryCount": 10
+        },
+        {
+          "requestMs": 1069.83,
+          "serverMs": 818.16,
+          "dbQueryCount": 10
+        },
+        {
+          "requestMs": 1646.42,
+          "serverMs": 1355.66,
+          "dbQueryCount": 10
+        },
+        {
+          "requestMs": 1010.99,
+          "serverMs": 670.39,
+          "dbQueryCount": 10
+        }
+      ]
+    },
+    "agentRefresh": {
+      "summary": {
+        "total": 12,
+        "succeeded": 12,
+        "failed": 0,
+        "metrics": {
+          "queueRequestMs": {
+            "count": 12,
+            "min": 703.22,
+            "p50": 1016.04,
+            "p95": 2171.65,
+            "p99": 2171.65,
+            "max": 2171.65,
+            "average": 1234.36
+          },
+          "queueServerMs": {
+            "count": 12,
+            "min": 512.48,
+            "p50": 644.13,
+            "p95": 1436.56,
+            "p99": 1436.56,
+            "max": 1436.56,
+            "average": 732.55
+          },
+          "queueDbQueryCount": {
+            "count": 12,
+            "min": 8,
+            "p50": 8,
+            "p95": 8,
+            "p99": 8,
+            "max": 8,
+            "average": 8
+          },
+          "realtimeRequestMs": {
+            "count": 12,
+            "min": 728.89,
+            "p50": 957.02,
+            "p95": 1541.71,
+            "p99": 1541.71,
+            "max": 1541.71,
+            "average": 1022.86
+          },
+          "realtimeServerMs": {
+            "count": 12,
+            "min": 535.98,
+            "p50": 633.52,
+            "p95": 1225.37,
+            "p99": 1225.37,
+            "max": 1225.37,
+            "average": 710.39
+          },
+          "realtimeDbQueryCount": {
+            "count": 12,
+            "min": 6,
+            "p50": 6,
+            "p95": 6,
+            "p99": 6,
+            "max": 6,
+            "average": 6
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "queueRequestMs": 2171.65,
+          "queueServerMs": 572.08,
+          "queueDbQueryCount": 8,
+          "realtimeRequestMs": 906.64,
+          "realtimeServerMs": 736.16,
+          "realtimeDbQueryCount": 6
+        },
+        {
+          "queueRequestMs": 1632.55,
+          "queueServerMs": 1436.56,
+          "queueDbQueryCount": 8,
+          "realtimeRequestMs": 815.56,
+          "realtimeServerMs": 570.55,
+          "realtimeDbQueryCount": 6
+        },
+        {
+          "queueRequestMs": 2169.88,
+          "queueServerMs": 617.14,
+          "queueDbQueryCount": 8,
+          "realtimeRequestMs": 1008.39,
+          "realtimeServerMs": 633.52,
+          "realtimeDbQueryCount": 6
+        },
+        {
+          "queueRequestMs": 1019.68,
+          "queueServerMs": 588.74,
+          "queueDbQueryCount": 8,
+          "realtimeRequestMs": 821.14,
+          "realtimeServerMs": 546.41,
+          "realtimeDbQueryCount": 6
+        },
+        {
+          "queueRequestMs": 703.22,
+          "queueServerMs": 517.98,
+          "queueDbQueryCount": 8,
+          "realtimeRequestMs": 1028.64,
+          "realtimeServerMs": 822.44,
+          "realtimeDbQueryCount": 6
+        },
+        {
+          "queueRequestMs": 942.19,
+          "queueServerMs": 756.7,
+          "queueDbQueryCount": 8,
+          "realtimeRequestMs": 1258.29,
+          "realtimeServerMs": 670.34,
+          "realtimeDbQueryCount": 6
+        },
+        {
+          "queueRequestMs": 1016.04,
+          "queueServerMs": 644.13,
+          "queueDbQueryCount": 8,
+          "realtimeRequestMs": 1017.72,
+          "realtimeServerMs": 762.04,
+          "realtimeDbQueryCount": 6
+        },
+        {
+          "queueRequestMs": 915.82,
+          "queueServerMs": 695.56,
+          "queueDbQueryCount": 8,
+          "realtimeRequestMs": 1541.71,
+          "realtimeServerMs": 1225.37,
+          "realtimeDbQueryCount": 6
+        },
+        {
+          "queueRequestMs": 1444.65,
+          "queueServerMs": 1099.77,
+          "queueDbQueryCount": 8,
+          "realtimeRequestMs": 728.89,
+          "realtimeServerMs": 535.98,
+          "realtimeDbQueryCount": 6
+        },
+        {
+          "queueRequestMs": 1198.7,
+          "queueServerMs": 702.22,
+          "queueDbQueryCount": 8,
+          "realtimeRequestMs": 890.57,
+          "realtimeServerMs": 619.43,
+          "realtimeDbQueryCount": 6
+        },
+        {
+          "queueRequestMs": 716.12,
+          "queueServerMs": 512.48,
+          "queueDbQueryCount": 8,
+          "realtimeRequestMs": 957.02,
+          "realtimeServerMs": 613.33,
+          "realtimeDbQueryCount": 6
+        },
+        {
+          "queueRequestMs": 881.8,
+          "queueServerMs": 647.21,
+          "queueDbQueryCount": 8,
+          "realtimeRequestMs": 1299.74,
+          "realtimeServerMs": 789.07,
+          "realtimeDbQueryCount": 6
+        }
+      ]
+    }
+  },
+  "perfSnapshots": {
+    "count": 344,
+    "grouped": {
+      "api.conversations.list": {
+        "count": 33,
+        "totalMs": {
+          "count": 33,
+          "min": 145.15,
+          "p50": 294.21,
+          "p95": 806.59,
+          "p99": 824.94,
+          "max": 824.94,
+          "average": 380.19
+        },
+        "dbQueryCount": {
+          "count": 33,
+          "min": 2,
+          "p50": 2,
+          "p95": 6,
+          "p99": 6,
+          "max": 6,
+          "average": 2.97
+        },
+        "dbTotalMs": {
+          "count": 33,
+          "min": 144.6,
+          "p50": 293.71,
+          "p95": 804.05,
+          "p99": 823.57,
+          "max": 823.57,
+          "average": 397.36
+        },
+        "openAiTotalMs": {
+          "count": 33,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "average": null
+        },
+        "errors": []
+      },
+      "api.conversations.create": {
+        "count": 25,
+        "totalMs": {
+          "count": 25,
+          "min": 615.68,
+          "p50": 714.6,
+          "p95": 1768.31,
+          "p99": 1810.37,
+          "max": 1810.37,
+          "average": 875.16
+        },
+        "dbQueryCount": {
+          "count": 25,
+          "min": 8,
+          "p50": 8,
+          "p95": 8,
+          "p99": 8,
+          "max": 8,
+          "average": 8
+        },
+        "dbTotalMs": {
+          "count": 25,
+          "min": 690.41,
+          "p50": 835.18,
+          "p95": 1946.49,
+          "p99": 2371.8,
+          "max": 2371.8,
+          "average": 994.62
+        },
+        "openAiTotalMs": {
+          "count": 25,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "average": null
+        },
+        "errors": []
+      },
+      "api.conversation.get": {
+        "count": 111,
+        "totalMs": {
+          "count": 111,
+          "min": 305.85,
+          "p50": 488.74,
+          "p95": 966.15,
+          "p99": 1631.17,
+          "max": 1889.73,
+          "average": 537.92
+        },
+        "dbQueryCount": {
+          "count": 111,
+          "min": 5,
+          "p50": 6,
+          "p95": 6,
+          "p99": 6,
+          "max": 6,
+          "average": 5.77
+        },
+        "dbTotalMs": {
+          "count": 111,
+          "min": 371.47,
+          "p50": 570.5,
+          "p95": 1080.31,
+          "p99": 2101.93,
+          "max": 2446.2,
+          "average": 649.45
+        },
+        "openAiTotalMs": {
+          "count": 111,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "average": null
+        },
+        "errors": []
+      },
+      "api.realtime.events": {
+        "count": 62,
+        "totalMs": {
+          "count": 62,
+          "min": 343.27,
+          "p50": 544.69,
+          "p95": 951.78,
+          "p99": 1512.48,
+          "max": 1512.48,
+          "average": 611.04
+        },
+        "dbQueryCount": {
+          "count": 62,
+          "min": 6,
+          "p50": 6,
+          "p95": 6,
+          "p99": 6,
+          "max": 6,
+          "average": 6
+        },
+        "dbTotalMs": {
+          "count": 62,
+          "min": 505.66,
+          "p50": 735.02,
+          "p95": 1288.09,
+          "p99": 2236.7,
+          "max": 2236.7,
+          "average": 846.66
+        },
+        "openAiTotalMs": {
+          "count": 62,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "average": null
+        },
+        "errors": []
+      },
+      "api.messages.create": {
+        "count": 41,
+        "totalMs": {
+          "count": 41,
+          "min": 422.14,
+          "p50": 2154.84,
+          "p95": 3614.35,
+          "p99": 3718.21,
+          "max": 3718.21,
+          "average": 2089.75
+        },
+        "dbQueryCount": {
+          "count": 41,
+          "min": 5,
+          "p50": 11,
+          "p95": 11,
+          "p99": 12,
+          "max": 12,
+          "average": 9.88
+        },
+        "dbTotalMs": {
+          "count": 41,
+          "min": 412.08,
+          "p50": 1110.44,
+          "p95": 2502.2,
+          "p99": 2653.21,
+          "max": 2653.21,
+          "average": 1301.29
+        },
+        "openAiTotalMs": {
+          "count": 41,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "average": null
+        },
+        "errors": []
+      },
+      "api.handoff.request": {
+        "count": 8,
+        "totalMs": {
+          "count": 8,
+          "min": 1608.49,
+          "p50": 1698.23,
+          "p95": 2010.38,
+          "p99": 2010.38,
+          "max": 2010.38,
+          "average": 1740.35
+        },
+        "dbQueryCount": {
+          "count": 8,
+          "min": 18,
+          "p50": 18,
+          "p95": 18,
+          "p99": 18,
+          "max": 18,
+          "average": 18
+        },
+        "dbTotalMs": {
+          "count": 8,
+          "min": 1675.79,
+          "p50": 1738.75,
+          "p95": 2119.97,
+          "p99": 2119.97,
+          "max": 2119.97,
+          "average": 1802.98
+        },
+        "openAiTotalMs": {
+          "count": 8,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "average": null
+        },
+        "errors": []
+      },
+      "api.handoff.queue": {
+        "count": 20,
+        "totalMs": {
+          "count": 20,
+          "min": 422.3,
+          "p50": 598.39,
+          "p95": 1099.77,
+          "p99": 1436.56,
+          "max": 1436.56,
+          "average": 676.1
+        },
+        "dbQueryCount": {
+          "count": 20,
+          "min": 8,
+          "p50": 8,
+          "p95": 8,
+          "p99": 8,
+          "max": 8,
+          "average": 8
+        },
+        "dbTotalMs": {
+          "count": 20,
+          "min": 667.25,
+          "p50": 929.31,
+          "p95": 1651.25,
+          "p99": 1683.96,
+          "max": 1683.96,
+          "average": 1046.61
+        },
+        "openAiTotalMs": {
+          "count": 20,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "average": null
+        },
+        "errors": []
+      },
+      "api.manager.handoffs": {
+        "count": 20,
+        "totalMs": {
+          "count": 20,
+          "min": 622.37,
+          "p50": 818.16,
+          "p95": 1355.66,
+          "p99": 2203.07,
+          "max": 2203.07,
+          "average": 930.48
+        },
+        "dbQueryCount": {
+          "count": 20,
+          "min": 10,
+          "p50": 10,
+          "p95": 11,
+          "p99": 11,
+          "max": 11,
+          "average": 10.4
+        },
+        "dbTotalMs": {
+          "count": 20,
+          "min": 954.43,
+          "p50": 1180.19,
+          "p95": 2387.89,
+          "p99": 3182.45,
+          "max": 3182.45,
+          "average": 1385.52
+        },
+        "openAiTotalMs": {
+          "count": 20,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "average": null
+        },
+        "errors": []
+      },
+      "api.handoff.claim": {
+        "count": 8,
+        "totalMs": {
+          "count": 8,
+          "min": 1468.03,
+          "p50": 1551.06,
+          "p95": 2516.17,
+          "p99": 2516.17,
+          "max": 2516.17,
+          "average": 1780.45
+        },
+        "dbQueryCount": {
+          "count": 8,
+          "min": 17,
+          "p50": 17,
+          "p95": 17,
+          "p99": 17,
+          "max": 17,
+          "average": 17
+        },
+        "dbTotalMs": {
+          "count": 8,
+          "min": 1558.72,
+          "p50": 1641.38,
+          "p95": 2616.47,
+          "p99": 2616.47,
+          "max": 2616.47,
+          "average": 1876.63
+        },
+        "openAiTotalMs": {
+          "count": 8,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "average": null
+        },
+        "errors": []
+      },
+      "api.handoff.resolve": {
+        "count": 8,
+        "totalMs": {
+          "count": 8,
+          "min": 1457.36,
+          "p50": 1578.39,
+          "p95": 1890.61,
+          "p99": 1890.61,
+          "max": 1890.61,
+          "average": 1606.13
+        },
+        "dbQueryCount": {
+          "count": 8,
+          "min": 17,
+          "p50": 17,
+          "p95": 17,
+          "p99": 17,
+          "max": 17,
+          "average": 17
+        },
+        "dbTotalMs": {
+          "count": 8,
+          "min": 1516.27,
+          "p50": 1705.46,
+          "p95": 1965.94,
+          "p99": 1965.94,
+          "max": 1965.94,
+          "average": 1688.71
+        },
+        "openAiTotalMs": {
+          "count": 8,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "average": null
+        },
+        "errors": []
+      },
+      "api.handoff.rating": {
+        "count": 8,
+        "totalMs": {
+          "count": 8,
+          "min": 1038.79,
+          "p50": 1186.94,
+          "p95": 2420.02,
+          "p99": 2420.02,
+          "max": 2420.02,
+          "average": 1401.34
+        },
+        "dbQueryCount": {
+          "count": 8,
+          "min": 13,
+          "p50": 13,
+          "p95": 13,
+          "p99": 13,
+          "max": 13,
+          "average": 13
+        },
+        "dbTotalMs": {
+          "count": 8,
+          "min": 1105.94,
+          "p50": 1293.02,
+          "p95": 2492.97,
+          "p99": 2492.97,
+          "max": 2492.97,
+          "average": 1477.22
+        },
+        "openAiTotalMs": {
+          "count": 8,
+          "min": 0,
+          "p50": 0,
+          "p95": 0,
+          "p99": 0,
+          "max": 0,
+          "average": 0
+        },
+        "openAiMaxInFlight": {
+          "count": 0,
+          "min": null,
+          "p50": null,
+          "p95": null,
+          "p99": null,
+          "max": null,
+          "average": null
+        },
+        "errors": []
+      }
+    }
+  },
+  "regressionGate": {
+    "baselineReport": "/Users/vel/Documents/Aveyo/monoveyo/perf/ava-chat/reports/baseline-small-with-server-metrics.json",
+    "baselineCreatedAt": "2026-04-17T16:02:53.758Z",
+    "passed": false,
+    "failedCount": 2,
+    "skippedCount": 3,
+    "checks": [
+      {
+        "label": "Message roundtrip failures remain at zero",
+        "path": [
+          "scenarios",
+          "messageRoundtrip",
+          "summary",
+          "failed"
+        ],
+        "status": "passed",
+        "currentValue": 0,
+        "baselineValue": 0,
+        "delta": 0,
+        "percentDelta": null,
+        "reason": ""
+      },
+      {
+        "label": "Handoff roundtrip failures remain at zero",
+        "path": [
+          "scenarios",
+          "handoffRoundtrip",
+          "summary",
+          "failed"
+        ],
+        "status": "passed",
+        "currentValue": 0,
+        "baselineValue": 0,
+        "delta": 0,
+        "percentDelta": null,
+        "reason": ""
+      },
+      {
+        "label": "Manager refresh failures remain at zero",
+        "path": [
+          "scenarios",
+          "managerRefresh",
+          "summary",
+          "failed"
+        ],
+        "status": "passed",
+        "currentValue": 0,
+        "baselineValue": 0,
+        "delta": 0,
+        "percentDelta": null,
+        "reason": ""
+      },
+      {
+        "label": "Agent refresh failures remain at zero",
+        "path": [
+          "scenarios",
+          "agentRefresh",
+          "summary",
+          "failed"
+        ],
+        "status": "passed",
+        "currentValue": 0,
+        "baselineValue": 0,
+        "delta": 0,
+        "percentDelta": null,
+        "reason": ""
+      },
+      {
+        "label": "Customer send p95 stays within budget",
+        "path": [
+          "scenarios",
+          "messageRoundtrip",
+          "summary",
+          "metrics",
+          "sendRequestMs",
+          "p95"
+        ],
+        "status": "passed",
+        "currentValue": 3809.47,
+        "baselineValue": 4667.16,
+        "delta": -857.69,
+        "percentDelta": -18.38,
+        "reason": ""
+      },
+      {
+        "label": "Customer send p99 stays within budget",
+        "path": [
+          "scenarios",
+          "messageRoundtrip",
+          "summary",
+          "metrics",
+          "sendRequestMs",
+          "p99"
+        ],
+        "status": "passed",
+        "currentValue": 4095.12,
+        "baselineValue": 4905.41,
+        "delta": -810.29,
+        "percentDelta": -16.52,
+        "reason": ""
+      },
+      {
+        "label": "Realtime event visibility p95 stays within budget",
+        "path": [
+          "scenarios",
+          "messageRoundtrip",
+          "summary",
+          "metrics",
+          "eventVisibleMs",
+          "p95"
+        ],
+        "status": "passed",
+        "currentValue": 1133.24,
+        "baselineValue": 7228.44,
+        "delta": -6095.2,
+        "percentDelta": -84.32,
+        "reason": ""
+      },
+      {
+        "label": "Ava reply visibility p95 stays within budget",
+        "path": [
+          "scenarios",
+          "messageRoundtrip",
+          "summary",
+          "metrics",
+          "avaReplyVisibleMs",
+          "p95"
+        ],
+        "status": "failed",
+        "currentValue": 4600.76,
+        "baselineValue": 1793.87,
+        "delta": 2806.89,
+        "percentDelta": 156.47,
+        "reason": "delta 2806.89 exceeds max delta 600; delta 156.47% exceeds max delta 35%"
+      },
+      {
+        "label": "Handoff request p95 stays within budget",
+        "path": [
+          "scenarios",
+          "handoffRoundtrip",
+          "summary",
+          "metrics",
+          "handoffRequestMs",
+          "p95"
+        ],
+        "status": "passed",
+        "currentValue": 2244.95,
+        "baselineValue": 4593.21,
+        "delta": -2348.26,
+        "percentDelta": -51.12,
+        "reason": ""
+      },
+      {
+        "label": "Queue visibility p95 stays within budget",
+        "path": [
+          "scenarios",
+          "handoffRoundtrip",
+          "summary",
+          "metrics",
+          "queueVisibleMs",
+          "p95"
+        ],
+        "status": "passed",
+        "currentValue": 1427.5,
+        "baselineValue": 1735.89,
+        "delta": -308.39,
+        "percentDelta": -17.77,
+        "reason": ""
+      },
+      {
+        "label": "Manager visibility p95 stays within budget",
+        "path": [
+          "scenarios",
+          "handoffRoundtrip",
+          "summary",
+          "metrics",
+          "managerVisibleMs",
+          "p95"
+        ],
+        "status": "passed",
+        "currentValue": 2378.01,
+        "baselineValue": 2777.91,
+        "delta": -399.9,
+        "percentDelta": -14.4,
+        "reason": ""
+      },
+      {
+        "label": "Claim p95 stays within budget",
+        "path": [
+          "scenarios",
+          "handoffRoundtrip",
+          "summary",
+          "metrics",
+          "claimMs",
+          "p95"
+        ],
+        "status": "passed",
+        "currentValue": 2897.62,
+        "baselineValue": 4770.22,
+        "delta": -1872.6,
+        "percentDelta": -39.26,
+        "reason": ""
+      },
+      {
+        "label": "Resolve p95 stays within budget",
+        "path": [
+          "scenarios",
+          "handoffRoundtrip",
+          "summary",
+          "metrics",
+          "resolveMs",
+          "p95"
+        ],
+        "status": "passed",
+        "currentValue": 2079.87,
+        "baselineValue": 4302.75,
+        "delta": -2222.88,
+        "percentDelta": -51.66,
+        "reason": ""
+      },
+      {
+        "label": "Return-to-AI p95 stays within budget",
+        "path": [
+          "scenarios",
+          "handoffRoundtrip",
+          "summary",
+          "metrics",
+          "returnToAiMs",
+          "p95"
+        ],
+        "status": "passed",
+        "currentValue": 3883.19,
+        "baselineValue": 5452.67,
+        "delta": -1569.48,
+        "percentDelta": -28.78,
+        "reason": ""
+      },
+      {
+        "label": "Manager refresh p95 stays within budget",
+        "path": [
+          "scenarios",
+          "managerRefresh",
+          "summary",
+          "metrics",
+          "requestMs",
+          "p95"
+        ],
+        "status": "failed",
+        "currentValue": 1646.42,
+        "baselineValue": 1262.26,
+        "delta": 384.16,
+        "percentDelta": 30.43,
+        "reason": "delta 30.43% exceeds max delta 30%"
+      },
+      {
+        "label": "Agent queue refresh p95 stays within budget",
+        "path": [
+          "scenarios",
+          "agentRefresh",
+          "summary",
+          "metrics",
+          "queueRequestMs",
+          "p95"
+        ],
+        "status": "passed",
+        "currentValue": 2171.65,
+        "baselineValue": 2921.83,
+        "delta": -750.18,
+        "percentDelta": -25.68,
+        "reason": ""
+      },
+      {
+        "label": "Agent realtime refresh p95 stays within budget",
+        "path": [
+          "scenarios",
+          "agentRefresh",
+          "summary",
+          "metrics",
+          "realtimeRequestMs",
+          "p95"
+        ],
+        "status": "passed",
+        "currentValue": 1541.71,
+        "baselineValue": 12591.12,
+        "delta": -11049.41,
+        "percentDelta": -87.76,
+        "reason": ""
+      },
+      {
+        "label": "Queue query-count p95 stays near baseline",
+        "path": [
+          "scenarios",
+          "handoffRoundtrip",
+          "summary",
+          "metrics",
+          "queueDbQueryCount",
+          "p95"
+        ],
+        "status": "skipped",
+        "currentValue": 8,
+        "baselineValue": null,
+        "delta": null,
+        "percentDelta": null,
+        "reason": "Baseline report is missing this metric."
+      },
+      {
+        "label": "Manager handoffs query-count p95 stays near baseline",
+        "path": [
+          "scenarios",
+          "handoffRoundtrip",
+          "summary",
+          "metrics",
+          "managerDbQueryCount",
+          "p95"
+        ],
+        "status": "skipped",
+        "currentValue": 11,
+        "baselineValue": null,
+        "delta": null,
+        "percentDelta": null,
+        "reason": "Baseline report is missing this metric."
+      },
+      {
+        "label": "Message create query-count p95 stays near baseline",
+        "path": [
+          "scenarios",
+          "messageRoundtrip",
+          "summary",
+          "metrics",
+          "sendDbQueryCount",
+          "p95"
+        ],
+        "status": "skipped",
+        "currentValue": 12,
+        "baselineValue": null,
+        "delta": null,
+        "percentDelta": null,
+        "reason": "Baseline report is missing this metric."
+      }
+    ]
+  }
+}

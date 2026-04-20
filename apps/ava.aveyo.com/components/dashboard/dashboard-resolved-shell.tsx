@@ -6,7 +6,8 @@ import { canAccessAvaManagerViews } from "@/lib/auth/access";
 import { buildAuthLoginUrl } from "@/lib/auth/config";
 import { logoutAuthSession } from "@/lib/auth/session";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
-import { getRealtimeEventsApi, listQueueApi, type QueueRecord } from "@/lib/dashboard-api";
+import { useRealtimeInvalidation } from "@/lib/use-realtime-invalidation";
+import { listQueueApi, type QueueRecord } from "@/lib/dashboard-api";
 import { createTicketFromQueueRecord } from "@/lib/dashboard-state";
 import { subscribeDashboardSyncEvents } from "@/lib/dashboard-sync";
 import { type Ticket } from "@/lib/dashboard-types";
@@ -62,7 +63,6 @@ export function DashboardResolvedShell() {
   const [operationError, setOperationError] = useState<string | null>(null);
   const [signOutPending, setSignOutPending] = useState(false);
   const [isNavCollapsed, setIsNavCollapsed] = useState(true);
-  const realtimeCursorRef = useRef<string | undefined>(undefined);
   const realtimeBusyRef = useRef(false);
 
   const agentAvatarUrl = authSession.user?.avatarUrl ?? null;
@@ -112,8 +112,6 @@ export function DashboardResolvedShell() {
   }, [refreshQueueData]);
 
   useEffect(() => {
-    realtimeCursorRef.current = undefined;
-
     if (authSession.loading) {
       return;
     }
@@ -141,57 +139,36 @@ export function DashboardResolvedShell() {
     };
   }, [authSession.authenticated, authSession.loading, refreshQueueData]);
 
-  useEffect(() => {
-    if (!authSession.authenticated) {
+  const handleRealtimeInvalidation = useCallback(async () => {
+    if (realtimeBusyRef.current) {
       return;
     }
 
-    let cancelled = false;
-    const pollRealtime = async () => {
-      if (realtimeBusyRef.current) {
-        return;
-      }
+    realtimeBusyRef.current = true;
+    try {
+      await refreshQueueData();
+    } catch (error) {
+      setOperationError(
+        error instanceof Error ? error.message : "Realtime updates are temporarily unavailable."
+      );
+    } finally {
+      realtimeBusyRef.current = false;
+    }
+  }, [refreshQueueData]);
 
-      realtimeBusyRef.current = true;
-      try {
-        const result = await getRealtimeEventsApi(realtimeCursorRef.current);
-        if (cancelled) {
-          return;
-        }
-
-        realtimeCursorRef.current = result.cursor;
-        const queueChanged =
-          result.cursorStale ||
-          result.events.some(
-            (event) =>
-              event.type === "handoff_requested" ||
-              event.type === "handoff_claimed" ||
-              event.type === "handoff_resolved"
-          );
-        if (queueChanged) {
-          await refreshQueueData();
-        }
-      } catch (error) {
-        if (!cancelled) {
-          setOperationError(
-            error instanceof Error ? error.message : "Realtime updates are temporarily unavailable."
-          );
-        }
-      } finally {
-        realtimeBusyRef.current = false;
-      }
-    };
-
-    void pollRealtime();
-    const intervalId = window.setInterval(() => {
-      void pollRealtime();
-    }, 2500);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, [authSession.authenticated, refreshQueueData]);
+  useRealtimeInvalidation({
+    enabled: authSession.authenticated,
+    debounceMs: 250,
+    onInvalidate: () => {
+      void handleRealtimeInvalidation();
+    },
+    onHeartbeat: () => {
+      void handleRealtimeInvalidation();
+    },
+    onError: () => {
+      setOperationError("Realtime updates are temporarily unavailable.");
+    }
+  });
 
   useEffect(() => {
     if (!authSession.authenticated) {
@@ -262,6 +239,7 @@ export function DashboardResolvedShell() {
           activeRoute="resolved"
           canAccessManagerViews={canAccessAvaManagerViews(authSession.role, authSession.access)}
         />
+        <div className="rep-main-scroll">
         {operationError ? (
           <p className="rep-shell-error" role="alert">
             {operationError}
@@ -332,6 +310,7 @@ export function DashboardResolvedShell() {
               )}
             </div>
           </section>
+        </div>
         </div>
       </section>
     </div>

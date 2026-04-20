@@ -20,10 +20,10 @@ function getVariantClasses(variant: SiteButtonVariant) {
 function getSizeClasses(size: SiteButtonSize) {
   switch (size) {
     case "sm":
-      return "rounded-full rounded-[var(--site-button-radius)] px-[var(--site-button-px-sm)] py-[var(--site-button-py-sm)] text-[length:var(--site-paragraph)]";
+      return "rounded-full rounded-[var(--site-button-radius)] px-[var(--site-button-px)] py-[var(--site-button-py)] text-[length:var(--site-paragraph)]";
     case "md":
     default:
-      return "rounded-full rounded-[var(--site-button-radius)] px-6 px-[var(--site-button-px)] py-4 py-[var(--site-button-py)] text-base text-[length:var(--site-button-text)]";
+      return "rounded-full rounded-[var(--site-button-radius)] px-[var(--site-button-px)] py-[var(--site-button-py)] text-base text-[length:var(--site-button-text)]";
   }
 }
 

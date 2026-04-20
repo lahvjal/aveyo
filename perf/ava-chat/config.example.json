@@ -1,0 +1,52 @@
+{
+  "apiBaseUrl": "http://localhost:4002",
+  "transport": "poll",
+  "timeouts": {
+    "requestMs": 20000,
+    "eventMs": 30000,
+    "pollMs": 500
+  },
+  "autoProvision": {
+    "enabled": true,
+    "emailDomain": "perf.aveyo.local",
+    "password": "ChangeMe!123",
+    "cleanupUsers": true
+  },
+  "tiers": {
+    "small": {
+      "customers": 25,
+      "agents": 5,
+      "managers": 2,
+      "messageRounds": 25,
+      "handoffRounds": 8,
+      "managerRefreshRounds": 12,
+      "agentRefreshRounds": 12,
+      "concurrency": 8
+    },
+    "target": {
+      "customers": 100,
+      "agents": 20,
+      "managers": 5,
+      "messageRounds": 100,
+      "handoffRounds": 30,
+      "managerRefreshRounds": 40,
+      "agentRefreshRounds": 40,
+      "concurrency": 20
+    },
+    "stretch": {
+      "customers": 250,
+      "agents": 40,
+      "managers": 10,
+      "messageRounds": 250,
+      "handoffRounds": 80,
+      "managerRefreshRounds": 100,
+      "agentRefreshRounds": 100,
+      "concurrency": 40
+    }
+  },
+  "users": {
+    "customers": [],
+    "agents": [],
+    "managers": []
+  }
+}

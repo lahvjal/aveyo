@@ -19,6 +19,10 @@ interface MarketingShellProps {
   currentPath: string;
   title: string;
   description?: string;
+  sectionTabs?: Array<{
+    label: string;
+    href: string;
+  }>;
   children: ReactNode;
 }
 
@@ -97,6 +101,7 @@ export function MarketingShell({
   currentPath,
   title,
   description,
+  sectionTabs,
   children
 }: MarketingShellProps) {
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -187,6 +192,25 @@ export function MarketingShell({
             </button>
           </div>
         </header>
+        {sectionTabs?.length ? (
+          <nav className="workspace-tabs" aria-label="Marketing sections">
+            {sectionTabs.map((tab) => {
+              const isActive =
+                currentPath === tab.href ||
+                (tab.href !== "/" && currentPath.startsWith(`${tab.href}/`));
+
+              return (
+                <Link
+                  key={tab.href}
+                  href={tab.href}
+                  className={`workspace-tab ${isActive ? "is-active" : ""}`}
+                >
+                  {tab.label}
+                </Link>
+              );
+            })}
+          </nav>
+        ) : null}
         <div className="workspace-body">{children}</div>
       </section>
     </main>

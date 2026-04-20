@@ -99,13 +99,13 @@ export default async function NewsArticlePage({
           <div className="mt-4 flex flex-wrap gap-3">
             <Link
               href="/newsfeed"
-              className="rounded-full rounded-[var(--site-button-radius)] border border-[#dbe2e8] border-[color:var(--site-border-soft)] bg-white px-[var(--site-button-px-sm)] py-[var(--site-button-py-sm)] text-[length:var(--site-paragraph)] font-bold text-[#212120] text-[color:var(--site-black)] transition-colors hover:bg-[#f5f7f9]"
+              className="rounded-full rounded-[var(--site-button-radius)] border border-[#dbe2e8] border-[color:var(--site-border-soft)] bg-white px-[var(--site-button-px)] py-[var(--site-button-py)] text-[length:var(--site-paragraph)] font-bold text-[#212120] text-[color:var(--site-black)] transition-colors hover:bg-[#f5f7f9]"
             >
               Back To Newsfeed
             </Link>
             <Link
               href="/contact#sales-form"
-              className="rounded-full rounded-[var(--site-button-radius)] bg-[#212120] bg-[color:var(--site-black)] px-[var(--site-button-px-sm)] py-[var(--site-button-py-sm)] text-[length:var(--site-paragraph)] font-bold text-white transition-opacity hover:opacity-90"
+              className="rounded-full rounded-[var(--site-button-radius)] bg-[#212120] bg-[color:var(--site-black)] px-[var(--site-button-px)] py-[var(--site-button-py)] text-[length:var(--site-paragraph)] font-bold text-white transition-opacity hover:opacity-90"
             >
               Talk To Aveyo
             </Link>

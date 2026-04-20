@@ -5,6 +5,12 @@ export type {
   HostUserType,
   WidgetMessagePayload
 } from "./types";
+export type {
+  RealtimeInvalidationKind,
+  RealtimeInvalidationPayload,
+  RealtimeTypingActor,
+  RealtimeTypingPayload
+} from "./api/realtime-stream";
 export {
   createSignedOutSnapshot,
   normalizeEmail,
@@ -29,6 +35,8 @@ export { HandoffRequestModal } from "./components/widget/handoff-request-modal";
 export { AvaWidgetShell } from "./components/widget/ava-widget-shell";
 export { useWidgetAuthSession, type WidgetAuthSession } from "./auth/use-widget-auth-session";
 export { createWidgetApiClient, type WidgetApiClient, type ImpersonationCustomer } from "./api/widget-api";
+export { subscribeToRealtimeInvalidationStream } from "./api/realtime-stream";
+export { useWidgetRealtimeInvalidation } from "./api/use-widget-realtime-invalidation";
 export {
   applyLauncherFollow,
   getEntryImpulse,

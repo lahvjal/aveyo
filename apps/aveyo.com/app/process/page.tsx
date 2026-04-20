@@ -4,6 +4,8 @@ import {
   SiteCard,
   SiteCardGrid,
   SiteHero,
+  SiteImageBreak,
+  SiteImagePlaceholder,
   SitePageShell,
   SiteSection,
   SiteSplitSection
@@ -95,6 +97,8 @@ export default function ProcessPage() {
           { value: "1-2", label: "Typical Install Days" },
           { value: "Always", label: "Transparent Communication" }
         ]}
+        backgroundSrc="/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT5.jpg"
+        backgroundAlt="Residential rooftop with large solar panel array at dusk, warm interior lights visible through windows"
       />
 
       <SiteSection
@@ -120,6 +124,12 @@ export default function ProcessPage() {
         </div>
       </SiteSection>
 
+      <SiteImageBreak
+        images={[
+          { src: "/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT3.jpg", alt: "Residential rooftop with solar panels beside stone chimney, golden hour light" }
+        ]}
+      />
+
       <SiteSplitSection
         eyebrow="Customer Portal"
         title={
@@ -144,21 +154,9 @@ export default function ProcessPage() {
           </>
         }
         visual={
-          <SiteCard
-            eyebrow="Portal Access"
-            title="See milestone progress without wondering who to call."
-            description="Track status, stay aligned with the next milestone, and keep the project grounded in clear expectations."
-            footer={
-              <div className="pt-2">
-                <a
-                  href={getCustomerPortalUrl()}
-                  className="inline-flex items-center justify-center rounded-full rounded-[var(--site-button-radius)] bg-[#212120] bg-[color:var(--site-black)] px-[var(--site-button-px)] py-[var(--site-button-py)] text-[length:var(--site-button-text)] font-bold text-white transition-opacity hover:opacity-90"
-                >
-                  Portal Login
-                </a>
-              </div>
-            }
-          />
+          <div className="relative h-[400px] overflow-hidden rounded-[var(--site-radius-corner)] shadow-[0_20px_60px_rgba(10,22,40,0.12)]">
+            <SiteImagePlaceholder alt="Hands holding smartphone showing clean dashboard app with progress tracker, soft-focus living room background" className="h-full w-full" />
+          </div>
         }
       />
 

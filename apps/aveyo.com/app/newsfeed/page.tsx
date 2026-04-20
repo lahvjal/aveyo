@@ -69,25 +69,8 @@ export default async function NewsfeedPage({
           { value: String(result.categories.length), label: "Categories" },
           { value: String(page), label: "Current Page" }
         ]}
-        visual={
-          <div className="grid gap-4">
-            {result.posts.slice(0, 3).map((post) => (
-              <div
-                key={post.id}
-                className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-white/[0.07] p-[var(--site-card-padding-tight)] backdrop-blur-[12px]"
-              >
-                <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-                <div className="relative z-[2]">
-                  <p className="text-xs text-[length:var(--site-paragraph)] font-bold uppercase tracking-[0.24em] text-white/60">
-                    {post.category}
-                  </p>
-                  <p className="mt-3 text-[length:var(--site-h5)] leading-[1.2] tracking-[-0.02em] text-white">{post.title}</p>
-                  <p className="mt-3 text-[length:var(--site-paragraph)] leading-[1.7] text-white/70">{post.excerpt}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        }
+        backgroundSrc="/images/web_photos/Newsfeed_03_CEO-Lobby-Backdrop_ALT.jpg"
+        backgroundAlt="Aveyo office lobby with illuminated brand logo, Barcelona chairs, and glass walls"
       />
 
       <SiteSection
@@ -98,7 +81,7 @@ export default async function NewsfeedPage({
         <div className="flex flex-wrap gap-3">
           <Link
             href={buildNewsfeedHref({ page: 1 })}
-            className={`rounded-full rounded-[var(--site-button-radius)] border px-[var(--site-button-px-sm)] py-[var(--site-button-py-sm)] text-[length:var(--site-paragraph)] font-bold uppercase tracking-[0.18em] transition-colors ${
+            className={`rounded-full rounded-[var(--site-button-radius)] border px-[var(--site-button-px)] py-[var(--site-button-py)] text-[length:var(--site-paragraph)] font-bold uppercase tracking-[0.18em] transition-colors ${
               activeCategory === "all"
                 ? "border-[#0A1628] border-[color:var(--site-black)] bg-[#0A1628] bg-[color:var(--site-black)] text-white"
                 : "border-[#dbe2e8] border-[color:var(--site-border-soft)] bg-white text-[#212120] text-[color:var(--site-black)] hover:bg-[#f5f7f9]"
@@ -110,7 +93,7 @@ export default async function NewsfeedPage({
             <Link
               key={category}
               href={buildNewsfeedHref({ category, page: 1 })}
-              className={`rounded-full rounded-[var(--site-button-radius)] border px-[var(--site-button-px-sm)] py-[var(--site-button-py-sm)] text-[length:var(--site-paragraph)] font-bold uppercase tracking-[0.18em] transition-colors ${
+              className={`rounded-full rounded-[var(--site-button-radius)] border px-[var(--site-button-px)] py-[var(--site-button-py)] text-[length:var(--site-paragraph)] font-bold uppercase tracking-[0.18em] transition-colors ${
                 activeCategory === category
                   ? "border-[#0A1628] border-[color:var(--site-black)] bg-[#0A1628] bg-[color:var(--site-black)] text-white"
                   : "border-[#dbe2e8] border-[color:var(--site-border-soft)] bg-white text-[#212120] text-[color:var(--site-black)] hover:bg-[#f5f7f9]"
@@ -149,7 +132,7 @@ export default async function NewsfeedPage({
             {page > 1 ? (
               <Link
                 href={buildNewsfeedHref({ category: activeCategory, page: page - 1 })}
-                className="rounded-full rounded-[var(--site-button-radius)] border border-[#dbe2e8] border-[color:var(--site-border-soft)] bg-white px-[var(--site-button-px-sm)] py-[var(--site-button-py-sm)] text-[length:var(--site-paragraph)] font-bold text-[#212120] text-[color:var(--site-black)] transition-colors hover:bg-[#f5f7f9]"
+                className="rounded-full rounded-[var(--site-button-radius)] border border-[#dbe2e8] border-[color:var(--site-border-soft)] bg-white px-[var(--site-button-px)] py-[var(--site-button-py)] text-[length:var(--site-paragraph)] font-bold text-[#212120] text-[color:var(--site-black)] transition-colors hover:bg-[#f5f7f9]"
               >
                 Previous
               </Link>
@@ -157,7 +140,7 @@ export default async function NewsfeedPage({
             {result.hasMore ? (
               <Link
                 href={buildNewsfeedHref({ category: activeCategory, page: page + 1 })}
-                className="rounded-full rounded-[var(--site-button-radius)] bg-[#212120] bg-[color:var(--site-black)] px-[var(--site-button-px-sm)] py-[var(--site-button-py-sm)] text-[length:var(--site-paragraph)] font-bold text-white transition-opacity hover:opacity-90"
+                className="rounded-full rounded-[var(--site-button-radius)] bg-[#212120] bg-[color:var(--site-black)] px-[var(--site-button-px)] py-[var(--site-button-py)] text-[length:var(--site-paragraph)] font-bold text-white transition-opacity hover:opacity-90"
               >
                 Next
               </Link>

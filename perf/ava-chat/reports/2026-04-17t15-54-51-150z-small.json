@@ -1,0 +1,763 @@
+{
+  "createdAt": "2026-04-17T15:58:05.363Z",
+  "tier": "small",
+  "transport": "poll",
+  "apiBaseUrl": "http://localhost:4002",
+  "sessions": {
+    "customers": 25,
+    "agents": 3,
+    "managers": 2
+  },
+  "scenarios": {
+    "messageRoundtrip": {
+      "summary": {
+        "total": 25,
+        "succeeded": 25,
+        "failed": 0,
+        "metrics": {
+          "createConversationPerfMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          },
+          "fetchConversationPerfMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          },
+          "sendRequestMs": {
+            "count": 25,
+            "min": 1785.18,
+            "p50": 2194.4,
+            "p95": 13466.73,
+            "p99": 13594.21,
+            "max": 13594.21,
+            "average": 3782.01
+          },
+          "sendServerMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          },
+          "eventVisibleMs": {
+            "count": 25,
+            "min": 2615.5,
+            "p50": 3436.6,
+            "p95": 5342.55,
+            "p99": 6612.32,
+            "max": 6612.32,
+            "average": 3626.74
+          },
+          "eventServerMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          },
+          "avaReplyVisibleMs": {
+            "count": 25,
+            "min": 822.38,
+            "p50": 999.11,
+            "p95": 2452.37,
+            "p99": 2702.88,
+            "max": 2702.88,
+            "average": 1206.67
+          },
+          "replyConversationPerfMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "conversationId": "487c928e-750e-41e9-88eb-625f40815a4c",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 13466.73,
+          "sendServerMs": null,
+          "eventVisibleMs": 3236.01,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 999.07,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "32429fde-724d-4d6a-9e6e-816a5157a678",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 3401.25,
+          "sendServerMs": null,
+          "eventVisibleMs": 2615.5,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 968.37,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "5fe9ff1a-53e1-4e91-909b-508fdd48b4f7",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 3513.85,
+          "sendServerMs": null,
+          "eventVisibleMs": 2722.09,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 961.3,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "b7a4acbb-58c8-4303-939a-5f3968308ec9",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 3875.66,
+          "sendServerMs": null,
+          "eventVisibleMs": 2680.64,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 914.22,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "9e8b0ea1-7f01-4882-9349-99476ca48682",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 3645.44,
+          "sendServerMs": null,
+          "eventVisibleMs": 2799.2,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 1049.08,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "b1228c05-86ce-4414-85a1-ffcf49506ce0",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 13594.21,
+          "sendServerMs": null,
+          "eventVisibleMs": 3197.38,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 988.39,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "aa3a8fde-f954-42fa-9548-7baa41739c0b",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 13298.65,
+          "sendServerMs": null,
+          "eventVisibleMs": 3064.4,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 1135.51,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "192f2c38-7fa3-4d33-bbd4-ccb4c4163ed4",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 3509.22,
+          "sendServerMs": null,
+          "eventVisibleMs": 2669.71,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 1019.77,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "56930023-229e-4135-bd47-934e77d7d0fd",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 1885.2,
+          "sendServerMs": null,
+          "eventVisibleMs": 3248.52,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 1040.28,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "bf2b3093-3978-4358-99f8-9b93d457d868",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 1854.59,
+          "sendServerMs": null,
+          "eventVisibleMs": 3216.31,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 995.3,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "3f8a7b4b-6a0b-49a3-afbf-a8f55454fd0e",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 2247.87,
+          "sendServerMs": null,
+          "eventVisibleMs": 3130.2,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 885.5,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "7571fb79-c4f0-483f-8bab-dc0b44b125c7",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 2054.26,
+          "sendServerMs": null,
+          "eventVisibleMs": 3436.6,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 1009.44,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "32e44a10-0e14-4957-8f53-c7446bb1207b",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 2016.76,
+          "sendServerMs": null,
+          "eventVisibleMs": 3198.21,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 914.19,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "a075cf49-f424-4790-98e7-0627f08a36ad",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 2179.38,
+          "sendServerMs": null,
+          "eventVisibleMs": 4218.06,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 1059.58,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "12004a2e-6526-498b-9d9b-40d88e58e5d5",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 2084.27,
+          "sendServerMs": null,
+          "eventVisibleMs": 3839.32,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 968.66,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "b7e7d6d6-61ef-4915-a98e-edf8bdc16dfe",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 1956.85,
+          "sendServerMs": null,
+          "eventVisibleMs": 3855.33,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 1018.4,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "b4a9a1ff-97d2-4f17-9019-caf45054737d",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 2194.4,
+          "sendServerMs": null,
+          "eventVisibleMs": 4221.18,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 899.97,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "0b7e13c3-8380-4241-992e-be8364ea0479",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 1854.62,
+          "sendServerMs": null,
+          "eventVisibleMs": 3917.32,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 964.84,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "9d00012f-58de-4326-a583-1da859a14ce8",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 2849.85,
+          "sendServerMs": null,
+          "eventVisibleMs": 3596.65,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 1045.65,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "29d37d13-06d7-4f7d-80e8-e3f2814d5342",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 1957.48,
+          "sendServerMs": null,
+          "eventVisibleMs": 3755.14,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 999.11,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "42431d24-aa9a-4fde-ad93-416339a4bb7f",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 1785.18,
+          "sendServerMs": null,
+          "eventVisibleMs": 3887.09,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 822.38,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "1fac9bfe-f0b1-4bda-84c9-d7c7e7f8b500",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 2734.68,
+          "sendServerMs": null,
+          "eventVisibleMs": 4190.79,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 2409.72,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "4748e757-e766-4533-b19b-097afce85763",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 2655.73,
+          "sendServerMs": null,
+          "eventVisibleMs": 5342.55,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 1942.77,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "a56f7ecb-10c8-4887-a1f1-30421bb66086",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 1997.28,
+          "sendServerMs": null,
+          "eventVisibleMs": 4017.89,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 2702.88,
+          "replyConversationPerfMs": null
+        },
+        {
+          "conversationId": "938b663d-9d3e-4f26-8e43-07ca94e67ea9",
+          "createConversationPerfMs": null,
+          "fetchConversationPerfMs": null,
+          "sendRequestMs": 1936.76,
+          "sendServerMs": null,
+          "eventVisibleMs": 6612.32,
+          "eventServerMs": null,
+          "avaReplyVisibleMs": 2452.37,
+          "replyConversationPerfMs": null
+        }
+      ]
+    },
+    "handoffRoundtrip": {
+      "summary": {
+        "total": 8,
+        "succeeded": 8,
+        "failed": 0,
+        "metrics": {
+          "handoffRequestMs": {
+            "count": 8,
+            "min": 1660.52,
+            "p50": 1851.58,
+            "p95": 2207.57,
+            "p99": 2207.57,
+            "max": 2207.57,
+            "average": 1893.11
+          },
+          "queueVisibleMs": {
+            "count": 8,
+            "min": 1226.61,
+            "p50": 2186.73,
+            "p95": 2891.42,
+            "p99": 2891.42,
+            "max": 2891.42,
+            "average": 2154.91
+          },
+          "managerVisibleMs": {
+            "count": 8,
+            "min": 1195.59,
+            "p50": 1700.18,
+            "p95": 2803.79,
+            "p99": 2803.79,
+            "max": 2803.79,
+            "average": 1927.85
+          },
+          "claimMs": {
+            "count": 8,
+            "min": 1477.7,
+            "p50": 2422.92,
+            "p95": 4043.67,
+            "p99": 4043.67,
+            "max": 4043.67,
+            "average": 2553.72
+          },
+          "repMessageMs": {
+            "count": 8,
+            "min": 671.53,
+            "p50": 904.65,
+            "p95": 1399.3,
+            "p99": 1399.3,
+            "max": 1399.3,
+            "average": 936.6
+          },
+          "resolveMs": {
+            "count": 8,
+            "min": 1595.89,
+            "p50": 2758.7,
+            "p95": 3399.42,
+            "p99": 3399.42,
+            "max": 3399.42,
+            "average": 2704.05
+          },
+          "ratingMs": {
+            "count": 8,
+            "min": 1222.89,
+            "p50": 1690.44,
+            "p95": 2485.73,
+            "p99": 2485.73,
+            "max": 2485.73,
+            "average": 1838.45
+          },
+          "followUpMessageMs": {
+            "count": 8,
+            "min": 2261.05,
+            "p50": 3461.92,
+            "p95": 12955.96,
+            "p99": 12955.96,
+            "max": 12955.96,
+            "average": 4427.81
+          },
+          "returnToAiMs": {
+            "count": 8,
+            "min": 2863.2,
+            "p50": 4702.88,
+            "p95": 6169.22,
+            "p99": 6169.22,
+            "max": 6169.22,
+            "average": 4403.64
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "conversationId": "487c928e-750e-41e9-88eb-625f40815a4c",
+          "handoffRequestMs": 2207.57,
+          "queueVisibleMs": 2171.25,
+          "managerVisibleMs": 1700.18,
+          "claimMs": 2422.92,
+          "repMessageMs": 913.78,
+          "resolveMs": 3039.41,
+          "ratingMs": 1690.44,
+          "followUpMessageMs": 3098.01,
+          "returnToAiMs": 4748.34
+        },
+        {
+          "conversationId": "32429fde-724d-4d6a-9e6e-816a5157a678",
+          "handoffRequestMs": 2040.59,
+          "queueVisibleMs": 2186.73,
+          "managerVisibleMs": 1739.37,
+          "claimMs": 2351.14,
+          "repMessageMs": 1001.88,
+          "resolveMs": 3026.93,
+          "ratingMs": 1899.35,
+          "followUpMessageMs": 3119.18,
+          "returnToAiMs": 4946.46
+        },
+        {
+          "conversationId": "5fe9ff1a-53e1-4e91-909b-508fdd48b4f7",
+          "handoffRequestMs": 2017.23,
+          "queueVisibleMs": 2207.35,
+          "managerVisibleMs": 1610.15,
+          "claimMs": 2457.24,
+          "repMessageMs": 904.65,
+          "resolveMs": 3399.42,
+          "ratingMs": 1387.51,
+          "followUpMessageMs": 12955.96,
+          "returnToAiMs": 4804.33
+        },
+        {
+          "conversationId": "b7a4acbb-58c8-4303-939a-5f3968308ec9",
+          "handoffRequestMs": 1851.58,
+          "queueVisibleMs": 2883.92,
+          "managerVisibleMs": 2803.79,
+          "claimMs": 1477.7,
+          "repMessageMs": 836.23,
+          "resolveMs": 2219.96,
+          "ratingMs": 1960.58,
+          "followUpMessageMs": 3477.58,
+          "returnToAiMs": 2895.75
+        },
+        {
+          "conversationId": "9e8b0ea1-7f01-4882-9349-99476ca48682",
+          "handoffRequestMs": 1784.67,
+          "queueVisibleMs": 2891.42,
+          "managerVisibleMs": 2693.57,
+          "claimMs": 1661.26,
+          "repMessageMs": 795.77,
+          "resolveMs": 3028.72,
+          "ratingMs": 1222.89,
+          "followUpMessageMs": 3461.92,
+          "returnToAiMs": 4702.88
+        },
+        {
+          "conversationId": "b1228c05-86ce-4414-85a1-ffcf49506ce0",
+          "handoffRequestMs": 1910.49,
+          "queueVisibleMs": 2282.2,
+          "managerVisibleMs": 1310.5,
+          "claimMs": 3227.42,
+          "repMessageMs": 671.53,
+          "resolveMs": 1595.89,
+          "ratingMs": 1672.81,
+          "followUpMessageMs": 2261.05,
+          "returnToAiMs": 2863.2
+        },
+        {
+          "conversationId": "aa3a8fde-f954-42fa-9548-7baa41739c0b",
+          "handoffRequestMs": 1660.52,
+          "queueVisibleMs": 1389.82,
+          "managerVisibleMs": 1195.59,
+          "claimMs": 4043.67,
+          "repMessageMs": 969.69,
+          "resolveMs": 2563.39,
+          "ratingMs": 2485.73,
+          "followUpMessageMs": 3515.85,
+          "returnToAiMs": 6169.22
+        },
+        {
+          "conversationId": "192f2c38-7fa3-4d33-bbd4-ccb4c4163ed4",
+          "handoffRequestMs": 1672.24,
+          "queueVisibleMs": 1226.61,
+          "managerVisibleMs": 2369.64,
+          "claimMs": 2788.38,
+          "repMessageMs": 1399.3,
+          "resolveMs": 2758.7,
+          "ratingMs": 2388.3,
+          "followUpMessageMs": 3532.92,
+          "returnToAiMs": 4098.96
+        }
+      ]
+    },
+    "managerRefresh": {
+      "summary": {
+        "total": 12,
+        "succeeded": 12,
+        "failed": 0,
+        "metrics": {
+          "requestMs": {
+            "count": 12,
+            "min": 1174.46,
+            "p50": 1427.96,
+            "p95": 1705.56,
+            "p99": 1705.56,
+            "max": 1705.56,
+            "average": 1452.5
+          },
+          "serverMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "requestMs": 1584.82,
+          "serverMs": null
+        },
+        {
+          "requestMs": 1382.41,
+          "serverMs": null
+        },
+        {
+          "requestMs": 1705.56,
+          "serverMs": null
+        },
+        {
+          "requestMs": 1631.43,
+          "serverMs": null
+        },
+        {
+          "requestMs": 1591.4,
+          "serverMs": null
+        },
+        {
+          "requestMs": 1565.93,
+          "serverMs": null
+        },
+        {
+          "requestMs": 1657.43,
+          "serverMs": null
+        },
+        {
+          "requestMs": 1427.96,
+          "serverMs": null
+        },
+        {
+          "requestMs": 1216.55,
+          "serverMs": null
+        },
+        {
+          "requestMs": 1286,
+          "serverMs": null
+        },
+        {
+          "requestMs": 1206.06,
+          "serverMs": null
+        },
+        {
+          "requestMs": 1174.46,
+          "serverMs": null
+        }
+      ]
+    },
+    "agentRefresh": {
+      "summary": {
+        "total": 12,
+        "succeeded": 12,
+        "failed": 0,
+        "metrics": {
+          "queueRequestMs": {
+            "count": 12,
+            "min": 1210.42,
+            "p50": 1227.08,
+            "p95": 1650.62,
+            "p99": 1650.62,
+            "max": 1650.62,
+            "average": 1342.25
+          },
+          "queueServerMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          },
+          "realtimeRequestMs": {
+            "count": 12,
+            "min": 5513.99,
+            "p50": 6032.03,
+            "p95": 10372.19,
+            "p99": 10372.19,
+            "max": 10372.19,
+            "average": 7057.14
+          },
+          "realtimeServerMs": {
+            "count": 0,
+            "min": null,
+            "p50": null,
+            "p95": null,
+            "p99": null,
+            "max": null,
+            "average": null
+          }
+        },
+        "failures": []
+      },
+      "samples": [
+        {
+          "queueRequestMs": 1214.93,
+          "queueServerMs": null,
+          "realtimeRequestMs": 10008.91,
+          "realtimeServerMs": null
+        },
+        {
+          "queueRequestMs": 1227.08,
+          "queueServerMs": null,
+          "realtimeRequestMs": 10184.92,
+          "realtimeServerMs": null
+        },
+        {
+          "queueRequestMs": 1226.7,
+          "queueServerMs": null,
+          "realtimeRequestMs": 10372.19,
+          "realtimeServerMs": null
+        },
+        {
+          "queueRequestMs": 1399.25,
+          "queueServerMs": null,
+          "realtimeRequestMs": 6186.96,
+          "realtimeServerMs": null
+        },
+        {
+          "queueRequestMs": 1210.42,
+          "queueServerMs": null,
+          "realtimeRequestMs": 5513.99,
+          "realtimeServerMs": null
+        },
+        {
+          "queueRequestMs": 1226.06,
+          "queueServerMs": null,
+          "realtimeRequestMs": 5746.01,
+          "realtimeServerMs": null
+        },
+        {
+          "queueRequestMs": 1375.79,
+          "queueServerMs": null,
+          "realtimeRequestMs": 5914.65,
+          "realtimeServerMs": null
+        },
+        {
+          "queueRequestMs": 1221.41,
+          "queueServerMs": null,
+          "realtimeRequestMs": 6032.03,
+          "realtimeServerMs": null
+        },
+        {
+          "queueRequestMs": 1442.57,
+          "queueServerMs": null,
+          "realtimeRequestMs": 7041.36,
+          "realtimeServerMs": null
+        },
+        {
+          "queueRequestMs": 1342.87,
+          "queueServerMs": null,
+          "realtimeRequestMs": 6522.44,
+          "realtimeServerMs": null
+        },
+        {
+          "queueRequestMs": 1569.29,
+          "queueServerMs": null,
+          "realtimeRequestMs": 5635.66,
+          "realtimeServerMs": null
+        },
+        {
+          "queueRequestMs": 1650.62,
+          "queueServerMs": null,
+          "realtimeRequestMs": 5526.56,
+          "realtimeServerMs": null
+        }
+      ]
+    }
+  },
+  "perfSnapshots": {
+    "count": 0,
+    "grouped": {}
+  }
+}

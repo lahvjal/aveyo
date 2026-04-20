@@ -18,6 +18,8 @@ const SCROLL_THRESHOLD = 48;
 const AUTH_SESSION_POLL_INTERVAL_MS = 30000;
 const FLOATING_PILL_BACKGROUND =
   "linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.08) 100%), linear-gradient(90deg, rgba(76, 76, 76, 0.18) 0%, rgba(115, 115, 115, 0.18) 49.519%, rgba(78, 78, 78, 0.18) 100%)";
+const NAV_MENU_BACKGROUND =
+  "linear-gradient(180deg, rgba(76, 78, 78, 0.98) 0%, rgba(33, 33, 32, 0.98) 100%)";
 
 type AuthSessionUser = {
   name: string | null;
@@ -92,6 +94,8 @@ export default function Navbar() {
   const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [openDesktopGroup, setOpenDesktopGroup] = useState<string | null>(null);
+  const [openMobileGroup, setOpenMobileGroup] = useState<string | null>(null);
   const [authSession, setAuthSession] = useState<AuthSessionState>({
     loading: true,
     authenticated: false,
@@ -110,7 +114,14 @@ export default function Navbar() {
   useEffect(() => {
     if (!isScrolled) return;
     setIsMobileMenuOpen(false);
+    setOpenDesktopGroup(null);
   }, [isScrolled]);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+    setOpenDesktopGroup(null);
+    setOpenMobileGroup(null);
+  }, [pathname]);
 
   useEffect(() => {
     let cancelled = false;
@@ -177,16 +188,28 @@ export default function Navbar() {
     window.location.assign(destination);
   };
 
-  const navLinks = [
-    { name: "Why Solar", href: "/why-solar" },
-    { name: "Process", href: "/process" },
-    { name: "Commercial", href: "/commercial" },
-    { name: "About", href: "/about" },
-    { name: "Newsfeed", href: "/newsfeed" },
-    { name: "Contact", href: "/contact" }
+  const navGroups = [
+    {
+      name: "Solar",
+      links: [
+        { name: "Why Solar", href: "/why-solar" },
+        { name: "Process", href: "/process" },
+        { name: "Commercial", href: "/commercial" }
+      ]
+    },
+    {
+      name: "Company",
+      links: [
+        { name: "About", href: "/about" },
+        { name: "Newsfeed", href: "/newsfeed" },
+        { name: "Contact", href: "/contact" }
+      ]
+    }
   ];
 
   const isActiveLink = (href: string) => pathname === href || pathname?.startsWith(`${href}/`);
+  const isActiveGroup = (links: Array<{ name: string; href: string }>) =>
+    links.some((link) => isActiveLink(link.href));
 
   return (
     <nav
@@ -205,23 +228,25 @@ export default function Navbar() {
         <div
           className={`relative flex items-center justify-between transition-all duration-500 ${
             isScrolled
-              ? "overflow-hidden rounded-[90px] px-5 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.18)] backdrop-blur-[32.5px] md:px-[30px] md:py-5"
+              ? "rounded-[90px] px-5 py-4 shadow-[0_10px_40px_rgba(0,0,0,0.18)] md:px-[30px] md:py-5"
               : "h-[100px]"
           }`}
-          style={isScrolled ? { background: FLOATING_PILL_BACKGROUND } : undefined}
         >
-          {isScrolled && (
+          {isScrolled ? (
             <div
-              className="pointer-events-none absolute inset-0 z-0 rounded-[90px] opacity-[0.06] mix-blend-overlay"
-              style={{
-                backgroundImage: "url('/images/04ace053e2cc3324a9bd79a136ce79eb15125e2d.png')",
-                backgroundSize: "424px 424px",
-              }}
-            />
-          )}
-          {isScrolled && (
-            <CardGradientBorder className="rounded-[90px]" />
-          )}
+              className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[90px] backdrop-blur-[32.5px]"
+              style={{ background: FLOATING_PILL_BACKGROUND }}
+            >
+              <div
+                className="absolute inset-0 opacity-[0.06] mix-blend-overlay"
+                style={{
+                  backgroundImage: "url('/images/04ace053e2cc3324a9bd79a136ce79eb15125e2d.png')",
+                  backgroundSize: "424px 424px",
+                }}
+              />
+              <CardGradientBorder className="rounded-[90px]" />
+            </div>
+          ) : null}
 
           {/* Logo */}
           <Link href="/" className="relative z-10 flex items-center">
@@ -238,14 +263,72 @@ export default function Navbar() {
           <div className="relative z-10 hidden items-center gap-7 transition-all duration-500 lg:flex xl:gap-9">
             {/* Nav Links */}
             <div className="flex items-center gap-5 transition-all duration-500 xl:gap-7">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  className="text-sm font-extrabold text-white transition-opacity hover:opacity-80 xl:text-[length:var(--home-paragraph)]"
+              {navGroups.map((group) => (
+                <div
+                  key={group.name}
+                  className="relative"
+                  onMouseEnter={() => setOpenDesktopGroup(group.name)}
+                  onMouseLeave={() => setOpenDesktopGroup((current) => (current === group.name ? null : current))}
                 >
-                  {link.name}
-                </Link>
+                  <button
+                    type="button"
+                    className={`flex items-center gap-2 text-sm font-extrabold text-white transition-opacity xl:text-[length:var(--home-paragraph)] ${
+                      openDesktopGroup === group.name || isActiveGroup(group.links) ? "opacity-100" : "opacity-80 hover:opacity-100"
+                    }`}
+                    onClick={() =>
+                      setOpenDesktopGroup((current) => (current === group.name ? null : group.name))
+                    }
+                    aria-expanded={openDesktopGroup === group.name}
+                    aria-haspopup="menu"
+                  >
+                    <span>{group.name}</span>
+                    <svg
+                      className={`h-4 w-4 transition-transform ${
+                        openDesktopGroup === group.name ? "rotate-180" : ""
+                      }`}
+                      viewBox="0 0 20 20"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M5 7.5L10 12.5L15 7.5"
+                        stroke="currentColor"
+                        strokeWidth="1.75"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </button>
+
+                  <div
+                    className={`absolute left-1/2 top-full z-20 mt-3 w-max min-w-[220px] -translate-x-1/2 transition-all duration-200 ${
+                      openDesktopGroup === group.name
+                        ? "visible translate-y-0 opacity-100"
+                        : "invisible -translate-y-1 opacity-0"
+                    }`}
+                  >
+                    <div
+                      className="relative overflow-hidden rounded-[var(--home-card-radius)] border border-white/10 px-3 py-3 shadow-[0_18px_40px_rgba(0,0,0,0.24)]"
+                      style={{ background: NAV_MENU_BACKGROUND }}
+                    >
+                      <CardGradientBorder className="rounded-[var(--home-card-radius)]" />
+                      <div className="relative z-[2] flex flex-col">
+                        {group.links.map((link) => (
+                          <Link
+                            key={link.name}
+                            href={link.href}
+                            className={`rounded-[var(--home-card-radius)] px-[var(--home-button-px)] py-[var(--home-button-py)] text-[length:var(--home-h7)] font-extrabold text-white transition-colors ${
+                              isActiveLink(link.href) ? "bg-white/10" : "hover:bg-white/5"
+                            }`}
+                            onClick={() => setOpenDesktopGroup(null)}
+                          >
+                            {link.name}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ))}
             </div>
 
@@ -253,7 +336,7 @@ export default function Navbar() {
             <div className="flex items-center gap-5">
               <Link
                 href="/contact#sales-form"
-                className="inline-flex h-10 items-center justify-center rounded-[var(--home-button-radius)] bg-[color:var(--home-white)] px-6 text-sm font-extrabold text-[color:var(--home-black)] transition-colors hover:bg-white/90"
+                className="inline-flex items-center justify-center rounded-[var(--home-button-radius)] bg-[color:var(--home-white)] px-[var(--home-button-px)] py-[var(--home-button-py)] text-[length:var(--home-h7)] font-extrabold text-[color:var(--home-black)] transition-colors hover:bg-white/90"
               >
                 Pick a plan
               </Link>
@@ -332,26 +415,73 @@ export default function Navbar() {
       {/* Mobile Menu */}
       <div
         className={`mx-auto w-[calc(100%-2rem)] max-w-[1240px] overflow-hidden transition-all duration-300 lg:hidden ${
-          isMobileMenuOpen ? "mt-3 max-h-96 opacity-100" : "max-h-0 opacity-0"
+          isMobileMenuOpen ? "mt-3 max-h-[32rem] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
         <div
-          className="space-y-4 rounded-[24px] px-6 py-6 backdrop-blur-xl"
-          style={{ background: FLOATING_PILL_BACKGROUND }}
+          className="space-y-4 overflow-hidden rounded-[24px] border border-white/10 px-6 py-6 shadow-[0_18px_40px_rgba(0,0,0,0.24)]"
+          style={{ background: NAV_MENU_BACKGROUND }}
         >
-          {navLinks.map((link) => (
-            <Link
-              key={link.name}
-              href={link.href}
-              className="py-2 text-sm font-extrabold text-white transition-opacity hover:opacity-80"
-              onClick={() => setIsMobileMenuOpen(false)}
-            >
-              {link.name}
-            </Link>
+          {navGroups.map((group) => (
+            <div key={group.name} className="rounded-[var(--home-card-radius)] bg-white/5">
+              <button
+                type="button"
+                className="flex w-full items-center justify-between px-[var(--home-button-px)] py-[var(--home-button-py)] text-left text-[length:var(--home-h7)] font-extrabold text-white"
+                onClick={() =>
+                  setOpenMobileGroup((current) => (current === group.name ? null : group.name))
+                }
+                aria-expanded={openMobileGroup === group.name}
+              >
+                <span>{group.name}</span>
+                <svg
+                  className={`h-4 w-4 transition-transform ${
+                    openMobileGroup === group.name ? "rotate-180" : ""
+                  }`}
+                  viewBox="0 0 20 20"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    d="M5 7.5L10 12.5L15 7.5"
+                    stroke="currentColor"
+                    strokeWidth="1.75"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+
+              <div
+                className={`grid overflow-hidden transition-all duration-200 ${
+                  openMobileGroup === group.name ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+                }`}
+              >
+                <div className="min-h-0">
+                  <div className="flex flex-col px-4 pb-3">
+                    {group.links.map((link) => (
+                      <Link
+                        key={link.name}
+                        href={link.href}
+                        className={`rounded-[var(--home-card-radius)] px-[var(--home-button-px)] py-[var(--home-button-py)] text-[length:var(--home-h7)] font-extrabold text-white transition-colors ${
+                          isActiveLink(link.href) ? "bg-white/10" : "hover:bg-white/5"
+                        }`}
+                        onClick={() => {
+                          setIsMobileMenuOpen(false);
+                          setOpenMobileGroup(null);
+                        }}
+                      >
+                        {link.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
           ))}
           <Link
             href="/contact#sales-form"
             className="mt-4 inline-flex w-full items-center justify-center rounded-[var(--home-button-radius)] bg-[color:var(--home-white)] px-[var(--home-button-px)] py-[var(--home-button-py)] text-[length:var(--home-h7)] font-extrabold text-[color:var(--home-black)]"
+            onClick={() => setIsMobileMenuOpen(false)}
           >
             Pick a plan
           </Link>

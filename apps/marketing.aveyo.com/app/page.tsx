@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { MarketingShell } from "@/components/marketing-shell";
 import { authApiRequest } from "@/lib/auth/session";
+import { MARKETING_SECTION_TABS } from "@/lib/marketing-sections";
 import { useRequireAuth } from "@/lib/auth/use-require-auth";
 
 const ASANA_REQUEST_FORM_URL =
@@ -182,7 +184,19 @@ export default function MarketingRequestPage() {
       currentPath="/"
       title="Marketing Request Form"
       description="Capture campaign requests and send them to the Asana workflow."
+      sectionTabs={MARKETING_SECTION_TABS}
     >
+      <div className="card">
+        <h2>Quick access</h2>
+        <p className="helper-text">
+          Manage public blog and news content from the News CMS while keeping campaign requests here.
+        </p>
+        <div className="button-row">
+          <Link href="/news" className="secondary-button">
+            Open News CMS
+          </Link>
+        </div>
+      </div>
       <div className="card">
         <form onSubmit={handleSubmit}>
           <div className="form-grid">

@@ -15,6 +15,7 @@ import { canAccessAvaManagerViews } from "@/lib/auth/access";
 import { buildAuthLoginUrl } from "@/lib/auth/config";
 import { logoutAuthSession } from "@/lib/auth/session";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
+import { useRealtimeInvalidation } from "@/lib/use-realtime-invalidation";
 import { useSupportPresence } from "@/lib/use-support-presence";
 import {
   claimHandoffApi,
@@ -22,7 +23,6 @@ import {
   createSupportNoteApi,
   getConversationApi,
   getConversationCustomerDetailsApi,
-  getRealtimeEventsApi,
   listSupportNotesApi,
   publishRepresentativeTypingApi,
   resolveHandoffApi,
@@ -32,6 +32,7 @@ import {
 import { useAvaReplySuggestion } from "@/lib/dashboard-ava-suggestion";
 import { publishDashboardSyncEvent, subscribeDashboardSyncEvents } from "@/lib/dashboard-sync";
 import { type CustomerPanelDetails, type HistoryNote, type Ticket } from "@/lib/dashboard-types";
+import { useHandoffNotifications } from "@/lib/use-handoff-notifications";
 import { AppSideRail } from "@/components/app-side-rail";
 import { AvaSecondaryNav } from "@/components/ava-secondary-nav";
 import { ChatColumn } from "./chat-column";
@@ -98,6 +99,7 @@ export function DashboardBoardShell() {
   const seededConversation = useMemo(() => createEmptyConversation(), []);
 
   const { isOnline, syncing: presenceSyncing, toggleOnline } = useSupportPresence(authSession);
+  const { notifyNewPendingHandoffs } = useHandoffNotifications();
   const [queueRecords, setQueueRecords] = useState<QueueRecord[]>([]);
   const [selectedActiveRequestId, setSelectedActiveRequestId] = useState<string | null>(null);
   const [conversation, setConversation] = useState<ConversationThread>(seededConversation);
@@ -114,8 +116,6 @@ export function DashboardBoardShell() {
   const [resolvePending, setResolvePending] = useState(false);
   const [signOutPending, setSignOutPending] = useState(false);
   const [isNavCollapsed, setIsNavCollapsed] = useState(true);
-  const [clockMs, setClockMs] = useState(() => Date.now());
-  const realtimeCursorRef = useRef<string | undefined>(undefined);
   const realtimeBusyRef = useRef(false);
   const representativeTypingSentRef = useRef(false);
   const representativeTypingConversationRef = useRef<string | null>(null);
@@ -125,16 +125,6 @@ export function DashboardBoardShell() {
   const agentId = authSession.user?.id ?? null;
   const isAdminLike = authSession.role === "super_admin";
 
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      setClockMs(Date.now());
-    }, 1000);
-
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, []);
-
   const pendingRecords = useMemo(
     () =>
       queueRecords
@@ -142,6 +132,11 @@ export function DashboardBoardShell() {
         .sort((a, b) => a.position - b.position),
     [queueRecords]
   );
+
+  useEffect(() => {
+    notifyNewPendingHandoffs(pendingRecords.map((record) => record.requestId));
+  }, [notifyNewPendingHandoffs, pendingRecords]);
+
   const activeRecords = useMemo(
     () =>
       queueRecords
@@ -150,12 +145,12 @@ export function DashboardBoardShell() {
     [queueRecords]
   );
   const pendingQueue = useMemo<Ticket[]>(
-    () => pendingRecords.map((record) => createTicketFromQueueRecord(record, undefined, clockMs)),
-    [clockMs, pendingRecords]
+    () => pendingRecords.map((record) => createTicketFromQueueRecord(record)),
+    [pendingRecords]
   );
   const activeQueue = useMemo<Ticket[]>(
-    () => activeRecords.map((record) => createTicketFromQueueRecord(record, undefined, clockMs)),
-    [activeRecords, clockMs]
+    () => activeRecords.map((record) => createTicketFromQueueRecord(record)),
+    [activeRecords]
   );
   const activeByRequestId = useMemo(
     () => new Map(activeRecords.map((record) => [record.requestId, record])),
@@ -188,8 +183,8 @@ export function DashboardBoardShell() {
     if (!selectedQueueRecord) {
       return null;
     }
-    return createTicketFromQueueRecord(selectedQueueRecord, conversation, clockMs);
-  }, [clockMs, conversation, selectedQueueRecord]);
+    return createTicketFromQueueRecord(selectedQueueRecord, conversation);
+  }, [conversation, selectedQueueRecord]);
   const agentInitials = getInitials(authSession.user?.name);
   const avaSuggestion = useAvaReplySuggestion({
     conversation,
@@ -292,8 +287,6 @@ export function DashboardBoardShell() {
   }, [refreshSelectedConversation]);
 
   useEffect(() => {
-    realtimeCursorRef.current = undefined;
-
     if (authSession.loading) {
       return;
     }
@@ -481,73 +474,42 @@ export function DashboardBoardShell() {
     };
   }, [authSession.authenticated, isConversationLoaded, workspaceConversationId]);
 
-  useEffect(() => {
-    if (!authSession.authenticated || !isOnline) {
-      return;
-    }
-
-    let cancelled = false;
-    const pollRealtime = async () => {
+  const handleRealtimeInvalidation = useCallback(
+    async (conversationId?: string | null) => {
       if (realtimeBusyRef.current) {
         return;
       }
 
       realtimeBusyRef.current = true;
       try {
-        const result = await getRealtimeEventsApi(realtimeCursorRef.current);
-        if (cancelled) {
-          return;
-        }
-
-        realtimeCursorRef.current = result.cursor;
-        const queueChanged =
-          result.cursorStale ||
-          result.events.some(
-            (event) =>
-              event.type === "handoff_requested" ||
-              event.type === "handoff_claimed" ||
-              event.type === "handoff_resolved"
-          );
-        const selectedConversationChanged = Boolean(
-          workspaceConversationId &&
-            result.events.some((event) => event.conversationId === workspaceConversationId)
-        );
-
-        if (queueChanged) {
-          await refreshQueueData();
-        }
-        if (selectedConversationChanged) {
+        await refreshQueueData();
+        if (workspaceConversationId && (!conversationId || conversationId === workspaceConversationId)) {
           await refreshSelectedConversation();
         }
       } catch (error) {
-        if (!cancelled) {
-          setOperationError(
-            error instanceof Error
-              ? error.message
-              : "Realtime updates are temporarily unavailable."
-          );
-        }
+        setOperationError(
+          error instanceof Error ? error.message : "Realtime updates are temporarily unavailable."
+        );
       } finally {
         realtimeBusyRef.current = false;
       }
-    };
+    },
+    [refreshQueueData, refreshSelectedConversation, workspaceConversationId]
+  );
 
-    void pollRealtime();
-    const intervalId = window.setInterval(() => {
-      void pollRealtime();
-    }, 2500);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, [
-    authSession.authenticated,
-    isOnline,
-    refreshQueueData,
-    refreshSelectedConversation,
-    workspaceConversationId
-  ]);
+  useRealtimeInvalidation({
+    enabled: authSession.authenticated && isOnline,
+    debounceMs: 250,
+    onInvalidate: (payload) => {
+      void handleRealtimeInvalidation(payload.conversationId);
+    },
+    onHeartbeat: () => {
+      void handleRealtimeInvalidation();
+    },
+    onError: () => {
+      setOperationError("Realtime updates are temporarily unavailable.");
+    }
+  });
 
   useEffect(() => {
     if (!authSession.authenticated) {
@@ -588,82 +550,98 @@ export function DashboardBoardShell() {
     []
   );
 
-  const claimChat = async (ticketId: string) => {
-    if (!authSession.authenticated || !authSession.user) {
-      return;
-    }
-    if (claimPendingTicketId) {
-      return;
-    }
-    if (!isOnline) {
-      setOperationError("Go online before claiming new requests.");
-      return;
-    }
+  const claimChat = useCallback(
+    async (ticketId: string) => {
+      if (!authSession.authenticated || !authSession.user) {
+        return;
+      }
+      if (claimPendingTicketId) {
+        return;
+      }
+      if (!isOnline) {
+        setOperationError("Go online before claiming new requests.");
+        return;
+      }
 
-    const queueRecord = queueRecords.find((item) => item.requestId === ticketId);
-    if (!queueRecord) {
-      setOperationError("This queue request is no longer available.");
-      return;
-    }
+      const queueRecord = queueRecords.find((item) => item.requestId === ticketId);
+      if (!queueRecord) {
+        setOperationError("This queue request is no longer available.");
+        return;
+      }
 
-    try {
-      setClaimPendingTicketId(ticketId);
-      const result = await claimHandoffApi({
-        requestId: queueRecord.requestId,
-        representative: {
-          id: authSession.user.id,
-          name: authSession.user.name,
-          avatarUrl: authSession.user.avatarUrl ?? undefined
-        }
-      });
-      publishDashboardSyncEvent({
-        type: "handoff-claimed",
-        requestId: result.queue.requestId,
-        conversationId: result.thread.id,
-        timestamp: new Date().toISOString()
-      });
-      await refreshQueueData();
-      setSelectedActiveRequestId(result.queue.requestId);
-      setWorkspaceHint("Handoff claimed. It is now loaded in the active workspace.");
-    } catch (error) {
-      setOperationError(error instanceof Error ? error.message : "Unable to claim this handoff.");
-    } finally {
-      setClaimPendingTicketId(null);
-    }
-  };
+      try {
+        setClaimPendingTicketId(ticketId);
+        const result = await claimHandoffApi({
+          requestId: queueRecord.requestId,
+          representative: {
+            id: authSession.user.id,
+            name: authSession.user.name,
+            avatarUrl: authSession.user.avatarUrl ?? undefined
+          }
+        });
+        publishDashboardSyncEvent({
+          type: "handoff-claimed",
+          requestId: result.queue.requestId,
+          conversationId: result.thread.id,
+          timestamp: new Date().toISOString()
+        });
+        await refreshQueueData();
+        setSelectedActiveRequestId(result.queue.requestId);
+        setWorkspaceHint("Handoff claimed. It is now loaded in the active workspace.");
+      } catch (error) {
+        setOperationError(error instanceof Error ? error.message : "Unable to claim this handoff.");
+      } finally {
+        setClaimPendingTicketId(null);
+      }
+    },
+    [
+      authSession.authenticated,
+      authSession.user,
+      claimPendingTicketId,
+      isOnline,
+      queueRecords,
+      refreshQueueData
+    ]
+  );
 
-  const selectActiveChat = (ticketId: string) => {
-    const queueRecord = activeByRequestId.get(ticketId);
-    if (!queueRecord) {
-      setOperationError("Unable to load chat. The request is no longer active.");
-      return;
-    }
+  const selectActiveChat = useCallback(
+    (ticketId: string) => {
+      const queueRecord = activeByRequestId.get(ticketId);
+      if (!queueRecord) {
+        setOperationError("Unable to load chat. The request is no longer active.");
+        return;
+      }
 
-    setSelectedActiveRequestId(queueRecord.requestId);
-    setOperationError(null);
-    setWorkspaceHint(null);
-  };
+      setSelectedActiveRequestId(queueRecord.requestId);
+      setOperationError(null);
+      setWorkspaceHint(null);
+    },
+    [activeByRequestId]
+  );
 
-  const splitChatFromCard = (ticketId: string) => {
-    const queueRecord = queueRecords.find((item) => item.requestId === ticketId);
-    if (!queueRecord) {
-      setOperationError("Unable to split chat. The request is no longer available.");
-      return;
-    }
+  const splitChatFromCard = useCallback(
+    (ticketId: string) => {
+      const queueRecord = queueRecords.find((item) => item.requestId === ticketId);
+      if (!queueRecord) {
+        setOperationError("Unable to split chat. The request is no longer available.");
+        return;
+      }
 
-    if (
-      !isAdminLike &&
-      queueRecord.claimedByAuthUserId &&
-      queueRecord.claimedByAuthUserId !== agentId
-    ) {
-      setOperationError("This handoff is assigned to another representative.");
-      return;
-    }
+      if (
+        !isAdminLike &&
+        queueRecord.claimedByAuthUserId &&
+        queueRecord.claimedByAuthUserId !== agentId
+      ) {
+        setOperationError("This handoff is assigned to another representative.");
+        return;
+      }
 
-    openWorkspaceTab(queueRecord.requestId, queueRecord.conversationId);
-  };
+      openWorkspaceTab(queueRecord.requestId, queueRecord.conversationId);
+    },
+    [agentId, isAdminLike, openWorkspaceTab, queueRecords]
+  );
 
-  const sendRepMessage = async () => {
+  const sendRepMessage = useCallback(async () => {
     if (
       !authSession.authenticated ||
       !authSession.user ||
@@ -697,7 +675,15 @@ export function DashboardBoardShell() {
     } finally {
       setSendPending(false);
     }
-  };
+  }, [
+    authSession.authenticated,
+    authSession.user,
+    canInteract,
+    composeNote,
+    publishRepresentativeTyping,
+    sendPending,
+    workspaceConversationId
+  ]);
 
   const addSidebarNote = async () => {
     if (!authSession.authenticated || !workspaceConversationId || !canInteract || notePending) {
@@ -746,6 +732,13 @@ export function DashboardBoardShell() {
     }
   };
 
+  const handleUseAvaSuggestion = useCallback(() => {
+    if (!avaSuggestion.suggestionText) {
+      return;
+    }
+    setComposeNote(avaSuggestion.suggestionText);
+  }, [avaSuggestion.suggestionText]);
+
   const signOutAgent = async () => {
     if (signOutPending) {
       return;
@@ -785,6 +778,7 @@ export function DashboardBoardShell() {
           activeRoute="dashboard"
           canAccessManagerViews={canAccessAvaManagerViews(authSession.role, authSession.access)}
         />
+        <div className="rep-main-scroll">
         {operationError ? (
           <p className="rep-shell-error" role="alert">
             {operationError}
@@ -909,15 +903,8 @@ export function DashboardBoardShell() {
                   agentAvatarUrl={agentAvatarUrl}
                   sendPending={sendPending}
                   onComposeNoteChange={setComposeNote}
-                  onSendMessage={() => {
-                    void sendRepMessage();
-                  }}
-                  onUseAvaSuggestion={() => {
-                    if (!avaSuggestion.suggestionText) {
-                      return;
-                    }
-                    setComposeNote(avaSuggestion.suggestionText);
-                  }}
+                  onSendMessage={sendRepMessage}
+                  onUseAvaSuggestion={handleUseAvaSuggestion}
                   onRefreshAvaSuggestion={avaSuggestion.refreshSuggestion}
                 />
 
@@ -938,6 +925,7 @@ export function DashboardBoardShell() {
               </div>
             )}
           </div>
+        </div>
         </div>
       </section>
     </div>

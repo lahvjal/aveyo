@@ -1,0 +1,69 @@
+{
+  "baselineReport": "reports/baseline-small-with-server-metrics.json",
+  "rules": [
+    {
+      "label": "Message roundtrip failures remain at zero",
+      "path": ["scenarios", "messageRoundtrip", "summary", "failed"],
+      "maxValue": 0
+    },
+    {
+      "label": "Handoff roundtrip failures remain at zero",
+      "path": ["scenarios", "handoffRoundtrip", "summary", "failed"],
+      "maxValue": 0
+    },
+    {
+      "label": "Manager refresh failures remain at zero",
+      "path": ["scenarios", "managerRefresh", "summary", "failed"],
+      "maxValue": 0
+    },
+    {
+      "label": "Agent refresh failures remain at zero",
+      "path": ["scenarios", "agentRefresh", "summary", "failed"],
+      "maxValue": 0
+    },
+    {
+      "label": "Customer send p95 stays within budget",
+      "path": ["scenarios", "messageRoundtrip", "summary", "metrics", "sendRequestMs", "p95"],
+      "maxDelta": 1500,
+      "maxPercentDelta": 35
+    },
+    {
+      "label": "Realtime event visibility p95 stays within budget",
+      "path": ["scenarios", "messageRoundtrip", "summary", "metrics", "eventVisibleMs", "p95"],
+      "maxDelta": 1500,
+      "maxPercentDelta": 35
+    },
+    {
+      "label": "Ava reply visibility p95 stays within budget",
+      "path": ["scenarios", "messageRoundtrip", "summary", "metrics", "avaReplyVisibleMs", "p95"],
+      "maxDelta": 600,
+      "maxPercentDelta": 35
+    },
+    {
+      "label": "Return-to-AI p95 stays within budget",
+      "path": ["scenarios", "handoffRoundtrip", "summary", "metrics", "returnToAiMs", "p95"],
+      "maxDelta": 1800,
+      "maxPercentDelta": 35
+    },
+    {
+      "label": "Manager refresh p95 stays within budget",
+      "path": ["scenarios", "managerRefresh", "summary", "metrics", "requestMs", "p95"],
+      "maxDelta": 600,
+      "maxPercentDelta": 30
+    },
+    {
+      "label": "Queue query-count p95 stays near baseline",
+      "path": ["scenarios", "handoffRoundtrip", "summary", "metrics", "queueDbQueryCount", "p95"],
+      "maxDelta": 2,
+      "maxPercentDelta": 25,
+      "allowMissing": true
+    },
+    {
+      "label": "Manager handoffs query-count p95 stays near baseline",
+      "path": ["scenarios", "handoffRoundtrip", "summary", "metrics", "managerDbQueryCount", "p95"],
+      "maxDelta": 2,
+      "maxPercentDelta": 25,
+      "allowMissing": true
+    }
+  ]
+}

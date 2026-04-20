@@ -82,6 +82,8 @@ export function SiteHero({
   stats = [],
   imageSrc,
   imageAlt,
+  backgroundSrc,
+  backgroundAlt,
   visual,
   spotlight = "radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 45%)",
   children
@@ -93,31 +95,57 @@ export function SiteHero({
   stats?: SiteStatItem[];
   imageSrc?: string;
   imageAlt?: string;
+  backgroundSrc?: string;
+  backgroundAlt?: string;
   visual?: ReactNode;
   spotlight?: string;
   children?: ReactNode;
 }) {
-  return (
-    <section className="relative overflow-hidden bg-[#0A1628] bg-[color:var(--site-navy)] text-white text-[color:var(--site-white)]">
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background:
-            "var(--site-hero-overlay, linear-gradient(135deg, rgba(0, 0, 0, 0.16) 0%, rgba(52, 66, 94, 0.18) 100%))"
-        }}
-      />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.06] mix-blend-overlay">
-        <div
-          className="h-full w-full"
-          style={{
-            backgroundImage: "url('/images/04ace053e2cc3324a9bd79a136ce79eb15125e2d.png')",
-            backgroundSize: "424px 424px"
-          }}
-        />
-      </div>
-      <div className="pointer-events-none absolute inset-0 opacity-80" style={{ background: spotlight }} />
+  const hasBgImage = !!backgroundSrc;
+  const hasRightColumn = !hasBgImage && (!!visual || !!imageSrc);
 
-      <div className="relative mx-auto grid max-w-[1240px] gap-12 px-5 pb-20 pt-36 sm:px-6 md:pt-44 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:items-end lg:px-8 lg:pb-24">
+  return (
+    <section className={`relative overflow-hidden text-white text-[color:var(--site-white)] ${hasBgImage ? "min-h-[80vh]" : "bg-[#0A1628] bg-[color:var(--site-navy)]"}`}>
+      {hasBgImage ? (
+        <>
+          <div className="absolute inset-0 z-0 bg-[#212120]">
+            <Image
+              src={backgroundSrc}
+              alt={backgroundAlt ?? ""}
+              fill
+              className="object-cover"
+              sizes="100vw"
+              priority
+            />
+          </div>
+          <div
+            className="pointer-events-none absolute inset-0 z-[1]"
+            style={{ background: "radial-gradient(ellipse at 20% 50%, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.4) 55%, rgba(0,0,0,0.2) 100%)" }}
+          />
+        </>
+      ) : (
+        <>
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background:
+                "var(--site-hero-overlay, linear-gradient(135deg, rgba(0, 0, 0, 0.16) 0%, rgba(52, 66, 94, 0.18) 100%))"
+            }}
+          />
+          <div className="pointer-events-none absolute inset-0 opacity-[0.06] mix-blend-overlay">
+            <div
+              className="h-full w-full"
+              style={{
+                backgroundImage: "url('/images/04ace053e2cc3324a9bd79a136ce79eb15125e2d.png')",
+                backgroundSize: "424px 424px"
+              }}
+            />
+          </div>
+          <div className="pointer-events-none absolute inset-0 opacity-80" style={{ background: spotlight }} />
+        </>
+      )}
+
+      <div className={`relative z-[2] mx-auto max-w-[1240px] px-5 pb-20 pt-36 sm:px-6 md:pt-44 lg:px-8 lg:pb-24 ${hasRightColumn ? "grid gap-12 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:items-end" : ""}`}>
         <div className="max-w-[760px]">
           {eyebrow ? (
             <p className={`mb-5 text-sm text-[length:var(--site-paragraph)] font-bold uppercase tracking-[0.32em] ${getEyebrowClasses("hero")}`}>
@@ -321,26 +349,38 @@ export function SiteCard({
   title,
   description,
   footer,
-  tone = "light"
+  tone = "light",
+  imageSrc,
+  imageAlt
 }: {
   eyebrow?: string;
   title: ReactNode;
   description?: ReactNode;
   footer?: ReactNode;
   tone?: "light" | "dark";
+  imageSrc?: string;
+  imageAlt?: string;
 }) {
   const isDark = tone === "dark";
+  const hasImage = !!imageSrc;
 
   return (
     <article
-      className={`relative overflow-hidden rounded-[var(--site-radius-corner)] p-[var(--site-card-padding-comfortable)] shadow-[0_22px_60px_rgba(10,22,40,0.08)] ${
+      className={`relative overflow-hidden rounded-[var(--site-radius-corner)] shadow-[0_22px_60px_rgba(10,22,40,0.08)] ${
+        hasImage ? "" : "p-[var(--site-card-padding-comfortable)]"
+      } ${
         isDark
           ? "border-white/10 bg-[#10223b] bg-[color:var(--site-navy-soft)] text-white text-[color:var(--site-white)]"
           : "border-[#dbe2e8] border-[color:var(--site-border-soft)] bg-gradient-to-b from-[#f9fbfc] from-[color:var(--site-surface-light-top)] to-[#eef3f7] to-[color:var(--site-surface-light-bottom)] text-[#212120] text-[color:var(--site-black)]"
       }`}
     >
       <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-      <div className="relative z-[2]">
+      {hasImage ? (
+        <div className="relative h-[200px] w-full shrink-0">
+          <Image src={imageSrc} alt={imageAlt ?? ""} fill className="object-cover" sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw" />
+        </div>
+      ) : null}
+      <div className={`relative z-[2] ${hasImage ? "p-[var(--site-card-padding-comfortable)]" : ""}`}>
         {eyebrow ? (
           <p
             className={`mb-4 text-xs text-[length:var(--site-paragraph)] font-bold uppercase tracking-[0.28em] ${
@@ -395,23 +435,93 @@ export function SiteFaq({
   );
 }
 
+export function SiteImagePlaceholder({
+  alt,
+  className = ""
+}: {
+  alt: string;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex items-center justify-center bg-gradient-to-br from-[#e8eef4] to-[#d4dce6] ${className}`}
+      role="img"
+      aria-label={alt}
+      data-placeholder={alt}
+    >
+      <div className="flex flex-col items-center gap-3 px-6 text-center">
+        <svg className="h-10 w-10 text-[#a3b1c2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth="1.5" />
+          <circle cx="8.5" cy="8.5" r="1.5" strokeWidth="1.5" />
+          <path d="m21 15-5-5L5 21" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+        <p className="max-w-[280px] text-sm font-medium text-[#8896a7]">{alt}</p>
+      </div>
+    </div>
+  );
+}
+
+export function SiteImageBreak({
+  images
+}: {
+  images: Array<{ src?: string; alt: string }>;
+}) {
+  const isSplit = images.length >= 2;
+
+  return (
+    <section className="bg-white bg-[color:var(--site-white)]">
+      <div className="mx-auto max-w-[1240px] px-5 sm:px-6 lg:px-8">
+        <div className={`grid gap-5 ${isSplit ? "lg:grid-cols-2" : ""}`}>
+          {images.map((image) => (
+            <div
+              key={image.alt}
+              className="relative h-[400px] overflow-hidden rounded-[var(--site-radius-corner)] lg:h-[545px]"
+            >
+              {image.src ? (
+                <Image
+                  src={image.src}
+                  alt={image.alt}
+                  fill
+                  className="object-cover"
+                  sizes={isSplit ? "(min-width: 1024px) 50vw, 100vw" : "100vw"}
+                />
+              ) : (
+                <SiteImagePlaceholder alt={image.alt} className="h-full w-full" />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function SiteArticleCard({
   category,
   title,
   excerpt,
   href,
-  publishedLabel
+  publishedLabel,
+  imageSrc,
+  imageAlt
 }: {
   category?: string;
   title: string;
   excerpt: string;
   href: string;
   publishedLabel?: string;
+  imageSrc?: string;
+  imageAlt?: string;
 }) {
   return (
-    <article className="relative flex h-full flex-col overflow-hidden rounded-[var(--site-radius-corner)] bg-white p-[var(--site-card-padding-compact)] shadow-[0_20px_60px_rgba(10,22,40,0.08)]">
+    <article className="relative flex h-full flex-col overflow-hidden rounded-[var(--site-radius-corner)] bg-white shadow-[0_20px_60px_rgba(10,22,40,0.08)]">
       <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-      <div className="relative z-[2] flex h-full flex-col">
+      {imageSrc ? (
+        <div className="relative h-[200px] w-full shrink-0">
+          <Image src={imageSrc} alt={imageAlt ?? ""} fill className="object-cover" sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw" />
+        </div>
+      ) : null}
+      <div className="relative z-[2] flex h-full flex-col p-[var(--site-card-padding-compact)]">
         <div className="flex flex-wrap items-center gap-3">
           {category ? (
             <span className="rounded-full bg-[#edf4fb] bg-[color:var(--site-gray-light-4)] px-3 py-1 text-[length:var(--site-paragraph)] font-bold uppercase tracking-[0.18em] text-[#0A1628] text-[color:var(--site-black)]">
@@ -431,7 +541,7 @@ export function SiteArticleCard({
           {excerpt}
         </p>
         <div className="mt-6">
-          <SiteButtonLink href={href} variant="ghost" className="px-0 py-0 text-[length:var(--site-body)]">
+          <SiteButtonLink href={href} variant="ghost" className="text-[length:var(--site-body)]">
             Read Article
           </SiteButtonLink>
         </div>

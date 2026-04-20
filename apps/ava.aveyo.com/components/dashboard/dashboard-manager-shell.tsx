@@ -3,17 +3,17 @@
 import { type ConversationThread } from "@ava/chat-domain";
 import { AvaOrb } from "@ava/ui";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { canAccessAvaManagerViews } from "@/lib/auth/access";
 import { buildAuthLoginUrl } from "@/lib/auth/config";
 import { logoutAuthSession } from "@/lib/auth/session";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
+import { useRealtimeInvalidation } from "@/lib/use-realtime-invalidation";
 import {
   getConversationApi,
   getManagerAgentsApi,
   getManagerHandoffsApi,
   getManagerOverviewApi,
-  getRealtimeEventsApi,
   type ManagerAgentRecord,
   type ManagerHandoffRecord,
   type ManagerOverviewResult
@@ -207,6 +207,170 @@ function getNameInitials(name: string | null | undefined, fallback = "CU") {
   return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
 }
 
+interface PipelineLaneViewModel {
+  id: PipelineLaneId;
+  label: string;
+  count: number;
+  items: ManagerHandoffRecord[];
+}
+
+interface ManagerPipelineCardProps {
+  handoff: ManagerHandoffRecord;
+  selected: boolean;
+  onOpenTranscriptPreview: (requestId: string) => void;
+}
+
+interface ManagerPipelineLaneSectionProps {
+  lane: PipelineLaneViewModel;
+  isInitialLoading: boolean;
+  selectedRequestId: string | null;
+  onOpenTranscriptPreview: (requestId: string) => void;
+}
+
+function laneContainsRequestId(lane: PipelineLaneViewModel, requestId: string | null) {
+  return Boolean(requestId) && lane.items.some((item) => item.requestId === requestId);
+}
+
+const ManagerPipelineCard = memo(function ManagerPipelineCard({
+  handoff,
+  selected,
+  onOpenTranscriptPreview
+}: ManagerPipelineCardProps) {
+  const customerMood = getMoodFromSensitivityBand(handoff.customerSensitivityBand);
+  const handoffLane = getPipelineLaneForHandoff(handoff);
+  const cardStatus = getManagerCardStatus(handoff);
+  const healthLabel = handoff.needsAttention
+    ? "Needs attention"
+    : handoff.slowFirstReply
+      ? "Slow first reply"
+      : null;
+  const agentLabel =
+    handoffLane === "pending" ? "Awaiting agent" : handoff.assignedAgentName || "AI Chatbot";
+  const showAgentProfile =
+    Boolean(handoff.assignedAgentName) || Boolean(handoff.assignedAgentAvatarUrl);
+
+  return (
+    <article
+      className={`manager-chat-card mood-${customerMood} clickable${selected ? " selected" : ""}`}
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpenTranscriptPreview(handoff.requestId)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onOpenTranscriptPreview(handoff.requestId);
+        }
+      }}
+    >
+      <div className="manager-chat-head">
+        <div className="manager-chat-identity">
+          <InitialChip
+            initials={getNameInitials(handoff.customerName, "CU")}
+            avatarUrl={handoff.customerAvatarUrl}
+            tone="sand"
+            size={28}
+          />
+          <div>
+            <h4>{handoff.customerName}</h4>
+            <p>Request {handoff.requestId.slice(0, 8)}</p>
+          </div>
+        </div>
+        <span className={`manager-mood-pill ${customerMood}`}>{formatMoodLabel(customerMood)}</span>
+      </div>
+
+      <div className="manager-chat-meta">
+        <span className="manager-chat-agent">
+          {showAgentProfile ? (
+            <InitialChip
+              initials={getNameInitials(handoff.assignedAgentName, "AG")}
+              avatarUrl={handoff.assignedAgentAvatarUrl}
+              tone="sand"
+              size={20}
+            />
+          ) : (
+            <AvaOrb size={20} />
+          )}
+          <span>{agentLabel}</span>
+        </span>
+        <span>{formatRelativeAgo(handoff.lastMessageAt)}</span>
+      </div>
+
+      <div className="manager-chat-meta">
+        <span className="manager-chat-satisfaction">
+          {formatAgentSatisfaction(handoff.customerRating)}
+        </span>
+        <span className={`manager-chat-status ${cardStatus}`}>
+          {formatManagerCardStatus(cardStatus)}
+        </span>
+      </div>
+
+      {healthLabel ? <p className="manager-chat-health-note">{healthLabel}</p> : null}
+    </article>
+  );
+});
+
+const ManagerPipelineLaneSection = memo(
+  function ManagerPipelineLaneSection({
+    lane,
+    isInitialLoading,
+    selectedRequestId,
+    onOpenTranscriptPreview
+  }: ManagerPipelineLaneSectionProps) {
+    return (
+      <section className={`manager-pipeline-lane ${lane.id}`}>
+        <header className="manager-pipeline-lane-head">
+          <strong>{lane.label}</strong>
+          <span className="manager-pipeline-count">{lane.count}</span>
+        </header>
+
+        <div className="manager-pipeline-list">
+          {lane.items.length === 0 ? (
+            isInitialLoading ? (
+              <>
+                <article className="manager-chat-card skeleton" />
+                <article className="manager-chat-card skeleton" />
+                <article className="manager-chat-card skeleton" />
+              </>
+            ) : (
+              <p className="manager-pipeline-empty">
+                {lane.id === "ai_handling"
+                  ? "No AI-only chat cards in handoff feed."
+                  : "No chats in this lane."}
+              </p>
+            )
+          ) : (
+            lane.items.map((handoff) => (
+              <ManagerPipelineCard
+                key={handoff.requestId}
+                handoff={handoff}
+                selected={selectedRequestId === handoff.requestId}
+                onOpenTranscriptPreview={onOpenTranscriptPreview}
+              />
+            ))
+          )}
+        </div>
+      </section>
+    );
+  },
+  (prevProps, nextProps) => {
+    if (
+      prevProps.lane !== nextProps.lane ||
+      prevProps.isInitialLoading !== nextProps.isInitialLoading ||
+      prevProps.onOpenTranscriptPreview !== nextProps.onOpenTranscriptPreview
+    ) {
+      return false;
+    }
+
+    const prevSelectionInLane = laneContainsRequestId(prevProps.lane, prevProps.selectedRequestId);
+    const nextSelectionInLane = laneContainsRequestId(nextProps.lane, nextProps.selectedRequestId);
+    if (!prevSelectionInLane && !nextSelectionInLane) {
+      return true;
+    }
+
+    return prevProps.selectedRequestId === nextProps.selectedRequestId;
+  }
+);
+
 export function DashboardManagerShell() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -231,7 +395,6 @@ export function DashboardManagerShell() {
     conversationId: null,
     atMs: 0
   });
-  const realtimeCursorRef = useRef<string | undefined>(undefined);
   const realtimeBusyRef = useRef(false);
 
   const activeRange = useMemo(() => {
@@ -299,7 +462,7 @@ export function DashboardManagerShell() {
         return;
       }
       void refreshManagerData({ silent: true });
-    }, 15000);
+    }, 45000);
 
     return () => {
       window.clearInterval(intervalId);
@@ -362,7 +525,7 @@ export function DashboardManagerShell() {
     );
   }, [handoffs, moodFilter]);
   const totalChatsCount = moodFilteredHandoffs.length;
-  const pipelineLanes = useMemo(() => {
+  const pipelineLanes = useMemo<PipelineLaneViewModel[]>(() => {
     const byLane: Record<PipelineLaneId, ManagerHandoffRecord[]> = {
       ai_handling: [],
       pending: [],
@@ -433,14 +596,21 @@ export function DashboardManagerShell() {
   const showPreviewRefreshIndicator = previewLoading && Boolean(selectedConversationPreview);
   const openTranscriptPreview = useCallback(
     (requestId: string) => {
-      if (selectedRequestId === requestId) {
+      let changedSelection = false;
+      setSelectedRequestId((current) => {
+        if (current === requestId) {
+          return current;
+        }
+        changedSelection = true;
+        return requestId;
+      });
+      if (!changedSelection) {
         return;
       }
       setPreviewError(null);
       setPreviewLoading(true);
-      setSelectedRequestId(requestId);
     },
-    [selectedRequestId]
+    []
   );
   const loadConversationPreview = useCallback(async (
     conversationId: string,
@@ -502,96 +672,56 @@ export function DashboardManagerShell() {
     }
   }, []);
 
-  useEffect(() => {
-    realtimeCursorRef.current = undefined;
-
-    if (!authSession.authenticated) {
-      return;
-    }
-
-    let cancelled = false;
-    const pollRealtime = async () => {
+  const handleRealtimeInvalidation = useCallback(
+    async (conversationId?: string | null) => {
       if (realtimeBusyRef.current) {
         return;
       }
 
       realtimeBusyRef.current = true;
       try {
-        const result = await getRealtimeEventsApi(realtimeCursorRef.current);
-        if (cancelled) {
+        if (typeof document !== "undefined" && document.hidden) {
           return;
         }
 
-        realtimeCursorRef.current = result.cursor;
-        const hasPipelineVisibleEvent =
-          result.cursorStale ||
-          result.events.some((event) => {
-            if (event.type === "typing") {
-              return false;
-            }
-            if (event.type === "message_created") {
-              // Required so brand-new AI-only chats appear without waiting for a handoff event.
-              return true;
-            }
-            if (
-              event.type === "handoff_requested" ||
-              event.type === "handoff_claimed" ||
-              event.type === "handoff_resolved"
-            ) {
-              return true;
-            }
-            return false;
+        await refreshManagerData({ silent: true });
+
+        if (
+          selectedConversationId &&
+          selectedConversationIsLive &&
+          (!conversationId || conversationId === selectedConversationId)
+        ) {
+          await loadConversationPreview(selectedConversationId, {
+            keepVisibleConversation: true,
+            minIntervalMs: PREVIEW_REFRESH_MIN_INTERVAL_MS
           });
-
-        if (hasPipelineVisibleEvent) {
-          await refreshManagerData({ silent: true });
         }
-
-        if (selectedConversationId && selectedConversationIsLive) {
-          const selectedConversationChanged =
-            result.cursorStale ||
-            result.events.some(
-              (event) =>
-                event.conversationId === selectedConversationId &&
-                event.type === "message_created"
-            );
-          if (selectedConversationChanged) {
-            await loadConversationPreview(selectedConversationId, {
-              keepVisibleConversation: true,
-              minIntervalMs: PREVIEW_REFRESH_MIN_INTERVAL_MS
-            });
-          }
-        }
-      } catch (pollError) {
-        if (!cancelled) {
-          setError(
-            pollError instanceof Error && pollError.message
-              ? pollError.message
-              : "Realtime updates are temporarily unavailable."
-          );
-        }
+      } catch (error) {
+        setError(
+          error instanceof Error && error.message
+            ? error.message
+            : "Realtime updates are temporarily unavailable."
+        );
       } finally {
         realtimeBusyRef.current = false;
       }
-    };
+    },
+    [loadConversationPreview, refreshManagerData, selectedConversationId, selectedConversationIsLive]
+  );
 
-    void pollRealtime();
-    const intervalId = window.setInterval(() => {
-      void pollRealtime();
-    }, 2500);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(intervalId);
-    };
-  }, [
-    authSession.authenticated,
-    loadConversationPreview,
-    rangeQuery,
-    refreshManagerData,
-    selectedConversationId,
-    selectedConversationIsLive
-  ]);
+  useRealtimeInvalidation({
+    enabled: authSession.authenticated,
+    debounceMs: 250,
+    onInvalidate: (payload) => {
+      void handleRealtimeInvalidation(payload.conversationId);
+    },
+    onHeartbeat: () => {
+      void handleRealtimeInvalidation();
+    },
+    onError: () => {
+      setError("Realtime updates are temporarily unavailable.");
+    }
+  });
 
   useEffect(() => {
     if (!selectedConversationId) {
@@ -713,6 +843,7 @@ export function DashboardManagerShell() {
           activeRoute="manager"
           canAccessManagerViews={canAccessAvaManagerViews(authSession.role, authSession.access)}
         />
+        <div className="rep-main-scroll">
         {error ? (
           <p className="rep-shell-error" role="alert">
             {error}
@@ -998,117 +1129,15 @@ export function DashboardManagerShell() {
 
           <div className={`manager-pipeline-layout${selectedHandoff ? " has-preview" : ""}`}>
             <div className="manager-pipeline-grid">
-              {pipelineLanes.map((lane) => {
-                const laneCount = lane.count;
-
-                return (
-                  <section key={lane.id} className={`manager-pipeline-lane ${lane.id}`}>
-                    <header className="manager-pipeline-lane-head">
-                      <strong>{lane.label}</strong>
-                      <span className="manager-pipeline-count">{laneCount}</span>
-                    </header>
-
-                    <div className="manager-pipeline-list">
-                      {lane.items.length === 0 ? (
-                      isInitialLoading ? (
-                        <>
-                          <article className="manager-chat-card skeleton" />
-                          <article className="manager-chat-card skeleton" />
-                          <article className="manager-chat-card skeleton" />
-                        </>
-                      ) : (
-                        <p className="manager-pipeline-empty">
-                          {lane.id === "ai_handling"
-                            ? "No AI-only chat cards in handoff feed."
-                            : "No chats in this lane."}
-                        </p>
-                      )
-                      ) : (
-                        lane.items.map((handoff) => {
-                          const customerMood = getMoodFromSensitivityBand(handoff.customerSensitivityBand);
-                          const handoffLane = getPipelineLaneForHandoff(handoff);
-                          const cardStatus = getManagerCardStatus(handoff);
-                          const healthLabel = handoff.needsAttention
-                            ? "Needs attention"
-                            : handoff.slowFirstReply
-                              ? "Slow first reply"
-                              : null;
-                          const agentLabel =
-                            handoffLane === "pending"
-                              ? "Awaiting agent"
-                              : handoff.assignedAgentName || "AI Chatbot";
-                          const showAgentProfile =
-                            Boolean(handoff.assignedAgentName) || Boolean(handoff.assignedAgentAvatarUrl);
-
-                          return (
-                            <article
-                              key={handoff.requestId}
-                              className={`manager-chat-card mood-${customerMood} clickable${
-                                selectedRequestId === handoff.requestId ? " selected" : ""
-                              }`}
-                              role="button"
-                              tabIndex={0}
-                              onClick={() => openTranscriptPreview(handoff.requestId)}
-                              onKeyDown={(event) => {
-                                if (event.key === "Enter" || event.key === " ") {
-                                  event.preventDefault();
-                                  openTranscriptPreview(handoff.requestId);
-                                }
-                              }}
-                            >
-                              <div className="manager-chat-head">
-                                <div className="manager-chat-identity">
-                                  <InitialChip
-                                    initials={getNameInitials(handoff.customerName, "CU")}
-                                    avatarUrl={handoff.customerAvatarUrl}
-                                    tone="sand"
-                                    size={28}
-                                  />
-                                  <div>
-                                    <h4>{handoff.customerName}</h4>
-                                    <p>Request {handoff.requestId.slice(0, 8)}</p>
-                                  </div>
-                                </div>
-                                <span className={`manager-mood-pill ${customerMood}`}>
-                                  {formatMoodLabel(customerMood)}
-                                </span>
-                              </div>
-
-                              <div className="manager-chat-meta">
-                                <span className="manager-chat-agent">
-                                  {showAgentProfile ? (
-                                    <InitialChip
-                                      initials={getNameInitials(handoff.assignedAgentName, "AG")}
-                                      avatarUrl={handoff.assignedAgentAvatarUrl}
-                                      tone="sand"
-                                      size={20}
-                                    />
-                                  ) : (
-                                    <AvaOrb size={20} />
-                                  )}
-                                  <span>{agentLabel}</span>
-                                </span>
-                                <span>{formatRelativeAgo(handoff.lastMessageAt)}</span>
-                              </div>
-
-                              <div className="manager-chat-meta">
-                                <span className="manager-chat-satisfaction">
-                                  {formatAgentSatisfaction(handoff.customerRating)}
-                                </span>
-                                <span className={`manager-chat-status ${cardStatus}`}>
-                                  {formatManagerCardStatus(cardStatus)}
-                                </span>
-                              </div>
-
-                              {healthLabel ? <p className="manager-chat-health-note">{healthLabel}</p> : null}
-                            </article>
-                          );
-                        })
-                      )}
-                    </div>
-                  </section>
-                );
-              })}
+              {pipelineLanes.map((lane) => (
+                <ManagerPipelineLaneSection
+                  key={lane.id}
+                  lane={lane}
+                  isInitialLoading={isInitialLoading}
+                  selectedRequestId={selectedRequestId}
+                  onOpenTranscriptPreview={openTranscriptPreview}
+                />
+              ))}
             </div>
 
             {selectedHandoff ? (
@@ -1214,6 +1243,7 @@ export function DashboardManagerShell() {
           </div>
         </section>
 
+        </div>
       </section>
     </div>
   );

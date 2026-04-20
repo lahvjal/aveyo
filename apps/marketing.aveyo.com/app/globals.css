@@ -145,6 +145,36 @@ code {
   min-height: 0;
 }
 
+.workspace-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.workspace-tab {
+  border: 1px solid #d0d5dd;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #344054;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 9px 14px;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.workspace-tab:hover {
+  background: #f8f8f8;
+}
+
+.workspace-tab.is-active {
+  border-color: #204e71;
+  background: #204e71;
+  color: #ffffff;
+}
+
 .card {
   border: 1px solid var(--line-soft);
   border-radius: 20px;
@@ -189,6 +219,10 @@ code {
 .field textarea {
   min-height: 120px;
   resize: vertical;
+}
+
+.news-body-field {
+  min-height: 360px;
 }
 
 .helper-text {

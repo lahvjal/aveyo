@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { type ConversationThread } from "@ava/chat-domain";
 import { AvaOrb } from "@ava/ui";
 import {
@@ -30,7 +31,7 @@ interface ChatColumnProps {
   onRefreshAvaSuggestion?: () => void;
 }
 
-export function ChatColumn({
+export const ChatColumn = memo(function ChatColumn({
   conversation,
   activeTicket,
   hasActiveChat,
@@ -229,4 +230,4 @@ export function ChatColumn({
       </div>
     </section>
   );
-}
+});

@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { getConversationResult } from "@/lib/conversations/service";
 import { requireAuthenticatedRequest } from "@/lib/auth/require-auth";
+import { perfErrorJson, runPerfRoute } from "@/lib/perf/route";
 import { ServiceError } from "@/lib/service-error";
 
 export async function GET(
@@ -10,11 +10,28 @@ export async function GET(
   const { conversationId } = await context.params;
   try {
     const auth = await requireAuthenticatedRequest(request);
-    return NextResponse.json(await getConversationResult(conversationId, auth.user.id));
-  } catch (error) {
-    if (error instanceof ServiceError) {
-      return NextResponse.json({ error: error.message }, { status: error.status });
+    const timedResult = await runPerfRoute(
+      request,
+      "api.conversation.get",
+      () => getConversationResult(conversationId, auth.user.id),
+      {
+        conversationId
+      }
+    );
+    if (timedResult.error) {
+      throw Object.assign(timedResult.error, {
+        perfSnapshot: timedResult.snapshot
+      });
     }
-    return NextResponse.json({ error: "Unable to load conversation." }, { status: 500 });
+    return timedResult.response;
+  } catch (error) {
+    const perfSnapshot =
+      error && typeof error === "object" && "perfSnapshot" in error
+        ? (error as { perfSnapshot?: Parameters<typeof perfErrorJson>[2] }).perfSnapshot
+        : undefined;
+    if (error instanceof ServiceError) {
+      return perfErrorJson({ error: error.message }, { status: error.status }, perfSnapshot);
+    }
+    return perfErrorJson({ error: "Unable to load conversation." }, { status: 500 }, perfSnapshot);
   }
 }

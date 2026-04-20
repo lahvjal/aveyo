@@ -1,0 +1,32 @@
+{
+  "apiBaseUrl": "http://localhost:4002",
+  "transport": "sse",
+  "timeouts": {
+    "requestMs": 20000,
+    "eventMs": 15000,
+    "pollMs": 500
+  },
+  "autoProvision": {
+    "enabled": true,
+    "emailDomain": "perf.aveyo.local",
+    "password": "ChangeMe!123",
+    "cleanupUsers": true
+  },
+  "tiers": {
+    "small": {
+      "customers": 2,
+      "agents": 1,
+      "managers": 1,
+      "messageRounds": 2,
+      "handoffRounds": 1,
+      "managerRefreshRounds": 1,
+      "agentRefreshRounds": 1,
+      "concurrency": 1
+    }
+  },
+  "users": {
+    "customers": [],
+    "agents": [],
+    "managers": []
+  }
+}

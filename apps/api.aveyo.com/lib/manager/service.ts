@@ -2,7 +2,6 @@ import { type AppRole } from "@/lib/auth/types";
 import { getOnlineSupportAgentIds } from "@/lib/presence/service";
 import { ServiceError } from "@/lib/service-error";
 import { computeOverallCustomerSentiment } from "@/lib/sentiment/customer-sentiment";
-import { runGlobalResolvedSessionAutoCloseAutomation } from "@/lib/store/mock-store";
 import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { type ManagerDateRange } from "./date-range";
 
@@ -1056,8 +1055,6 @@ async function buildManagerHandoffs(
     fetchOpenAiConversations(),
     fetchEndedAiConversations(range)
   ]);
-  const events = await fetchHandoffEventsByRequestIds(handoffRequests.map((row) => row.id));
-  const { resolvedByRequest, ratingByRequest } = getLatestEventMaps(events);
   const anyHandoffConversationIds = new Set(handoffRequests.map((row) => row.conversation_id));
   const openHandoffConversationIds = new Set(
     handoffRequests
@@ -1082,6 +1079,8 @@ async function buildManagerHandoffs(
   });
 
   const topRows = filtered.slice(0, MAX_ACTIVITY_ROWS);
+  const events = await fetchHandoffEventsByRequestIds(topRows.map((row) => row.id));
+  const { resolvedByRequest, ratingByRequest } = getLatestEventMaps(events);
   const handoffConversationIds = new Set(topRows.map((row) => row.conversation_id));
   const aiOnlyConversations = openAiConversations.filter(
     (conversation) =>
@@ -1111,7 +1110,6 @@ async function buildManagerHandoffs(
         .filter(Boolean)
     )
   );
-  const customerProfiles = await fetchProfilesByIds(customerAuthUserIds);
 
   const allAgentIds = Array.from(
     new Set(
@@ -1120,7 +1118,10 @@ async function buildManagerHandoffs(
         .filter((value): value is string => Boolean(value))
     )
   );
-  const agentProfiles = await fetchProfilesByIds(allAgentIds);
+  const [customerProfiles, agentProfiles] = await Promise.all([
+    fetchProfilesByIds(customerAuthUserIds),
+    fetchProfilesByIds(allAgentIds)
+  ]);
 
   const messagesByConversation = new Map<string, MessageRow[]>();
   for (const message of messages) {
@@ -1431,11 +1432,6 @@ export async function getManagerHandoffsResult(
   actorRole: AppRole
 ) {
   await checkManagerAccess(actorUserId, actorRole);
-  try {
-    await runGlobalResolvedSessionAutoCloseAutomation();
-  } catch (automationError) {
-    console.error("Resolved session auto-close check failed", automationError);
-  }
   return buildManagerHandoffs(range);
 }
 

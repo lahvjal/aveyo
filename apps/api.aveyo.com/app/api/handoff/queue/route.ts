@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
 import { requireAuthenticatedRequest } from "@/lib/auth/require-auth";
 import { getQueueResult } from "@/lib/handoff/service";
+import { perfErrorJson, runPerfRoute } from "@/lib/perf/route";
 import { ServiceError } from "@/lib/service-error";
 
 export async function GET(request: Request) {
@@ -9,17 +9,33 @@ export async function GET(request: Request) {
     const requestUrl = new URL(request.url);
     const resolvedScopeParam = requestUrl.searchParams.get("resolvedScope");
     const resolvedScope = resolvedScopeParam === "agent" ? "agent" : "all";
-    return NextResponse.json(
-      await getQueueResult(auth.user.id, {
+    const timedResult = await runPerfRoute(
+      request,
+      "api.handoff.queue",
+      () =>
+        getQueueResult(auth.user.id, {
+          resolvedScope
+        }),
+      {
         resolvedScope
-      })
+      }
     );
+    if (timedResult.error) {
+      throw Object.assign(timedResult.error, {
+        perfSnapshot: timedResult.snapshot
+      });
+    }
+    return timedResult.response;
   } catch (error) {
+    const perfSnapshot =
+      error && typeof error === "object" && "perfSnapshot" in error
+        ? (error as { perfSnapshot?: Parameters<typeof perfErrorJson>[2] }).perfSnapshot
+        : undefined;
     if (error instanceof ServiceError) {
       console.error("Queue fetch failed", { status: error.status, message: error.message });
-      return NextResponse.json({ error: error.message }, { status: error.status });
+      return perfErrorJson({ error: error.message }, { status: error.status }, perfSnapshot);
     }
     console.error("Unexpected queue fetch failure", error);
-    return NextResponse.json({ error: "Unable to load queue." }, { status: 500 });
+    return perfErrorJson({ error: "Unable to load queue." }, { status: 500 }, perfSnapshot);
   }
 }

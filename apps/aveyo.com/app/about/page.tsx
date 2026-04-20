@@ -3,6 +3,7 @@ import {
   SiteCard,
   SiteCardGrid,
   SiteHero,
+  SiteImageBreak,
   SitePageShell,
   SiteSplitSection,
   SiteSection
@@ -74,45 +75,8 @@ export default function AboutPage() {
           { value: "8", label: "Integrated Functions" },
           { value: "1", label: "Customer-First Mission" }
         ]}
-        visual={
-          <div className="grid gap-4">
-            <div className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-white/[0.07] p-[var(--site-card-padding-comfortable)] backdrop-blur-[12px]">
-              <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-              <div className="relative z-[2]">
-                <p className="text-sm text-[length:var(--site-paragraph)] font-bold uppercase tracking-[0.28em] text-white/60">
-                  Mission
-                </p>
-                <p className="mt-4 text-[length:var(--site-h4)] leading-[1.05] tracking-[-0.03em]">
-                  Better service. Better savings. A smoother solar journey from start to finish.
-                </p>
-              </div>
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-[#10223b] bg-[color:var(--site-navy-soft)] p-[var(--site-card-padding-compact)]">
-                <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-                <div className="relative z-[2]">
-                  <p className="text-[length:var(--site-paragraph)] uppercase tracking-[0.24em] text-white/55">
-                    Built By Operators
-                  </p>
-                  <p className="mt-3 text-[length:var(--site-body-large)] leading-[1.6] text-white/80">
-                    Aveyo was formed by experienced teams who knew homeowners deserved a better experience.
-                  </p>
-                </div>
-              </div>
-              <div className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-[#10223b] bg-[color:var(--site-navy-soft)] p-[var(--site-card-padding-compact)]">
-                <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-                <div className="relative z-[2]">
-                  <p className="text-[length:var(--site-paragraph)] uppercase tracking-[0.24em] text-white/55">
-                    Built For Clarity
-                  </p>
-                  <p className="mt-3 text-[length:var(--site-body-large)] leading-[1.6] text-white/80">
-                    Transparent communication and accountable execution sit at the center of every install.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        }
+        backgroundSrc="/images/web_photos/About_01_Team-Company-Culture.jpg"
+        backgroundAlt="Aveyo team members standing together outdoors, blue sky, natural light"
       />
 
       <SiteSection
@@ -137,6 +101,13 @@ export default function AboutPage() {
           ))}
         </SiteCardGrid>
       </SiteSection>
+
+      <SiteImageBreak
+        images={[
+          { src: "/images/web_photos/Newsfeed_03_CEO-Lobby-Backdrop.jpg", alt: "Aveyo office lobby with brand logo, modern reception desk, and seating area" },
+          { alt: "Solar installation crew on residential rooftop mid-install, four workers with different tasks, sunny day" }
+        ]}
+      />
 
       <SiteSplitSection
         eyebrow="Industry-Leading Partnerships"

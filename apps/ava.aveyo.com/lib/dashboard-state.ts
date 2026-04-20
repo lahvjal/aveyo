@@ -69,13 +69,14 @@ function toTimerLabels(record: QueueRecord, nowMs: number) {
   const waitLabel = `${waitPrefix}: ${toDurationLabel(waitedSeconds)}`;
 
   if (claimedAtMs === null || record.status === "pending") {
-    return { waitLabel, lapsedLabel: undefined };
+    return { waitLabel, waitSeconds: waitedSeconds, lapsedLabel: undefined };
   }
 
   const lapsedEndMs = record.status === "resolved" ? (resolvedAtMs ?? claimedAtMs) : nowMs;
   const lapsedSeconds = toElapsedSeconds(claimedAtMs, lapsedEndMs);
   return {
     waitLabel,
+    waitSeconds: waitedSeconds,
     lapsedLabel: `Time lapsed: ${toDurationLabel(lapsedSeconds)}`
   };
 }
@@ -135,7 +136,7 @@ export function createTicketFromQueueRecord(
   const fullName = record.customerName || "Customer";
   const impersonationByName = record.impersonationByName?.trim();
   const detailLine = impersonationByName ? `Impersonation by ${impersonationByName}` : fullName;
-  const { waitLabel, lapsedLabel } = toTimerLabels(record, nowMs);
+  const { waitLabel, waitSeconds, lapsedLabel } = toTimerLabels(record, nowMs);
 
   return {
     id: record.requestId,
@@ -145,10 +146,13 @@ export function createTicketFromQueueRecord(
     email: detailLine,
     initials: toInitials(fullName),
     waitLabel,
+    waitSeconds,
     lapsedLabel,
     preview: record.reason?.trim() || latestMessagePreview(conversation),
     chipTone: record.status === "pending" ? "blue" : "sand",
     requestedAt: record.requestedAt,
+    claimedAt: record.claimedAt,
+    elapsedWaitSeconds: record.elapsedWaitSeconds,
     claimedByAuthUserId: record.claimedByAuthUserId,
     resolvedAt: record.resolvedAt,
     resolvedByAuthUserId: record.resolvedByAuthUserId,
