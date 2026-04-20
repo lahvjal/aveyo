@@ -202,7 +202,11 @@ export default function Navbar() {
       links: [
         { name: "About", href: "/about" },
         { name: "Newsfeed", href: "/newsfeed" },
-        { name: "Contact", href: "/contact" }
+        { name: "Contact", href: "/contact" },
+        { name: "Illinois", href: "/illinois" },
+        { name: "Pennsylvania", href: "/pennsylvania" },
+        { name: "Utah", href: "/utah" },
+        { name: "California", href: "/california" }
       ]
     }
   ];
