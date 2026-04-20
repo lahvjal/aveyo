@@ -1,5 +1,7 @@
 "use client";
 
+import { CardGradientBorder } from "@/components/ui/card-gradient-border";
+import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 
@@ -37,7 +39,10 @@ export default function Hero() {
   }, []);
 
   return (
-    <section className="relative min-h-screen flex flex-col justify-between">
+    <section
+      className="relative min-h-screen flex flex-col justify-between"
+      style={homepageStyleVars}
+    >
       {/* Background Video with Gradient Overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <video
@@ -64,26 +69,26 @@ export default function Hero() {
         {/* Main Content - Left Aligned */}
         <div className="flex flex-col gap-[50px] items-start w-[656px] max-w-full">
           {/* Headline */}
-          <h1 className="font-normal text-5xl sm:text-6xl md:text-7xl lg:text-[95px] text-white leading-none capitalize">
+          <h1 className="font-normal text-5xl sm:text-6xl md:text-7xl lg:text-[length:var(--home-h1)] text-white leading-none capitalize">
             Power What
             <br />
             Matters Most
           </h1>
           
           {/* Subtitle */}
-          <p className="font-normal text-xl sm:text-2xl md:text-[32px] text-white leading-[1.3]">
+          <p className="font-normal text-xl sm:text-2xl md:text-[length:var(--home-h4)] text-white leading-[1.3]">
             Changing your energy means changing lives
           </p>
 
           {/* CTA Buttons */}
           <div className="flex flex-wrap gap-5 items-start">
-            <button className="bg-white text-black px-[22px] py-[18px] rounded-full font-bold text-base flex items-center gap-2 hover:bg-white/90 transition-colors capitalize">
+            <button className="flex items-center gap-2 rounded-[var(--home-button-radius)] bg-[color:var(--home-white)] px-[var(--home-button-px)] py-[var(--home-button-py)] font-bold text-[length:var(--home-h7)] text-[color:var(--home-foreground-primary)] capitalize transition-opacity hover:opacity-90">
               Pick a Plan
               <svg width="15" height="8" viewBox="0 0 15 8" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M14.3536 4.35355C14.5488 4.15829 14.5488 3.84171 14.3536 3.64645L11.1716 0.464466C10.9763 0.269204 10.6597 0.269204 10.4645 0.464466C10.2692 0.659728 10.2692 0.976311 10.4645 1.17157L13.2929 4L10.4645 6.82843C10.2692 7.02369 10.2692 7.34027 10.4645 7.53553C10.6597 7.7308 10.9763 7.7308 11.1716 7.53553L14.3536 4.35355ZM0 4.5H14V3.5H0V4.5Z" fill="currentColor"/>
               </svg>
             </button>
-            <button className="bg-[#212120] text-white px-[22px] py-[18px] rounded-full font-bold text-base flex items-center gap-2 hover:bg-[#212120]/90 transition-colors capitalize">
+            <button className="flex items-center gap-2 rounded-[var(--home-button-radius)] bg-[color:var(--home-black)] px-[var(--home-button-px)] py-[var(--home-button-py)] font-bold text-[length:var(--home-h7)] text-white capitalize transition-opacity hover:opacity-90">
               How it works
               <svg width="15" height="8" viewBox="0 0 15 8" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M14.3536 4.35355C14.5488 4.15829 14.5488 3.84171 14.3536 3.64645L11.1716 0.464466C10.9763 0.269204 10.6597 0.269204 10.4645 0.464466C10.2692 0.659728 10.2692 0.976311 10.4645 1.17157L13.2929 4L10.4645 6.82843C10.2692 7.02369 10.2692 7.34027 10.4645 7.53553C10.6597 7.7308 10.9763 7.7308 11.1716 7.53553L14.3536 4.35355ZM0 4.5H14V3.5H0V4.5Z" fill="currentColor"/>
@@ -124,7 +129,7 @@ export default function Hero() {
               </div>
             </div>
             {/* Text */}
-            <div className="text-white font-bold text-base capitalize leading-[1.5] whitespace-nowrap">
+            <div className="text-white font-bold text-[length:var(--home-h7)] capitalize leading-[1.5] whitespace-nowrap">
               <p>Trusted By Over</p>
               <p>+5k Homeowners</p>
             </div>
@@ -143,21 +148,22 @@ export default function Hero() {
                     className="w-full flex-shrink-0"
                   >
                     <div 
-                      className="relative rounded-[10px] p-[30px] border border-white/[0.78] backdrop-blur-[23px]"
+                      className="relative overflow-hidden rounded-[var(--home-card-radius)] p-[30px] backdrop-blur-[23px]"
                       style={{
                         background: "linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.08) 100%), linear-gradient(90deg, rgba(76, 76, 76, 0.18) 0%, rgba(115, 115, 115, 0.18) 49.519%, rgba(78, 78, 78, 0.18) 100%)"
                       }}
                     >
                       {/* Noise texture overlay */}
                       <div 
-                        className="absolute inset-0 rounded-[10px] opacity-[0.06] mix-blend-overlay"
+                        className="absolute inset-0 z-0 rounded-[var(--home-card-radius)] opacity-[0.06] mix-blend-overlay"
                         style={{
                           backgroundImage: `url('/images/04ace053e2cc3324a9bd79a136ce79eb15125e2d.png')`,
                           backgroundSize: "424px 424px"
                         }}
                       />
-                      <div className="relative flex flex-col gap-5">
-                        <p className="text-white font-bold text-base leading-[1.2]">
+                      <CardGradientBorder className="rounded-[var(--home-card-radius)]" />
+                      <div className="relative z-[2] flex flex-col gap-5">
+                        <p className="text-white font-bold text-[length:var(--home-h7)] leading-[1.2]">
                           {testimonial.quote}
                         </p>
                         <div className="flex items-center gap-2.5">
@@ -169,7 +175,7 @@ export default function Hero() {
                               className="object-cover"
                             />
                           </div>
-                          <p className="text-white text-[13px] leading-[1.2]">{testimonial.name}</p>
+                          <p className="text-white text-[length:var(--home-paragraph)] leading-[1.2]">{testimonial.name}</p>
                         </div>
                       </div>
                     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
 import { useCallback, useEffect, useState } from "react";
 
@@ -127,7 +128,7 @@ export default function Benefits() {
           if (index < currentIndex) goToPrev();
           if (index > currentIndex) goToNext();
         }}
-        className={`relative flex-shrink-0 overflow-hidden rounded-[10px] ${
+        className={`relative flex-shrink-0 overflow-hidden rounded-[var(--home-card-radius)] ${
           !isCenter ? "cursor-pointer" : ""
         }`}
         style={{ width: slideWidth, height: slideHeight }}
@@ -161,7 +162,7 @@ export default function Benefits() {
             transitionTimingFunction: "cubic-bezier(0.33, 1, 0.68, 1)",
           }}
         >
-          <div className="flex flex-col gap-3 text-[#212120] sm:gap-5" style={{ maxWidth: `${slide.textMaxWidth}px` }}>
+          <div className="flex flex-col gap-3 text-[color:var(--home-black)] sm:gap-5" style={{ maxWidth: `${slide.textMaxWidth}px` }}>
             <h3 className="whitespace-pre-line text-[26px] leading-[1.2] sm:text-[34px] lg:text-[44px]">
               {slide.title}
             </h3>
@@ -175,11 +176,14 @@ export default function Benefits() {
   };
 
   return (
-    <section className="bg-white px-5 py-5">
+    <section
+      className="overflow-x-hidden bg-[color:var(--home-white)] px-5 py-5"
+      style={homepageStyleVars}
+    >
       <div className="flex flex-col gap-5">
         {/* Row 1 - Savings Hero */}
         <div 
-          className="relative w-full h-[100vh] min-h-[80vh] rounded-[10px] flex flex-col items-center pt-[240px] overflow-hidden"
+          className="relative flex h-[100vh] min-h-[80vh] w-full flex-col items-center overflow-hidden rounded-[var(--home-card-radius)] pt-[240px]"
           style={{
             background: "linear-gradient(to bottom, #d9f0ff 0%, #669bbc 100%)"
           }}
@@ -202,12 +206,12 @@ export default function Benefits() {
           <div className="relative z-10 flex flex-col items-center gap-8 lg:gap-[60px] text-center">
             {/* Heading */}
             <div className="flex flex-col gap-5 items-center">
-              <h2 className="text-white text-[40px] sm:text-[55px] lg:text-[70px] leading-[1.2] capitalize">
+              <h2 className="text-white text-[40px] leading-[1.2] capitalize sm:text-[55px] lg:text-[length:var(--home-h2)]">
                 How Much Could You
                 <br />
                 Save By Going Solar?
               </h2>
-              <p className="text-white text-lg lg:text-2xl leading-[1.4]">
+              <p className="text-lg leading-[1.4] text-white lg:text-[length:var(--home-h5)]">
                 (hint: they&apos;re all good things)
               </p>
             </div>
@@ -287,7 +291,7 @@ export default function Benefits() {
         </div>
 
         {/* Row 2 - Benefits Carousel */}
-        <div className="relative rounded-[10px]" style={{ height: `${slideHeight}px` }}>
+        <div className="relative rounded-[var(--home-card-radius)]" style={{ height: `${slideHeight}px` }}>
           <div
             className="flex h-full items-center"
             style={{
@@ -350,7 +354,7 @@ export default function Benefits() {
         
         {/* Row 3 - Image Grid */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <div className="relative h-[545px] overflow-hidden rounded-[10px]">
+          <div className="relative h-[545px] overflow-hidden rounded-[var(--home-card-radius)]">
             <Image
               src="/images/c71bbfe115affc201a1c2f1a5878d801dcfcaa9a.png"
               alt=""
@@ -366,7 +370,7 @@ export default function Benefits() {
               sizes="(min-width: 1024px) calc((100vw - 60px) / 2), 100vw"
             />
           </div>
-          <div className="relative h-[545px] overflow-hidden rounded-[10px]">
+          <div className="relative h-[545px] overflow-hidden rounded-[var(--home-card-radius)]">
             <Image
               src="/images/6101f18224076c77286f18820dfd5c3e40ad55fb.png"
               alt="Family preparing food in a bright kitchen"

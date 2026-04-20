@@ -1,5 +1,6 @@
 "use client";
 
+import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
 import { useState, useEffect, useCallback, useRef } from "react";
 
@@ -140,7 +141,7 @@ export default function SpendLess() {
           if (index < currentIndex) goToPrev();
           if (index > currentIndex) goToNext();
         }}
-        className={`relative flex-shrink-0 rounded-[10px] overflow-hidden ${
+        className={`relative flex-shrink-0 overflow-hidden rounded-[var(--home-card-radius)] ${
           !isCenter ? "cursor-pointer" : ""
         }`}
         style={{
@@ -180,10 +181,10 @@ export default function SpendLess() {
             transitionTimingFunction: "cubic-bezier(0.33, 1, 0.68, 1)",
           }}
         >
-          <p className="text-white font-extrabold text-base sm:text-lg leading-[1.5] max-w-[249px]">
+          <p className="max-w-[249px] text-base font-extrabold leading-[1.5] text-white sm:text-[length:var(--home-text-medium-extra-bold)]">
             {slide.title}
           </p>
-          <p className="text-white font-normal text-sm sm:text-base leading-[1.5] max-w-[249px]">
+          <p className="max-w-[249px] text-sm font-normal leading-[1.5] text-white sm:text-[length:var(--home-h7)]">
             {slide.description}
           </p>
         </div>
@@ -195,10 +196,13 @@ export default function SpendLess() {
   const realIndex = currentIndex % slides.length;
 
   return (
-    <section className="py-[160px] bg-white overflow-hidden">
+    <section
+      className="overflow-hidden bg-[color:var(--home-white)] py-[160px]"
+      style={homepageStyleVars}
+    >
       {/* Heading */}
       <div className="max-w-[1200px] mx-auto px-5 mb-[70px]">
-        <h2 className="text-[#212120] text-[40px] sm:text-[55px] md:text-[70px] leading-none capitalize">
+        <h2 className="text-[40px] leading-none capitalize text-[color:var(--home-black)] sm:text-[55px] md:text-[length:var(--home-h2)]">
           Spend Less On Power.
           <br />
           Spend More On Life

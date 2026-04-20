@@ -1,3 +1,5 @@
+import { homepageStyleVars } from "@/lib/homepage-design-system";
+
 export default function Misconceptions() {
   const myths = [
     {
@@ -54,19 +56,22 @@ export default function Misconceptions() {
   ];
 
   return (
-    <section className="bg-white px-5 pb-[160px] pt-[70px]">
+    <section
+      className="bg-[color:var(--home-white)] px-5 pb-[160px] pt-[20px]"
+      style={homepageStyleVars}
+    >
       <div
-        className="mx-auto w-full max-w-[1880px] overflow-hidden rounded-[10px] px-6 py-20 sm:px-10 sm:py-24 lg:px-[150px] lg:py-[260px]"
+        className="mx-auto w-full max-w-[1880px] overflow-hidden rounded-[var(--home-card-radius)] px-6 py-20 sm:px-10 sm:py-24 lg:px-[150px] lg:py-[160px]"
         style={{
           background:
-            "radial-gradient(130% 130% at 50% 110%, #6b92bc 0%, #597695 25%, #465a6e 50%, #343d47 75%, #2a2f33 87.5%, #212120 100%), linear-gradient(90deg, #212120 0%, #212120 100%)",
+            "radial-gradient(130% 130% at 50% 110%, #6b92bc 0%, #597695 25%, #465a6e 50%, #343d47 75%, #2a2f33 87.5%, var(--home-black) 100%), linear-gradient(90deg, var(--home-black) 0%, var(--home-black) 100%)",
         }}
       >
         <div className="flex flex-col items-center text-center">
           <p className="mb-[-14px] text-[96px] leading-none text-white/55 sm:text-[130px] lg:mb-[-40px] lg:text-[170px]">
             3
           </p>
-          <h2 className="text-[32px] capitalize leading-[1.3] text-white sm:text-[38px] lg:text-[44px]">
+          <h2 className="text-[length:var(--home-h4-mobile)] capitalize leading-[1.3] text-white sm:text-[length:var(--home-h4)] lg:text-[44px]">
             Common Misconceptions
             <br />
             About Going Solar
@@ -81,7 +86,7 @@ export default function Misconceptions() {
                 <h3 className="text-[36px] capitalize leading-[1.15] sm:text-[40px] lg:text-[44px]">
                   {myth.title}
                 </h3>
-                <p className="text-[15px] leading-[1.5] text-white/95 lg:text-base">
+                <p className="text-[15px] leading-[1.5] text-white/95 lg:text-[length:var(--home-h7)]">
                   {myth.description}
                 </p>
               </div>

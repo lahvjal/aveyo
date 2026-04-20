@@ -1,140 +1,372 @@
-import Link from "next/link";
-import Image from "next/image";
+"use client";
 
-export default function Footer() {
-  const footerLinks = {
-    company: [
-      { name: "About Us", href: "#about" },
-      { name: "Our Services", href: "#services" },
-      { name: "Pricing", href: "#pricing" },
-      { name: "Contact", href: "#contact" },
-    ],
-    support: [
-      { name: "FAQ", href: "#" },
-      { name: "Support Center", href: "#" },
-      { name: "Maintenance", href: "#" },
-      { name: "Warranty", href: "#" },
-    ],
-    legal: [
-      { name: "Privacy Policy", href: "#" },
-      { name: "Terms of Service", href: "#" },
-      { name: "Cookie Policy", href: "#" },
-    ],
-  };
+import Image from "next/image";
+import Link from "next/link";
+import type { CSSProperties } from "react";
+import designSystem from "@/design-system.json";
+import {
+  AVEYO_ADDRESS,
+  AVEYO_CUSTOMER_CARE_PHONE,
+  AVEYO_CUSTOMER_CARE_PHONE_HREF,
+  AVEYO_INFO_EMAIL,
+  AVEYO_INFO_EMAIL_HREF,
+  AVEYO_SALES_PHONE,
+  AVEYO_SALES_PHONE_HREF
+} from "@/lib/site-config";
+
+export interface FooterCtaConfig {
+  eyebrow?: string;
+  title?: string;
+  description?: string;
+  actionLabel?: string;
+  actionHref?: string;
+}
+
+const footerColumns = [
+  [
+    { name: "About Us", href: "/about" },
+    { name: "Services", href: "/process" },
+    { name: "Solar Calculator", href: "/contact#sales-form" },
+    { name: "Blog", href: "/newsfeed" },
+    { name: "Contact Us", href: "/contact" }
+  ],
+  [
+    { name: "FAQs", href: "/contact" },
+    { name: "Support", href: AVEYO_CUSTOMER_CARE_PHONE_HREF },
+    {
+      name: "Terms of Use",
+      href: `${AVEYO_INFO_EMAIL_HREF}?subject=${encodeURIComponent("Aveyo Terms Of Use")}`
+    },
+    {
+      name: "Privacy Policy",
+      href: `${AVEYO_INFO_EMAIL_HREF}?subject=${encodeURIComponent("Aveyo Privacy Policy")}`
+    }
+  ]
+] as const;
+
+const legalLinks = [
+  {
+    name: "Privacy Policy",
+    href: `${AVEYO_INFO_EMAIL_HREF}?subject=${encodeURIComponent("Aveyo Privacy Policy")}`
+  },
+  {
+    name: "Terms of Service",
+    href: `${AVEYO_INFO_EMAIL_HREF}?subject=${encodeURIComponent("Aveyo Terms Of Service")}`
+  },
+  {
+    name: "Cookies Policy",
+    href: `${AVEYO_INFO_EMAIL_HREF}?subject=${encodeURIComponent("Aveyo Cookies Policy")}`
+  }
+] as const;
+
+const contactLinks = [
+  { name: AVEYO_SALES_PHONE, href: AVEYO_SALES_PHONE_HREF },
+  { name: AVEYO_CUSTOMER_CARE_PHONE, href: AVEYO_CUSTOMER_CARE_PHONE_HREF },
+  { name: AVEYO_INFO_EMAIL, href: AVEYO_INFO_EMAIL_HREF }
+] as const;
+
+const footerTokens = designSystem.components.footer;
+const designTokens = designSystem.tokens;
+
+const addressHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(AVEYO_ADDRESS)}`;
+const defaultCta: Required<Pick<FooterCtaConfig, "title" | "description" | "actionLabel">> = {
+  title: "Speak With An Aveyo Advisor. See What Solar Can Do For You.",
+  description: "We're here to answer your burning questions. No upsells. No commitments. Just top-tier help.",
+  actionLabel: "Ask Ava"
+};
+
+const footerStyleVars = {
+  "--footer-black": designTokens.colors.black,
+  "--footer-white": designTokens.colors.white,
+  "--footer-gray-light": designTokens.colors.grayLight4,
+  "--footer-ava-accent": designTokens.colors.footerAvaAccent,
+  "--footer-h2": `${designTokens.fontSize.h2}px`,
+  "--footer-h5": `${designTokens.fontSize.h5}px`,
+  "--footer-h7": `${designTokens.fontSize.h7}px`,
+  "--footer-paragraph": `${designTokens.fontSize.paragraph}px`,
+  "--footer-button-px": `${designTokens.spacing.buttonHorizontal}px`,
+  "--footer-button-py": `${designTokens.spacing.buttonVertical}px`,
+  "--footer-footer-px": `${designTokens.spacing.footerHorizontal}px`,
+  "--footer-footer-py": `${designTokens.spacing.footerVertical}px`,
+  "--footer-button-radius": `${designTokens.radius.button}px`,
+  "--footer-height": `${footerTokens.layout.height}px`,
+  "--footer-cta-top": `${footerTokens.layout.ctaTop}px`,
+  "--footer-cta-width": `${footerTokens.layout.ctaContentWidth}px`,
+  "--footer-image-top": `${footerTokens.layout.imageTop}px`,
+  "--footer-image-height": `${footerTokens.layout.imageHeight}px`,
+  "--footer-brand-width": `${footerTokens.layout.brandMarkWidth}px`,
+  "--footer-brand-height": `${footerTokens.layout.brandMarkHeight}px`,
+  "--footer-panel-height": `${footerTokens.layout.bottomPanelHeight}px`,
+  "--footer-button-width": `${footerTokens.button.width}px`,
+  "--footer-button-height": `${footerTokens.button.height}px`,
+  "--footer-panel-blur": `${footerTokens.effects.panelBlur}px`
+} as CSSProperties;
+
+function isExternalHref(href: string) {
+  return (
+    href.startsWith("http://") ||
+    href.startsWith("https://") ||
+    href.startsWith("mailto:") ||
+    href.startsWith("tel:")
+  );
+}
+
+function renderFooterLink(link: { name: string; href: string }, className: string) {
+  if (isExternalHref(link.href)) {
+    return (
+      <a
+        href={link.href}
+        className={className}
+        target={link.href.startsWith("http") ? "_blank" : undefined}
+        rel={link.href.startsWith("http") ? "noreferrer" : undefined}
+      >
+        {link.name}
+      </a>
+    );
+  }
 
   return (
-    <footer className="bg-brand-navy text-white relative overflow-hidden">
-      {/* Decorative solar panel image */}
-      <div className="absolute bottom-0 right-0 w-1/3 h-full pointer-events-none opacity-20">
-        <Image
-          src="/images/footer-panels.png"
-          alt=""
-          fill
-          className="object-cover object-left"
-          sizes="33vw"
+    <Link href={link.href} className={className}>
+      {link.name}
+    </Link>
+  );
+}
+
+function splitLines(value: string) {
+  return value.split("\n");
+}
+
+function openAvaWidget() {
+  const launcher = document.querySelector<HTMLButtonElement>('button[aria-label="Open Ava widget"]');
+  if (launcher) {
+    launcher.click();
+    launcher.focus();
+    return;
+  }
+
+  window.location.assign("/contact");
+}
+
+function handleFooterAction(actionHref?: string) {
+  if (actionHref) {
+    window.location.assign(actionHref);
+    return;
+  }
+
+  openAvaWidget();
+}
+
+function AvaGlyphIcon() {
+  return (
+    <svg width="11" height="11" viewBox="0 0 70 70" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path
+        d="M23.6958 30.57C24.6443 27.2441 27.244 24.6444 30.5699 23.6959L50.8524 17.9116C51.6065 17.6966 52.3034 18.3935 52.0884 19.1476L46.3041 39.4301C45.3556 42.756 42.7559 45.3557 39.43 46.3042L19.1475 52.0884C18.3935 52.3035 17.6965 51.6065 17.9116 50.8525L23.6958 30.57Z"
+        fill="white"
+      />
+    </svg>
+  );
+}
+
+function ArrowGlyph() {
+  return (
+    <svg color="white" width="15" height="8" viewBox="0 0 15 8" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <path
+        d="M14.3536 4.35355C14.5488 4.15829 14.5488 3.84171 14.3536 3.64645L11.1716 0.464466C10.9763 0.269204 10.6597 0.269204 10.4645 0.464466C10.2692 0.659728 10.2692 0.976311 10.4645 1.17157L13.2929 4L10.4645 6.82843C10.2692 7.02369 10.2692 7.34027 10.4645 7.53553C10.6597 7.7308 10.9763 7.7308 11.1716 7.53553L14.3536 4.35355ZM0 4.5H14V3.5H0V4.5Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
+function AskAvaBadge() {
+  return (
+    <span className="inline-flex w-[50px] items-center gap-[5px] leading-none text-white font-bold">
+      <span className="inline-flex h-[18px] w-[18px] items-center justify-center rounded-full bg-[var(--footer-ava-accent)]">
+        <AvaGlyphIcon />
+
+      </span>
+      <span className="leading-none text-[var(--footer-h7)]">Ava</span>
+    </span>
+  );
+}
+
+export default function Footer({ cta }: { cta?: FooterCtaConfig }) {
+  const resolvedCta = {
+    title: cta?.title ?? defaultCta.title,
+    description: cta?.description ?? defaultCta.description,
+    actionLabel: cta?.actionLabel ?? defaultCta.actionLabel,
+    actionHref: cta?.actionHref
+  };
+  const titleLines = splitLines(resolvedCta.title);
+  const descriptionLines = splitLines(resolvedCta.description);
+  const usesAskAvaPill = !resolvedCta.actionHref && resolvedCta.actionLabel.trim().toLowerCase() === "ask ava";
+
+  return (
+    <footer
+      className="relative overflow-hidden bg-[var(--footer-gray-light)] text-[var(--footer-black)]"
+      style={footerStyleVars}
+    >
+      <div className="relative min-h-[1480px] sm:min-h-[1660px] xl:h-[var(--footer-height)]">
+        <div
+          className="absolute inset-0"
+          style={{ background: footerTokens.backgrounds.rootGradient }}
         />
-      </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 relative z-10">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12">
-          {/* Brand Column */}
-          <div className="lg:col-span-2">
-            <Link href="/" className="inline-block mb-6">
-              <svg
-                viewBox="0 0 120 40"
-                className="h-8 w-auto"
-                fill="none"
-                xmlns="http://www.w3.org/2000/svg"
-              >
-                <path
-                  d="M10 30L20 10L30 30H25L20 20L15 30H10Z"
-                  fill="#D4A84B"
-                />
-                <text
-                  x="38"
-                  y="28"
-                  fill="white"
-                  fontFamily="serif"
-                  fontSize="20"
-                  fontWeight="500"
-                >
-                  AVEYO
-                </text>
-              </svg>
-            </Link>
-            <p className="text-white/60 mb-6 max-w-sm">
-              Bringing clean, affordable solar energy to homes across America. Power what matters most with Aveyo.
-            </p>
-            <div className="flex gap-4">
-              <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/>
-                </svg>
-              </a>
-              <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                </svg>
-              </a>
-              <a href="#" className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center hover:bg-white/20 transition-colors">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/>
-                </svg>
-              </a>
-            </div>
-          </div>
+        <div className="absolute inset-x-0 left-1/2 top-[88px] z-20 w-[calc(100%-2rem)] max-w-[1200px] -translate-x-1/2 text-center sm:top-[132px] xl:top-[var(--footer-cta-top)] xl:w-[var(--footer-cta-width)]">
+          <h2 className="mx-auto max-w-[1000px] text-[42px] leading-[0.96] tracking-[-0.04em] sm:text-[56px] xl:text-[var(--footer-h2)]">
+            {titleLines.map((line, index) => (
+              <span key={`${line}-${index}`}>
+                {index > 0 ? <br /> : null}
+                {line}
+              </span>
+            ))}
+          </h2>
 
-          {/* Company Links */}
-          <div>
-            <h4 className="font-medium mb-4">Company</h4>
-            <ul className="space-y-3">
-              {footerLinks.company.map((link) => (
-                <li key={link.name}>
-                  <Link href={link.href} className="text-white/60 hover:text-white transition-colors">
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <p className="mx-auto mt-8 max-w-[600px] text-base leading-[1.4] text-[var(--footer-black)]/88 sm:text-[20px] xl:w-[600px] xl:text-[var(--footer-h5)]">
+            {descriptionLines.map((line, index) => (
+              <span key={`${line}-${index}`}>
+                {index > 0 ? <br /> : null}
+                {line}
+              </span>
+            ))}
+          </p>
 
-          {/* Support Links */}
-          <div>
-            <h4 className="font-medium mb-4">Support</h4>
-            <ul className="space-y-3">
-              {footerLinks.support.map((link) => (
-                <li key={link.name}>
-                  <Link href={link.href} className="text-white/60 hover:text-white transition-colors">
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Legal Links */}
-          <div>
-            <h4 className="font-medium mb-4">Legal</h4>
-            <ul className="space-y-3">
-              {footerLinks.legal.map((link) => (
-                <li key={link.name}>
-                  <Link href={link.href} className="text-white/60 hover:text-white transition-colors">
-                    {link.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+          <div className="mt-10 flex justify-center sm:mt-12 xl:mt-[60px]">
+            <button
+              type="button"
+              onClick={() => handleFooterAction(resolvedCta.actionHref)}
+              className={`inline-flex min-h-[54px] items-center whitespace-nowrap rounded-[var(--footer-button-radius)] bg-[var(--footer-black)] px-[var(--footer-button-px)] py-[var(--footer-button-py)] text-[var(--footer-h7)] font-medium leading-none tracking-[-0.01em] text-white transition-transform duration-200 hover:scale-[1.01] xl:h-[var(--footer-button-height)] ${
+                usesAskAvaPill ? "justify-between" : "justify-center gap-2"
+              }`}
+              style={usesAskAvaPill ? { width: `${footerTokens.button.width}px` } : undefined}
+            >
+              {usesAskAvaPill ? (
+                <>
+                  <span className="leading-none font-bold text-white">Ask</span>
+                  <AskAvaBadge />
+                  <ArrowGlyph />
+                </>
+              ) : (
+                <>
+                  <span className="leading-none text-white">{resolvedCta.actionLabel}</span>
+                  <ArrowGlyph />
+                </>
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="border-t border-white/10 mt-12 pt-8 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <p className="text-white/40 text-sm">
-            © {new Date().getFullYear()} Aveyo Solar. All rights reserved.
-          </p>
-          <p className="text-white/40 text-sm">
-            Made with ☀️ for a brighter future
-          </p>
+        <div className="absolute inset-x-0 bottom-0 top-[460px] sm:top-[560px] xl:top-[var(--footer-image-top)]">
+          <div className="relative h-full">
+            <div
+              className="absolute left-1/2 top-0 h-[343px] w-[440px] -translate-x-1/2 sm:h-[500px] sm:w-[640px] xl:h-[var(--footer-brand-height)] xl:w-[var(--footer-brand-width)]"
+              style={{ opacity: footerTokens.effects.brandMarkOpacity }}
+              aria-hidden="true"
+            >
+              <Image
+                src={footerTokens.assets.backgroundLogo}
+                alt=""
+                fill
+                sizes="(min-width: 1280px) 870px, (min-width: 640px) 640px, 440px"
+                className="object-contain"
+              />
+            </div>
+
+            <div className="inset-x-0 bottom-0 h-[920px] sm:h-[1080px] xl:h-[var(--footer-image-height)]">
+              <Image
+                src={footerTokens.assets.houseImage}
+                alt=""
+                fill
+                sizes="100vw"
+                className="object-contain"
+              />
+              <div
+                className="absolute inset-0"
+                style={{ background: footerTokens.backgrounds.imageFade }}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 z-30 h-[420px] text-white sm:h-[430px] xl:h-[var(--footer-panel-height)]">
+          <div
+            className="absolute inset-0 overflow-hidden backdrop-blur-[var(--footer-panel-blur)]"
+            style={{ background: footerTokens.backgrounds.panelOverlay }}
+          >
+            <div className="absolute left-[-120px] top-[18px] h-[220px] w-[360px] rounded-full bg-black/24 blur-[120px]" />
+            <div className="absolute left-[23%] top-[30px] h-[230px] w-[260px] rounded-full bg-black/18 blur-[120px]" />
+            <div className="absolute right-[-140px] top-[46px] h-[260px] w-[340px] rounded-full bg-[#728055]/20 blur-[140px]" />
+            <div
+              className="absolute inset-0 mix-blend-overlay"
+              style={{
+                opacity: footerTokens.effects.panelNoiseOpacity,
+                backgroundImage: "url('/images/04ace053e2cc3324a9bd79a136ce79eb15125e2d.png')",
+                backgroundSize: "424px 424px"
+              }}
+            />
+          </div>
+
+          <div className="relative flex h-full flex-col border-t border-[rgba(255,255,255,0.28)] px-6 py-10 sm:px-8 xl:px-[var(--footer-footer-px)] xl:py-[var(--footer-footer-py)]">
+            <div className="grid flex-1 gap-10 sm:gap-12 lg:grid-cols-[minmax(0,1fr)_160px_160px] xl:gap-14">
+              <div className="max-w-[280px]">
+                <Link href="/" className="inline-flex items-center">
+                  <Image src="/aveyo-logo.svg" alt="Aveyo" width={110} height={24} className="h-6 w-auto" />
+                </Link>
+
+                <div className="mt-7 space-y-5 text-[13px] leading-[1.65] text-white/88 xl:text-[var(--footer-paragraph)]">
+                  <div>
+                    <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.22em] text-white/58">
+                      Address:
+                    </p>
+                    <a
+                      href={addressHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="transition-colors hover:text-white"
+                    >
+                      {AVEYO_ADDRESS}
+                    </a>
+                  </div>
+
+                  <div>
+                    <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.22em] text-white/58">
+                      Contact:
+                    </p>
+                    <div className="flex flex-col">
+                      {contactLinks.map((link) => (
+                        <a key={link.name} href={link.href} className="transition-colors hover:text-white">
+                          {link.name}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {footerColumns.map((column, columnIndex) => (
+                <nav key={`footer-column-${columnIndex}`} aria-label={`Footer links ${columnIndex + 1}`}>
+                  <ul className="space-y-2.5 text-[13px] leading-[1.7] text-white/88 xl:text-[var(--footer-paragraph)]">
+                    {column.map((link) => (
+                      <li key={link.name}>
+                        {renderFooterLink(link, "transition-colors hover:text-white")}
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+              ))}
+            </div>
+
+            <div className="mt-6 flex flex-col gap-4 border-t border-white/36 pt-4 text-[11px] leading-[1.45] text-white/74 sm:flex-row sm:items-center sm:justify-between xl:text-[12px]">
+              <p>© {new Date().getFullYear()} Aveyo Solar. All rights reserved.</p>
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                {legalLinks.map((link) => (
+                  <span key={link.name}>
+                    {renderFooterLink(link, "transition-colors hover:text-white")}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </footer>

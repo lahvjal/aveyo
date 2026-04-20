@@ -1,0 +1,235 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "meta": {
+    "project": "aveyo.com",
+    "version": 4,
+    "lastUpdated": "2026-04-20",
+    "notes": "Design system tokens sourced from the Aveyo 2026 homepage, content pages, footer designs, and shared UI surface treatments.",
+    "sources": [
+      {
+        "name": "Aveyo 2026 Homepage",
+        "nodeId": "443:1897",
+        "url": "https://www.figma.com/design/e3Wds3Xbguv28mRnMDTjIT/Aveyo-2026?node-id=443-1897&m=dev"
+      },
+      {
+        "name": "Aveyo 2026 Pricing Cards",
+        "nodeId": "723:2666",
+        "url": "https://www.figma.com/design/e3Wds3Xbguv28mRnMDTjIT/Aveyo-2026?node-id=723-2666&m=dev"
+      },
+      {
+        "name": "Aveyo 2026 Footer",
+        "nodeId": "842:3516",
+        "url": "https://www.figma.com/design/e3Wds3Xbguv28mRnMDTjIT/Aveyo-2026?node-id=842-3516&m=dev"
+      }
+    ]
+  },
+  "figmaVariables": {
+    "Black": "#212120",
+    "White": "#FFFFFF",
+    "Foreground/primary": "#000000",
+    "Gray-Dark2": "#7D8081",
+    "Gray-Dark4": "#4C4E4E",
+    "Gray-Light4": "#F4F4F4",
+    "Gray-Light5": "#F9F9F9",
+    "h1": 95,
+    "h2": 70,
+    "h3": 52,
+    "h4": 32,
+    "h5": 24,
+    "h6": 18,
+    "h7": 16,
+    "paragraph": 13,
+    "Text/Medium/Extra Bold": {
+      "family": "PP Telegraf",
+      "style": "Ultrabold",
+      "size": 18,
+      "weight": 800,
+      "lineHeight": 1.5,
+      "letterSpacing": 0
+    },
+    "Text/Regular/Normal": {
+      "family": "PP Telegraf",
+      "style": "Regular",
+      "size": 16,
+      "weight": 400,
+      "lineHeight": 1.5,
+      "letterSpacing": 0
+    },
+    "Text/Large/Normal": {
+      "family": "PP Telegraf",
+      "style": "Regular",
+      "size": 20,
+      "weight": 400,
+      "lineHeight": 1.5,
+      "letterSpacing": 0
+    },
+    "Heading/H4 - Mobile": {
+      "family": "PP Telegraf",
+      "style": "Ultrabold",
+      "size": 24,
+      "weight": 800,
+      "lineHeight": 1.4,
+      "letterSpacing": 0
+    },
+    "button hor padding": 22,
+    "button vert padding": 18,
+    "card padding": 40,
+    "Button Corner": 60,
+    "Card Corner": 10,
+    "footer hor padding": 64,
+    "footer vert padding": 80
+  },
+  "tokens": {
+    "colors": {
+      "black": "#212120",
+      "white": "#FFFFFF",
+      "foregroundPrimary": "#000000",
+      "grayDark2": "#7D8081",
+      "grayDark4": "#4C4E4E",
+      "grayLight4": "#F4F4F4",
+      "grayLight5": "#F9F9F9",
+      "pageShellBg": "#F4F6F6",
+      "cream": "#F5F3EE",
+      "navy": "#0A1628",
+      "navySoft": "#10223B",
+      "textMuted": "#5F646B",
+      "textMutedAlt": "#6B7280",
+      "borderSoft": "#DBE2E8",
+      "borderSoftAlt": "#D8DDE2",
+      "blueTint": "#EDF4FB",
+      "surfaceLightTop": "#F9FBFC",
+      "surfaceLightBottom": "#EEF3F7",
+      "footerSkyTop": "#FFFFFF",
+      "footerSkyMid": "#EAF4FD",
+      "footerSkyBottom": "#CFE4F8",
+      "footerAvaAccent": "#6F63FF"
+    },
+    "fontSize": {
+      "h1": 95,
+      "h2": 70,
+      "h3": 52,
+      "h4": 32,
+      "h5": 24,
+      "h6": 18,
+      "h7": 16,
+      "paragraph": 13
+    },
+    "typography": {
+      "textMediumExtraBold": {
+        "family": "PP Telegraf",
+        "style": "Ultrabold",
+        "size": 18,
+        "weight": 800,
+        "lineHeight": 1.5,
+        "letterSpacing": 0
+      },
+      "textRegularNormal": {
+        "family": "PP Telegraf",
+        "style": "Regular",
+        "size": 16,
+        "weight": 400,
+        "lineHeight": 1.5,
+        "letterSpacing": 0
+      },
+      "textLargeNormal": {
+        "family": "PP Telegraf",
+        "style": "Regular",
+        "size": 20,
+        "weight": 400,
+        "lineHeight": 1.5,
+        "letterSpacing": 0
+      },
+      "headingH4Mobile": {
+        "family": "PP Telegraf",
+        "style": "Ultrabold",
+        "size": 24,
+        "weight": 800,
+        "lineHeight": 1.4,
+        "letterSpacing": 0
+      }
+    },
+    "spacing": {
+      "buttonHorizontal": 22,
+      "buttonVertical": 18,
+      "cardPadding": 40,
+      "footerHorizontal": 64,
+      "footerVertical": 80
+    },
+    "radius": {
+      "button": 60,
+      "card": 10,
+      "field": 18,
+      "stat": 22,
+      "faq": 24,
+      "siteCard": 26,
+      "panel": 28
+    },
+    "effects": {
+      "cardGradientBorder": {
+        "width": 0.9,
+        "background": "linear-gradient(5deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.4) 50%, rgba(255,255,255,0) 100%)",
+        "webkitMask": "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
+        "webkitMaskComposite": "xor",
+        "maskComposite": "exclude"
+      }
+    }
+  },
+  "components": {
+    "testimonials": {
+      "starColor": "#F0B046"
+    },
+    "footer": {
+      "nodeId": "842:3516",
+      "layout": {
+        "height": 1940.6875,
+        "ctaSectionHeight": 613,
+        "ctaContentWidth": 1200,
+        "ctaTop": 200,
+        "descriptionWidth": 600,
+        "imageTop": 691,
+        "imageHeight": 1249.6875,
+        "brandMarkWidth": 870,
+        "brandMarkHeight": 679,
+        "bottomPanelHeight": 447
+      },
+      "button": {
+        "width": 154.33804321289062,
+        "height": 54.1220703125
+      },
+      "assets": {
+        "houseImage": "/images/footer-house.png",
+        "backgroundLogo": "/images/footer-bg-logo.svg"
+      },
+      "backgrounds": {
+        "rootGradient": "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 14%, #F4F4F4 24%, #EAF4FD 54%, #CFE4F8 100%)",
+        "imageFade": "linear-gradient(180deg, rgba(255, 255, 255, 0) 0%, rgba(33, 33, 32, 0.08) 100%)",
+        "panelOverlay": "linear-gradient(180deg, rgba(33, 33, 32, 0.56) 0%, rgba(33, 33, 32, 0.76) 100%), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 48%, rgba(255, 255, 255, 0.06) 100%)"
+      },
+      "effects": {
+        "brandMarkOpacity": 0.58,
+        "panelNoiseOpacity": 0.08,
+        "panelBlur": 28
+      },
+      "content": {
+        "topLinks": [
+          "About Us",
+          "Services",
+          "Solar Calculator",
+          "Blog",
+          "Contact Us"
+        ],
+        "secondaryLinks": [
+          "FAQs",
+          "Support",
+          "Terms of Use",
+          "Privacy Policy"
+        ],
+        "legalLinks": [
+          "Privacy Policy",
+          "Terms of Service",
+          "Cookies Policy"
+        ]
+      }
+    }
+  }
+}

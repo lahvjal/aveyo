@@ -1,8 +1,11 @@
 "use client";
 
+import { CardGradientBorder } from "@/components/ui/card-gradient-border";
+import { homepageStyleVars } from "@/lib/homepage-design-system";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { resolveAppUrl, resolveEnvironment } from "@ava/config/runtime/app-urls";
 import {
   buildAuthLoginUrl as buildSharedAuthLoginUrl,
@@ -86,6 +89,7 @@ function normalizeSessionUser(payload: unknown): AuthSessionUser | null {
 }
 
 export default function Navbar() {
+  const pathname = usePathname();
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [authSession, setAuthSession] = useState<AuthSessionState>({
@@ -174,16 +178,22 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { name: "Solar", href: "#solar", hasDropdown: true },
-    { name: "Company", href: "#about", hasDropdown: true },
-    { name: "Customers", href: "#customers", hasDropdown: true },
+    { name: "Why Solar", href: "/why-solar" },
+    { name: "Process", href: "/process" },
+    { name: "Commercial", href: "/commercial" },
+    { name: "About", href: "/about" },
+    { name: "Newsfeed", href: "/newsfeed" },
+    { name: "Contact", href: "/contact" }
   ];
+
+  const isActiveLink = (href: string) => pathname === href || pathname?.startsWith(`${href}/`);
 
   return (
     <nav
       className={`fixed inset-x-0 top-0 z-50 transition-all duration-500 ${
         isScrolled ? "py-5" : "py-0"
       }`}
+      style={homepageStyleVars}
     >
       <div
         className={`mx-auto transition-all duration-500 ${
@@ -210,18 +220,7 @@ export default function Navbar() {
             />
           )}
           {isScrolled && (
-            <div
-              className="pointer-events-none absolute inset-0 z-[1] rounded-[90px] p-[0.9px]"
-              aria-hidden="true"
-              style={{
-                background:
-                  "linear-gradient(5deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 20) 50%, rgba(255,255,255,0) 100%)",
-                WebkitMask:
-                  "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                WebkitMaskComposite: "xor",
-                maskComposite: "exclude",
-              }}
-            />
+            <CardGradientBorder className="rounded-[90px]" />
           )}
 
           {/* Logo */}
@@ -236,52 +235,30 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div
-            className={`relative z-10 hidden items-center transition-all duration-500 md:flex ${
-              isScrolled ? "gap-[30px]" : "gap-[60px]"
-            }`}
-          >
+          <div className="relative z-10 hidden items-center gap-7 transition-all duration-500 lg:flex xl:gap-9">
             {/* Nav Links */}
-            <div className={`flex items-center transition-all duration-500 ${isScrolled ? "gap-[30px]" : "gap-10"}`}>
+            <div className="flex items-center gap-5 transition-all duration-500 xl:gap-7">
               {navLinks.map((link) => (
                 <Link
                   key={link.name}
                   href={link.href}
-                  className="flex items-center gap-1.5 text-base font-extrabold text-white transition-opacity hover:opacity-80"
+                  className="text-sm font-extrabold text-white transition-opacity hover:opacity-80 xl:text-[length:var(--home-paragraph)]"
                 >
                   {link.name}
-                  {link.hasDropdown && (
-                    <svg width="9" height="6" viewBox="0 0 9 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path
-                        d="M1 1L4.5 5L8 1"
-                        stroke="white"
-                        strokeWidth="1.5"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  )}
                 </Link>
               ))}
             </div>
 
             {/* Right Side: CTA Button + Menu Icon */}
             <div className="flex items-center gap-5">
-              <button
-                className={`h-10 rounded-full px-6 text-base font-extrabold transition-colors ${
-                  isScrolled
-                    ? "bg-white text-[#212120] hover:bg-white/90"
-                    : "bg-[#343534] text-white hover:bg-[#3f413f]"
-                }`}
+              <Link
+                href="/contact#sales-form"
+                className="inline-flex h-10 items-center justify-center rounded-[var(--home-button-radius)] bg-[color:var(--home-white)] px-6 text-sm font-extrabold text-[color:var(--home-black)] transition-colors hover:bg-white/90"
               >
                 Pick a plan
-              </button>
+              </Link>
               <button
-                className={`flex h-[55px] w-[55px] items-center justify-center rounded-full border transition-colors ${
-                  isScrolled
-                    ? "border-white bg-white text-[#212120]"
-                    : "border-white/30 bg-transparent text-white"
-                }`}
+                className="flex h-[55px] w-[55px] items-center justify-center rounded-full border border-white bg-[color:var(--home-white)] text-[color:var(--home-black)] transition-colors hover:bg-white/90"
                 type="button"
                 onClick={handleAuthButtonClick}
                 aria-label={authSession.authenticated ? "Open account" : "Login"}
@@ -308,12 +285,12 @@ export default function Navbar() {
                   >
                     <path
                       d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z"
-                      stroke={isScrolled ? "#212120" : "white"}
+                      stroke="var(--home-black)"
                       strokeWidth="2"
                     />
                     <path
                       d="M4 21C4 17.6863 7.58172 15 12 15C16.4183 15 20 17.6863 20 21"
-                      stroke={isScrolled ? "#212120" : "white"}
+                      stroke="var(--home-black)"
                       strokeWidth="2"
                       strokeLinecap="round"
                     />
@@ -325,9 +302,7 @@ export default function Navbar() {
 
           {/* Mobile Menu Button */}
           <button
-            className={`relative z-10 flex h-11 w-11 items-center justify-center rounded-full border text-white md:hidden ${
-              isScrolled ? "border-white bg-white text-[#212120]" : "border-white/30"
-            }`}
+            className="relative z-10 flex h-11 w-11 items-center justify-center rounded-full border border-white bg-[color:var(--home-white)] text-[color:var(--home-black)] lg:hidden"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             aria-label="Toggle menu"
           >
@@ -356,7 +331,7 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       <div
-        className={`mx-auto w-[calc(100%-2rem)] max-w-[1240px] overflow-hidden transition-all duration-300 md:hidden ${
+        className={`mx-auto w-[calc(100%-2rem)] max-w-[1240px] overflow-hidden transition-all duration-300 lg:hidden ${
           isMobileMenuOpen ? "mt-3 max-h-96 opacity-100" : "max-h-0 opacity-0"
         }`}
       >
@@ -368,26 +343,18 @@ export default function Navbar() {
             <Link
               key={link.name}
               href={link.href}
-              className="flex items-center gap-1.5 py-2 text-base font-extrabold text-white"
+              className="py-2 text-sm font-extrabold text-white transition-opacity hover:opacity-80"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               {link.name}
-              {link.hasDropdown && (
-                <svg width="9" height="6" viewBox="0 0 9 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M1 1L4.5 5L8 1"
-                    stroke="white"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              )}
             </Link>
           ))}
-          <button className="mt-4 w-full rounded-full bg-white px-6 py-3 text-base font-extrabold text-[#212120]">
+          <Link
+            href="/contact#sales-form"
+            className="mt-4 inline-flex w-full items-center justify-center rounded-[var(--home-button-radius)] bg-[color:var(--home-white)] px-[var(--home-button-px)] py-[var(--home-button-py)] text-[length:var(--home-h7)] font-extrabold text-[color:var(--home-black)]"
+          >
             Pick a plan
-          </button>
+          </Link>
         </div>
       </div>
     </nav>

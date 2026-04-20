@@ -1,0 +1,50 @@
+import type { CSSProperties } from "react";
+
+import designSystem from "@/design-system.json";
+
+const { colors, fontSize, typography, spacing, radius } = designSystem.tokens;
+
+export const sitePageStyleVars = {
+  "--site-white": colors.white,
+  "--site-black": colors.black,
+  "--site-gray-light-4": colors.grayLight4,
+  "--site-gray-light-5": colors.grayLight5,
+  "--site-page-shell-bg": colors.pageShellBg,
+  "--site-cream": colors.cream,
+  "--site-navy": colors.black,
+  "--site-navy-soft": colors.black,
+  "--site-text-muted": colors.textMuted,
+  "--site-text-muted-alt": colors.textMutedAlt,
+  "--site-border-soft": colors.borderSoft,
+  "--site-border-soft-alt": colors.borderSoftAlt,
+  "--site-blue-tint": colors.grayLight4,
+  "--site-surface-light-top": colors.white,
+  "--site-surface-light-bottom": colors.grayLight5,
+  "--site-hero-overlay": "linear-gradient(135deg, rgba(0, 0, 0, 0.22) 0%, rgba(33, 33, 32, 0.12) 100%)",
+  "--site-h1": `${fontSize.h1}px`,
+  "--site-h2": `${fontSize.h2}px`,
+  "--site-h3": `${fontSize.h3}px`,
+  "--site-h4": `${fontSize.h4}px`,
+  "--site-h5": `${fontSize.h5}px`,
+  "--site-h6": `${fontSize.h6}px`,
+  "--site-h7": `${fontSize.h7}px`,
+  "--site-paragraph": `${fontSize.paragraph}px`,
+  "--site-body": `${typography.textRegularNormal.size}px`,
+  "--site-body-large": `${typography.textLargeNormal.size}px`,
+  "--site-card-padding": `${spacing.cardPadding}px`,
+  "--site-card-padding-comfortable": `calc(${spacing.cardPadding}px - 12px)`,
+  "--site-card-padding-compact": `calc(${spacing.cardPadding}px - 16px)`,
+  "--site-card-padding-tight": `calc(${spacing.cardPadding}px / 2)`,
+  "--site-button-px": `${spacing.buttonHorizontal}px`,
+  "--site-button-py": `${spacing.buttonVertical}px`,
+  "--site-button-px-sm": `calc(${spacing.buttonHorizontal}px - 6px)`,
+  "--site-button-py-sm": `calc(${spacing.buttonVertical}px - 8px)`,
+  "--site-button-text": `${fontSize.h7}px`,
+  "--site-button-radius": `${radius.button}px`,
+  "--site-radius-corner": `${radius.card}px`,
+  "--site-radius-field": `${radius.field}px`,
+  "--site-radius-stat": "var(--site-radius-corner)",
+  "--site-radius-faq": "var(--site-radius-corner)",
+  "--site-radius-card": "var(--site-radius-corner)",
+  "--site-radius-panel": "var(--site-radius-corner)"
+} as CSSProperties;
