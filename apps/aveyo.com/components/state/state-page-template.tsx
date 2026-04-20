@@ -5,6 +5,8 @@ import Link from "next/link";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import type { StatePageData } from "@/lib/state-page-data";
+import AerialView from "@/components/AerialView";
+import Misconceptions from "@/components/Misconceptions";
 import Testimonials from "@/components/Testimonials";
 import SpendLess from "@/components/SpendLess";
 import PricingPlans from "@/components/PricingPlans";
@@ -15,14 +17,27 @@ function StateHero({ data }: { data: StatePageData }) {
   return (
     <section className="relative min-h-[90vh] overflow-hidden text-white" style={homepageStyleVars}>
       <div className="absolute inset-0 z-0 bg-[#212120]">
-        <Image
-          src={data.heroBackgroundImage}
-          alt={`Solar home in ${data.name}`}
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority
-        />
+        {data.heroVideoUrl ? (
+          // eslint-disable-next-line jsx-a11y/media-has-caption
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            poster={data.heroBackgroundImage}
+            className="h-full w-full object-cover"
+            src={data.heroVideoUrl}
+          />
+        ) : (
+          <Image
+            src={data.heroBackgroundImage}
+            alt={`Solar home in ${data.name}`}
+            fill
+            className="object-cover"
+            sizes="100vw"
+            priority
+          />
+        )}
       </div>
       <div
         className="pointer-events-none absolute inset-0 z-[1]"
@@ -43,7 +58,7 @@ function StateHero({ data }: { data: StatePageData }) {
           <em className="not-italic text-white/90">{data.heroHeadingHighlight}</em>
         </h1>
 
-        <p className="mt-6 max-w-[620px] text-[length:var(--home-text-large)] leading-[1.6] text-white/80">
+        <p className="mt-6 max-w-[620px] text-[length:var(--home-h6)] leading-[1.6] text-white/80">
           {data.heroDescription}
         </p>
 
@@ -162,90 +177,6 @@ function StateIncentives({ data }: { data: StatePageData }) {
   );
 }
 
-function StateAerialBreak({ data }: { data: StatePageData }) {
-  return (
-    <section className="relative h-[500px] lg:h-[650px]">
-      <Image
-        src={data.aerialImage}
-        alt={`Aerial view of solar installation in ${data.name}`}
-        fill
-        className="object-cover"
-        sizes="100vw"
-      />
-    </section>
-  );
-}
-
-function StateTransparency({ data }: { data: StatePageData }) {
-  return (
-    <section style={homepageStyleVars}>
-      <div className="bg-white py-20 lg:py-28">
-        <div className="mx-auto max-w-[1240px] px-5 sm:px-6 lg:px-8">
-          <div className="mx-auto max-w-[680px] text-center">
-            <h2 className="font-telegraf text-[length:var(--home-h4)] font-extrabold leading-[1.15] text-[#212120] md:text-[length:var(--home-h3)]">
-              Bringing the Energy With Transparency
-            </h2>
-            <p className="mt-3 text-[length:var(--home-text-large)] font-bold text-[#212120]">
-              Redefining What Home Solar Should Feel Like
-            </p>
-            <p className="mt-5 text-[length:var(--home-paragraph)] leading-[1.7] text-[#7D8081]">
-              {data.transparencyBody}
-            </p>
-          </div>
-
-          <div className="mt-14 grid gap-8 md:grid-cols-3">
-            {data.transparencyValues.map((value) => (
-              <div key={value.bold} className="text-center">
-                <p className="text-sm text-[#96999B]">{value.prefix}</p>
-                <p className="mt-1 font-telegraf text-[length:var(--home-h4)] font-extrabold text-[#212120]">
-                  {value.bold}
-                </p>
-                <p className="mt-1 text-sm text-[#96999B]">{value.suffix}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="relative bg-[#212120] py-20 lg:py-28">
-        <div className="pointer-events-none absolute right-8 top-8 font-telegraf text-[180px] font-extrabold leading-none text-white/[0.03] lg:text-[280px]">
-          3
-        </div>
-        <div className="mx-auto max-w-[1240px] px-5 sm:px-6 lg:px-8">
-          <p className="text-sm font-bold uppercase tracking-[0.2em] text-white/50">
-            Common Misconceptions
-          </p>
-          <h2 className="mt-3 max-w-[520px] font-telegraf text-[length:var(--home-h4)] font-extrabold leading-[1.15] text-white md:text-[length:var(--home-h3)]">
-            Common misconceptions about going solar in {data.name.toLowerCase()}
-          </h2>
-
-          <div className="mt-14 grid gap-8 md:grid-cols-3">
-            {data.misconceptions.map((myth, i) => (
-              <div key={myth.title}>
-                <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/[0.05]">
-                  {i === 0 ? (
-                    <svg className="h-6 w-6 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="7" width="6" height="14" rx="1" strokeWidth="1.5" /><path d="M6 18h4a2 2 0 002-2v-4a2 2 0 00-2-2H6" strokeWidth="1.5" /><path d="M14 10h4a2 2 0 012 2v4a2 2 0 01-2 2h-4" strokeWidth="1.5" /><rect x="16" y="3" width="6" height="14" rx="1" strokeWidth="1.5" /></svg>
-                  ) : i === 1 ? (
-                    <svg className="h-6 w-6 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="12" rx="2" strokeWidth="1.5" /><path d="M2 10h20" strokeWidth="1.5" /><path d="M6 14h4" strokeWidth="1.5" /></svg>
-                  ) : (
-                    <svg className="h-6 w-6 text-white/60" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeWidth="1.5" /><circle cx="9" cy="7" r="4" strokeWidth="1.5" /><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" strokeWidth="1.5" /></svg>
-                  )}
-                </div>
-                <h3 className="mt-5 text-[length:var(--home-h7)] font-extrabold text-white">
-                  &ldquo;{myth.title}&rdquo;
-                </h3>
-                <p className="mt-3 text-[length:var(--home-paragraph)] leading-[1.7] text-white/60">
-                  {myth.description}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 export default function StatePageTemplate({ data }: { data: StatePageData }) {
   return (
     <main>
@@ -255,10 +186,10 @@ export default function StatePageTemplate({ data }: { data: StatePageData }) {
       <Testimonials />
       <SpendLess />
       <StateIncentives data={data} />
-      <StateAerialBreak data={data} />
-      <StateTransparency data={data} />
+      <AerialView content={data.aerial} />
+      <Misconceptions myths={data.misconceptions} />
       <PricingPlans />
-      <Footer />
+      <Footer image={data.footerImage} />
     </main>
   );
 }

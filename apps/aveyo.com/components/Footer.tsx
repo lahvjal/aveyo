@@ -190,7 +190,7 @@ function AskAvaBadge() {
   );
 }
 
-export default function Footer({ cta }: { cta?: FooterCtaConfig }) {
+export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: string }) {
   const resolvedCta = {
     title: cta?.title ?? defaultCta.title,
     description: cta?.description ?? defaultCta.description,
@@ -274,7 +274,7 @@ export default function Footer({ cta }: { cta?: FooterCtaConfig }) {
 
             <div className="inset-x-0 bottom-0 h-[920px] sm:h-[1080px] xl:h-[var(--footer-image-height)]">
               <Image
-                src={footerTokens.assets.houseImage}
+                src={image ?? footerTokens.assets.houseImage}
                 alt=""
                 fill
                 sizes="100vw"

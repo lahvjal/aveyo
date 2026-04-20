@@ -2,6 +2,7 @@
 "use client";
 
 import { homepageStyleVars } from "@/lib/homepage-design-system";
+import type { AerialViewContent } from "@/lib/state-page-data";
 import { useEffect, useRef, useState } from "react";
 
 const GLYPH_ASPECT = 23 / 19;
@@ -10,11 +11,24 @@ const GLYPH_END_POSITION = { x: 0.5, y: 0.5 };
 const GLYPH_END_WIDTH = { vwRatio: 0.26, min: 230, max: 460 };
 const GLYPH_START_SCALE = { vwMultiplier: 8, normalMultiplier: 4.5 };
 
+const DEFAULTS: AerialViewContent = {
+  videoUrl: "https://wg22fhqtugwjii3h.public.blob.vercel-storage.com/video/aerial-vid.mp4",
+  headingLine1: "Bringing the energy",
+  headingLine2: "With Transparency",
+  subtitle: "Redefining What Home Solar Should Feel Like",
+  body: "We built Aveyo specifically for you. To give you meaningful savings, better service, and a hassle-free experience the entire way through. We understand all too well why solar has a bad name, which is why everything we do is focused on providing you with the best service possible.",
+  cards: [
+    { topText: "An Industry-Exclusive", boldLine1: "Stress-Free", boldLine2: "Guarantee", bottomText: "On Every System We Install" },
+    { topText: "We\u2019re Always", boldLine1: "100%", boldLine2: "Transparent", bottomText: "Through The Entire Process" },
+  ],
+};
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 const lerp = (start: number, end: number, t: number) => start + (end - start) * t;
 
-export default function AerialView() {
+export default function AerialView({ content }: { content?: AerialViewContent }) {
+  const c = content ?? DEFAULTS;
   const sectionRef = useRef<HTMLDivElement>(null);
   const [maskState, setMaskState] = useState({
     width: 0,
@@ -133,7 +147,7 @@ export default function AerialView() {
               muted
               playsInline
               className="h-full w-full object-cover"
-              src="https://wg22fhqtugwjii3h.public.blob.vercel-storage.com/video/aerial-vid.mp4"
+              src={c.videoUrl}
             />
           </div>
 
@@ -220,58 +234,45 @@ export default function AerialView() {
 
           <div className="flex flex-col items-center gap-4 lg:gap-[30px]">
             <h2 className="text-[44px] leading-[1.02] tracking-[-0.01em] text-[color:var(--home-black)] sm:text-[56px] lg:w-[646px] lg:text-[length:var(--home-h2)]">
-              Bringing the energy
+              {c.headingLine1}
               <br />
-              With Transparency
+              {c.headingLine2}
             </h2>
             <p className="text-lg leading-[1.4] text-[color:var(--home-black)] sm:text-xl lg:text-[length:var(--home-h5)]">
-              Redefining What Home Solar Should Feel Like
+              {c.subtitle}
             </p>
           </div>
 
           <p className="w-full max-w-[700px] text-center text-sm leading-[1.7] text-[color:var(--home-foreground-primary)] sm:text-[15px] lg:text-base">
-            We built Aveyo specifically for you. To give you meaningful savings,
-            better service, and a hassle-free experience the entire way through.
-            We understand all too well why solar has a bad name, which is why
-            everything we do is focused on providing you with the best service
-            possible.
+            {c.body}
           </p>
         </div>
 
-        <div className="mt-10 grid w-full grid-cols-1 gap-5 px-5 md:grid-cols-2 lg:mt-[40px]">
-          <div className="rounded-[var(--home-card-radius)] bg-gradient-to-b from-[#f4faff] to-[#d8d8d8] px-6 py-10 text-center sm:px-8 lg:px-10 lg:py-[60px]">
-            <p className="text-lg leading-[1.5] text-[color:var(--home-gray-dark-2)] lg:text-2xl">
-              An Industry-Exclusive
-            </p>
-            <div className="my-6 text-[color:var(--home-black)]">
-              <p className="text-[38px] leading-none sm:text-[44px] lg:text-[52px]">
-                Stress-Free
+        <div className={`mt-10 grid w-full grid-cols-1 gap-5 px-5 lg:mt-[40px] ${c.cards.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+          {c.cards.map((card) => (
+            <div
+              key={card.boldLine1}
+              className="rounded-[var(--home-card-radius)] bg-gradient-to-b from-[#f4faff] to-[#d8d8d8] px-6 py-10 text-center sm:px-8 lg:px-10 lg:py-[60px]"
+            >
+              <p className="text-[length:var(--home-h7)] leading-[1.5] text-[color:var(--home-gray-dark-2)]">
+         
+                {card.topText}
               </p>
-              <p className="text-[38px] leading-none sm:text-[44px] lg:text-[52px]">
-                Guarantee
-              </p>
-            </div>
-            <p className="text-lg leading-[1.5] text-[color:var(--home-gray-dark-2)] lg:text-2xl">
-              On Every System We Install
-            </p>
-          </div>
-
-          <div className="rounded-[var(--home-card-radius)] bg-gradient-to-b from-[#f4faff] to-[#d8d8d8] px-6 py-10 text-center sm:px-8 lg:px-10 lg:py-[60px]">
-            <p className="text-lg leading-[1.5] text-[color:var(--home-gray-dark-2)] lg:text-2xl">
-              We&apos;re Always
-            </p>
-            <div className="my-6 text-[color:var(--home-black)]">
-              <p className="text-[38px] leading-none sm:text-[44px] lg:text-[52px]">
-                100%
-              </p>
-              <p className="text-[38px] leading-none sm:text-[44px] lg:text-[52px]">
-                Transparent
+              <div className="my-6 text-[color:var(--home-black)]">
+                <p className="text-[length:var(--home-h4)] leading-none">
+                  {card.boldLine1}
+                </p>
+                {card.boldLine2 && (
+                  <p className="text-[length:var(--home-h4)] leading-none">
+                    {card.boldLine2}
+                  </p>
+                )}
+              </div>
+              <p className="text-[length:var(--home-h7)] leading-[1.5] text-[color:var(--home-gray-dark-2)]">
+                {card.bottomText}
               </p>
             </div>
-            <p className="text-lg leading-[1.5] text-[color:var(--home-gray-dark-2)] lg:text-2xl">
-              Through The Entire Process
-            </p>
-          </div>
+          ))}
         </div>
       </div>
 

@@ -15,6 +15,22 @@ export type StatePlan = {
   alsoNotable: string[];
 };
 
+export type AerialViewCard = {
+  topText: string;
+  boldLine1: string;
+  boldLine2?: string;
+  bottomText: string;
+};
+
+export type AerialViewContent = {
+  videoUrl: string;
+  headingLine1: string;
+  headingLine2: string;
+  subtitle: string;
+  body: string;
+  cards: AerialViewCard[];
+};
+
 export type StatePageData = {
   slug: string;
   name: string;
@@ -23,7 +39,9 @@ export type StatePageData = {
   heroHeadingHighlight: string;
   heroDescription: string;
   heroBackgroundImage: string;
+  heroVideoUrl?: string;
   aerialImage: string;
+  aerial: AerialViewContent;
   incentivesHeading: string;
   incentivesDescription: string;
   incentives: StateIncentive[];
@@ -37,6 +55,7 @@ export type StatePageData = {
     title: string;
     description: string;
   }>;
+  footerImage?: string;
   plansHeading: string;
   plansDescription: string;
   metaTitle: string;
@@ -53,7 +72,21 @@ export const statePages: Record<string, StatePageData> = {
     heroDescription:
       "Illinois electricity rates have risen sharply since 2021, and another rate increase is expected this summer. Take control of your energy future with Aveyo Solar and tap into Illinois' best-in-the-Midwest solar incentives.",
     heroBackgroundImage: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone3.jpg",
+    heroVideoUrl: "/images/web_photos/IL/heroIL.mp4",
+    footerImage: "",
     aerialImage: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone.jpg",
+    aerial: {
+      videoUrl: "/images/web_photos/IL/droneIL.mp4",
+      headingLine1: "Bringing the energy",
+      headingLine2: "to Illinois",
+      subtitle: "Redefining What Home Solar Should Feel Like",
+      body: "Helping Illinois families take control of their energy future with honest pricing, quality installations, and hands-on support from start to finish.",
+      cards: [
+        { topText: "An industry-exclusive", boldLine1: "Guided From", boldLine2: "Start to Finish", bottomText: "on every system we install" },
+        { topText: "We\u2019re always", boldLine1: "100%", boldLine2: "Transparent", bottomText: "through the entire process" },
+        { topText: "We are", boldLine1: "Illinois", boldLine2: "Certified", bottomText: "We work with iPA-approved vendors" },
+      ],
+    },
     incentivesHeading: "Illinois Has Some of the Best Solar Incentives in the U.S.",
     incentivesDescription:
       "Between state and utility programs, Illinois homeowners can significantly reduce the upfront cost of going solar. Here\u2019s what\u2019s available.",
@@ -82,12 +115,12 @@ export const statePages: Record<string, StatePageData> = {
     ],
     misconceptions: [
       {
-        title: "It doesn\u2019t really work",
+        title: "It doesn\u2019t\nreally work",
         description:
           "Oh, but it does. In fact, the energy your roof produces will offset the energy your home uses."
       },
       {
-        title: "It\u2019s expensive",
+        title: "It\u2019s\nexpensive",
         description:
           "Most of the time, you can go solar without any up-front costs. After that, your payment is less than your current energy bill."
       },
@@ -113,7 +146,21 @@ export const statePages: Record<string, StatePageData> = {
     heroDescription:
       "Pennsylvania homeowners are no strangers to rising utility bills, and solar offers a reliable path to more predictable monthly energy costs. The state\u2019s net metering policies and federal tax incentives make going solar more affordable than ever.",
     heroBackgroundImage: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior.jpg",
+    heroVideoUrl: "/images/web_photos/PA/heroPA.mp4",
+    footerImage: "/images/web_photos/PA/footerPA1.png",
     aerialImage: "/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT4.jpg",
+    aerial: {
+      videoUrl: "/images/web_photos/PA/dronePA.mp4",
+      headingLine1: "Bringing the energy",
+      headingLine2: "to Pennsylvania",
+      subtitle: "Redefining What Home Solar Should Feel Like",
+      body: "Helping Pennsylvania families take control of their energy future with honest pricing, quality installations, and hands-on support from start to finish.",
+      cards: [
+        { topText: "An industry-exclusive", boldLine1: "Guided From", boldLine2: "Start to Finish", bottomText: "on every system we install" },
+        { topText: "We\u2019re always", boldLine1: "100%", boldLine2: "Transparent", bottomText: "through the entire process" },
+        { topText: "We serve", boldLine1: "Pennsylvania", boldLine2: "Homeowners", bottomText: "with local expertise and support" },
+      ],
+    },
     incentivesHeading: "Pennsylvania Solar Incentives That Lower Your Cost",
     incentivesDescription:
       "Between federal credits and state-level programs, Pennsylvania homeowners have strong financial reasons to go solar now.",
@@ -142,12 +189,12 @@ export const statePages: Record<string, StatePageData> = {
     ],
     misconceptions: [
       {
-        title: "It doesn\u2019t really work",
+        title: "It doesn\u2019t\nreally work",
         description:
           "Oh, but it does. In fact, the energy your roof produces will offset the energy your home uses."
       },
       {
-        title: "It\u2019s expensive",
+        title: "It\u2019s\nexpensive",
         description:
           "Most of the time, you can go solar without any up-front costs. After that, your payment is less than your current energy bill."
       },
@@ -174,6 +221,18 @@ export const statePages: Record<string, StatePageData> = {
       "Utah\u2019s abundant sunshine makes it one of the best states in the country for residential solar. Aveyo was built right here in Utah, so we know the local market, the incentives, and the communities we serve better than anyone.",
     heroBackgroundImage: "/images/web_photos/Contact_01_Office-Location-Utah-Mountains.jpg",
     aerialImage: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone2.jpg",
+    aerial: {
+      videoUrl: "https://wg22fhqtugwjii3h.public.blob.vercel-storage.com/video/aerial-vid.mp4",
+      headingLine1: "Bringing the energy",
+      headingLine2: "to Utah",
+      subtitle: "Redefining What Home Solar Should Feel Like",
+      body: "Helping Utah families take control of their energy future with honest pricing, quality installations, and hands-on support from start to finish.",
+      cards: [
+        { topText: "An industry-exclusive", boldLine1: "Guided From", boldLine2: "Start to Finish", bottomText: "on every system we install" },
+        { topText: "We\u2019re always", boldLine1: "100%", boldLine2: "Transparent", bottomText: "through the entire process" },
+        { topText: "We are", boldLine1: "Utah\u2019s", boldLine2: "Home Team", bottomText: "headquartered in American Fork" },
+      ],
+    },
     incentivesHeading: "Utah Solar Incentives That Maximize Your Savings",
     incentivesDescription:
       "Utah\u2019s solar-friendly policies and strong federal incentives make going solar an especially smart financial decision.",
@@ -202,12 +261,12 @@ export const statePages: Record<string, StatePageData> = {
     ],
     misconceptions: [
       {
-        title: "It doesn\u2019t really work",
+        title: "It doesn\u2019t\nreally work",
         description:
           "Oh, but it does. In fact, the energy your roof produces will offset the energy your home uses."
       },
       {
-        title: "It\u2019s expensive",
+        title: "It\u2019s\nexpensive",
         description:
           "Most of the time, you can go solar without any up-front costs. After that, your payment is less than your current energy bill."
       },
@@ -234,6 +293,18 @@ export const statePages: Record<string, StatePageData> = {
       "California residents face some of the highest electricity rates in the nation. With NEM 3.0, pairing solar with battery storage is more valuable than ever, letting you store the energy you generate and use it when rates are highest.",
     heroBackgroundImage: "/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT3.jpg",
     aerialImage: "/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT2.jpg",
+    aerial: {
+      videoUrl: "https://wg22fhqtugwjii3h.public.blob.vercel-storage.com/video/aerial-vid.mp4",
+      headingLine1: "Bringing the energy",
+      headingLine2: "to California",
+      subtitle: "Redefining What Home Solar Should Feel Like",
+      body: "Helping California families take control of their energy future with honest pricing, quality installations, and hands-on support from start to finish.",
+      cards: [
+        { topText: "An industry-exclusive", boldLine1: "Guided From", boldLine2: "Start to Finish", bottomText: "on every system we install" },
+        { topText: "We\u2019re always", boldLine1: "100%", boldLine2: "Transparent", bottomText: "through the entire process" },
+        { topText: "We serve", boldLine1: "California", boldLine2: "Homeowners", bottomText: "with NEM 3.0 expertise" },
+      ],
+    },
     incentivesHeading: "California Solar Incentives That Work For You",
     incentivesDescription:
       "California\u2019s ambitious clean energy goals and strong incentive programs make solar one of the smartest investments a homeowner can make.",
@@ -262,12 +333,12 @@ export const statePages: Record<string, StatePageData> = {
     ],
     misconceptions: [
       {
-        title: "It doesn\u2019t really work",
+        title: "It doesn\u2019t\nreally work",
         description:
           "Oh, but it does. In fact, the energy your roof produces will offset the energy your home uses."
       },
       {
-        title: "It\u2019s expensive",
+        title: "It\u2019s\nexpensive",
         description:
           "Most of the time, you can go solar without any up-front costs. After that, your payment is less than your current energy bill."
       },
