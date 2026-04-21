@@ -248,7 +248,7 @@ export default function AerialView({ content }: { content?: AerialViewContent })
           </p>
         </div>
 
-        <div className={`mt-10 grid w-full grid-cols-1 gap-5 px-5 lg:mt-[40px] ${c.cards.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+        <div className={`mx-auto mt-10 grid w-full max-w-[1880px] grid-cols-1 gap-5 px-5 lg:mt-[40px] ${c.cards.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
           {c.cards.map((card) => (
             <div
               key={card.boldLine1}
