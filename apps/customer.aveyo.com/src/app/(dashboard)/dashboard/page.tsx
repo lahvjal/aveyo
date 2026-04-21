@@ -90,7 +90,10 @@ function StageMilestoneDots({
 export default function DashboardPage() {
   const { user, loading: authLoading, customerPortalView } = useAuth();
   const { projects, loading, error } = useProjects();
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [projectSelection, setProjectSelection] = useState<{ scopeKey: string; projectId: string | null }>({
+    scopeKey: '',
+    projectId: null
+  });
 
   const projectScopeKey =
     customerPortalView?.effectiveCustomerEmail?.trim().toLowerCase() ??
@@ -101,25 +104,29 @@ export default function DashboardPage() {
     analytics.pageView('dashboard');
   }, []);
 
-  useEffect(() => {
-    setSelectedProjectId(null);
-  }, [projectScopeKey]);
-
-  useEffect(() => {
+  const selectedProjectId = useMemo(() => {
     if (!projects.length) {
-      setSelectedProjectId(null);
-      return;
+      return null;
     }
 
-    if (!selectedProjectId || !projects.some((project) => project.id === selectedProjectId)) {
-      setSelectedProjectId(projects[0].id);
+    if (
+      projectSelection.scopeKey === projectScopeKey &&
+      projectSelection.projectId &&
+      projects.some((project) => project.id === projectSelection.projectId)
+    ) {
+      return projectSelection.projectId;
     }
+
+    return projects[0].id;
+  }, [projectScopeKey, projectSelection, projects]);
+
+  const selectedProject = useMemo(() => {
+    if (!selectedProjectId) {
+      return null;
+    }
+
+    return projects.find((project) => project.id === selectedProjectId) ?? null;
   }, [projects, selectedProjectId]);
-
-  const selectedProject = useMemo(
-    () => projects.find((project) => project.id === selectedProjectId) ?? projects[0] ?? null,
-    [projects, selectedProjectId]
-  );
 
   if (authLoading) {
     return (
@@ -218,7 +225,7 @@ export default function DashboardPage() {
                       key={project.id}
                       type="button"
                       onClick={() => {
-                        setSelectedProjectId(project.id);
+                        setProjectSelection({ scopeKey: projectScopeKey, projectId: project.id });
                         analytics.projectView(project.id);
                       }}
                       className={`grid min-h-[163px] grid-cols-[120px_minmax(0,1fr)] border-b border-[var(--customer-color-border-muted)] text-left transition-colors ${
