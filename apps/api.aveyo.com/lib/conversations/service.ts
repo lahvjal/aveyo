@@ -20,10 +20,15 @@ import {
   getAvaConversationContext,
   getConversationCustomerDetails,
   getConversation,
+  isAgentImpersonationConversation,
   listConversations,
   publishTypingEvent,
   StoreError
 } from "@/lib/store/mock-store";
+import {
+  CUSTOMER_CARE_OUTSIDE_WORKING_HOURS_REPLY,
+  isCustomerCareAvailable
+} from "@/lib/customer-care-hours";
 import { incrementPerfCounter, runWithPerfContext, setPerfMeta } from "@/lib/perf/metrics";
 import { ServiceError } from "@/lib/service-error";
 
@@ -343,6 +348,7 @@ function sanitizeAvaReplyEscalation(params: {
   replyText: string;
   latestCustomerMessage: string;
   thread: { messages: Array<{ kind: string; text: string }> };
+  customerCareAvailable: boolean;
 }) {
   if (!containsEscalationOffer(params.replyText)) {
     return params.replyText;
@@ -352,12 +358,19 @@ function sanitizeAvaReplyEscalation(params: {
     isHumanAgentRequest(params.latestCustomerMessage) ||
     isCustomerFrustrated(params.latestCustomerMessage) ||
     (hasRepeatedProjectSpecificQuestions(params.thread) && replyIndicatesCriticalDataGap(params.replyText));
+  const strippedReply = stripEscalationOfferFromReply(params.replyText).trim();
+
+  if (!params.customerCareAvailable) {
+    return strippedReply && !containsEscalationOffer(strippedReply)
+      ? strippedReply
+      : CUSTOMER_CARE_OUTSIDE_WORKING_HOURS_REPLY;
+  }
 
   if (allowEscalation) {
     return params.replyText;
   }
 
-  return stripEscalationOfferFromReply(params.replyText);
+  return strippedReply;
 }
 
 async function tryGenerateAvaReplyInternal(params: {
@@ -415,6 +428,13 @@ async function tryGenerateAvaReplyInternal(params: {
           .reverse()
           .find((message) => message.kind === "ava")
       : undefined;
+  let customerCareAvailable = isCustomerCareAvailable();
+  if (!customerCareAvailable) {
+    customerCareAvailable = await isAgentImpersonationConversation(
+      params.conversationId,
+      params.actorUserId
+    );
+  }
 
   if (
     latestMessage?.kind === "customer" &&
@@ -454,7 +474,9 @@ async function tryGenerateAvaReplyInternal(params: {
     try {
       const replyMessage = await appendAvaMessage(
         params.conversationId,
-        "I understand you want to speak with a customer care agent. Would you like to be connected to a customer care agent now?",
+        customerCareAvailable
+          ? "I understand you want to speak with a customer care agent. Would you like to be connected to a customer care agent now?"
+          : CUSTOMER_CARE_OUTSIDE_WORKING_HOURS_REPLY,
         params.replyJobId
           ? {
               automation: {
@@ -507,7 +529,8 @@ async function tryGenerateAvaReplyInternal(params: {
     const sanitizedReplyText = sanitizeAvaReplyEscalation({
       replyText,
       latestCustomerMessage,
-      thread
+      thread,
+      customerCareAvailable
     });
     if (!sanitizedReplyText.trim()) {
       incrementPerfCounter("avaReply.sanitizedEmpty");

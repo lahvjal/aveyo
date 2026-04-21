@@ -1471,10 +1471,14 @@ export async function getManagerHandoffsResult(
   return buildManagerHandoffs(range);
 }
 
+export function getManagerConfigSnapshot(): ManagerConfig {
+  return structuredClone(managerConfigState.config);
+}
+
 export async function getManagerConfigResult(actorUserId: string, actorRole: AppRole): Promise<ManagerConfigResult> {
   await checkManagerAccess(actorUserId, actorRole);
   return {
-    config: structuredClone(managerConfigState.config),
+    config: getManagerConfigSnapshot(),
     updatedAt: managerConfigState.updatedAt,
     updatedBy: managerConfigState.updatedBy
   };
@@ -1549,7 +1553,7 @@ export async function updateManagerConfigResult(
   managerConfigState.updatedBy = actorUserId;
 
   return {
-    config: structuredClone(managerConfigState.config),
+    config: getManagerConfigSnapshot(),
     updatedAt: managerConfigState.updatedAt,
     updatedBy: managerConfigState.updatedBy
   };

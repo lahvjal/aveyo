@@ -507,7 +507,9 @@ export function WidgetShell({
       });
 
       setThread(result.thread);
-      scheduleHandoffQueueStatusMessage(result.thread.id);
+      if (result.queue) {
+        scheduleHandoffQueueStatusMessage(result.thread.id);
+      }
       setShowRequestModal(false);
       setRequestReason("");
       setRequestError(null);

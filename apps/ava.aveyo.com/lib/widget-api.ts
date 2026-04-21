@@ -64,7 +64,7 @@ export function requestHandoffApi(body: {
   customerName: string;
   reason?: string;
 }) {
-  return apiRequest<{ thread: ConversationThread; queue: QueueRecord }>("/api/handoff/request", {
+  return apiRequest<{ thread: ConversationThread; queue: QueueRecord | null }>("/api/handoff/request", {
     method: "POST",
     body: JSON.stringify(body)
   });

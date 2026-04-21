@@ -29,6 +29,10 @@ import {
   SESSION_IDLE_PROMPT_MESSAGE,
   shouldAutoCloseResolvedConversation
 } from "@/lib/automation/session-automation-logic";
+import {
+  CUSTOMER_CARE_OUTSIDE_WORKING_HOURS_REPLY,
+  isCustomerCareAvailable
+} from "@/lib/customer-care-hours";
 import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 type AppendableMessageInput =
@@ -62,6 +66,11 @@ export interface QueueRecord {
     requestedBy: RepresentativeProfile;
     target: RepresentativeProfile;
   };
+}
+
+export interface HandoffRequestResult {
+  thread: ConversationThread;
+  queue: QueueRecord | null;
 }
 
 export interface RealtimeEvent {
@@ -654,6 +663,19 @@ function requireConversationAccess(
     throw new StoreError(403, "You do not have access to this conversation.");
   }
   return conversation;
+}
+
+export async function isAgentImpersonationConversation(
+  conversationId: string,
+  actorUserId: string
+): Promise<boolean> {
+  const supportAgent = await isAvaSupportAgent(actorUserId);
+  const conversation = requireConversationAccess(
+    await getConversationRow(conversationId),
+    actorUserId,
+    supportAgent
+  );
+  return conversation.channel === "agent_impersonation";
 }
 
 interface IdleAutomationConversationRow extends ConversationRow {
@@ -3015,7 +3037,7 @@ export async function appendAvaMessage(
 export async function requestHandoff(
   params: { conversationId: string; customerName: string; reason?: string },
   actorUserId: string
-) {
+): Promise<HandoffRequestResult> {
   const supportAgent = await isAvaSupportAgent(actorUserId);
   const conversation = requireConversationAccess(
     await getConversationRow(params.conversationId),
@@ -3064,6 +3086,18 @@ export async function requestHandoff(
     if (existingCustomerOpenRequest) {
       return buildExistingOpenResponse(existingCustomerOpenRequest);
     }
+  }
+
+  if (conversation.channel !== "agent_impersonation" && !isCustomerCareAvailable()) {
+    await appendAvaMessage(params.conversationId, CUSTOMER_CARE_OUTSIDE_WORKING_HOURS_REPLY);
+    const thread = await getConversation(params.conversationId, actorUserId);
+    if (!thread) {
+      throw new StoreError(404, "Conversation not found.");
+    }
+    return {
+      thread,
+      queue: null
+    };
   }
 
   let requestRow: HandoffRequestRow;

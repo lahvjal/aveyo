@@ -2024,6 +2024,7 @@ body.ava-embed-mode nextjs-portal {
   gap: 0;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   min-height: 0;
+  align-items: start;
 }
 
 .manager-pipeline-lane {
@@ -2033,7 +2034,8 @@ body.ava-embed-mode nextjs-portal {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
-  max-height: none;
+  max-height: min(70vh, 760px);
+  align-self: start;
   overflow: hidden;
 }
 
@@ -2080,6 +2082,7 @@ body.ava-embed-mode nextjs-portal {
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 0;
   display: grid;
   gap: 0;
