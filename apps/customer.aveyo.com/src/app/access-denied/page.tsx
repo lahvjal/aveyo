@@ -1,44 +1,16 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase/client';
 import Link from 'next/link';
 import '@/styles/brand-colors.css';
+import { useAuth } from '@/context/AuthContext';
+import { getEmployeeAppUrl } from '@/lib/platform-auth/config';
 
 export default function AccessDeniedPage() {
-  const [email, setEmail] = useState<string | null>(null);
-
-  useEffect(() => {
-    const checkUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && user.email) {
-        setEmail(user.email);
-        
-        // Add debugging logs
-        console.log('==== ACCESS DENIED DEBUG ====');
-        console.log('User Email:', user.email);
-        console.log('User Metadata:', JSON.stringify(user.user_metadata));
-        
-        // Check if the user has records in podio_data
-        const { data: podioData, error: podioError } = await supabase
-          .from('podio_data')
-          .select('*')
-          .eq('email', user.email);
-          
-        console.log('Podio Data Records:', podioData ? podioData.length : 0);
-        if (podioError) {
-          console.error('Podio Data Error:', podioError);
-        }
-        console.log('========================', podioData);
-      }
-    };
-    
-    checkUser();
-  }, []);
+  const { user, signOut } = useAuth();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/login';
+    await signOut();
+    window.location.replace('/login?logout=1');
   };
 
   return (
@@ -59,7 +31,7 @@ export default function AccessDeniedPage() {
         
         <div className="mt-2">
           <p className="text-center text-sm text-gray-600">
-            This account ({email || 'Unknown'}) is not registered for the Customer Portal.
+            This account ({user?.email || 'Unknown'}) is not registered for the Customer Portal.
           </p>
           <p className="text-center text-sm text-gray-600 mt-2">
             Please use the correct application or contact support for assistance.
@@ -67,9 +39,16 @@ export default function AccessDeniedPage() {
         </div>
         
         <div className="mt-6 flex flex-col space-y-4">
+          <a
+            href={getEmployeeAppUrl()}
+            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white brand-button focus:outline-none"
+          >
+            Go to Employee App
+          </a>
+
           <button
             onClick={handleSignOut}
-            className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white brand-button focus:outline-none"
+            className="group relative w-full flex justify-center py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none"
           >
             Sign Out
           </button>

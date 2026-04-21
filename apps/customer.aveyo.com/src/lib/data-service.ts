@@ -80,3 +80,11 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
   return SupabaseService.getUserProfile(userId);
 }
 
+export async function searchPortalCustomers(
+  query: string
+): Promise<Array<{ email: string; label: string }>> {
+  if (USE_MYSQL) {
+    return MySQLService.searchPortalCustomers(query);
+  }
+  return [];
+}

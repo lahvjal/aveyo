@@ -18,7 +18,8 @@ export const milestoneDisplayNames: Record<string, string> = {
   
   // Activation (formerly Energization)
   'pto-received': 'Permission To Operate Received from Utility Company',
-  'energize-complete-date': 'System Active and Producing'
+  'energize-complete-date': 'System Active and Producing',
+  'system-active': 'System live and producing'
 };
 
 // Define milestone sequences for each section
@@ -38,7 +39,8 @@ export const milestoneSequence = {
   ],
   'energization': [
     { key: 'pto-received', name: 'Permission To Operate Received from Utility Company' },
-    { key: 'energize-complete-date', name: 'System Active and Producing' }
+    { key: 'energize-complete-date', name: 'System Active and Producing' },
+    { key: 'system-active', name: 'System live and producing' }
   ]
 };
 

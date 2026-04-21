@@ -79,6 +79,9 @@ export function EmployeeSideNav() {
   const canAccessKpiDashboard = Boolean(
     profile?.is_executive || profile?.is_admin || profile?.is_super_admin || role === "super_admin"
   );
+  const canAccessCustomerPortal = Boolean(
+    profile?.is_admin || profile?.is_super_admin || role === "super_admin"
+  );
 
   async function handleSignOut() {
     if (isSigningOut) {
@@ -107,6 +110,7 @@ export function EmployeeSideNav() {
       utilityItems={utilityNavItems}
       role={role}
       canAccessKpiDashboard={canAccessKpiDashboard}
+      canAccessCustomerPortal={canAccessCustomerPortal}
       iconPrefix="/"
       profile={{
         displayName,

@@ -1,29 +1,30 @@
 import { NextResponse } from 'next/server';
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
 import { getNotifications, markNotificationAsRead } from '@/lib/data-service';
+import {
+  applyPlatformSetCookieHeaders,
+  requireCustomerPortalDataAccess
+} from '@/lib/platform-auth/server-session';
 
 // GET - Fetch notifications for the authenticated user
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    
-    // Check if user is authenticated
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = await requireCustomerPortalDataAccess(request);
+    if ('response' in auth) {
+      return auth.response;
     }
-    
-    const userEmail = session.user.email;
-    if (!userEmail) {
-      return NextResponse.json({ error: 'User email not found' }, { status: 400 });
+
+    if (auth.adminWithoutImpersonation) {
+      const response = NextResponse.json([]);
+      applyPlatformSetCookieHeaders(response, auth.session.setCookieHeaders);
+      return response;
     }
-    
+
     // Use the data service to get notifications (supports both MySQL and Supabase)
-    const notifications = await getNotifications(userEmail);
-    
-    return NextResponse.json(notifications);
+    const notifications = await getNotifications(auth.userEmail);
+
+    const response = NextResponse.json(notifications);
+    applyPlatformSetCookieHeaders(response, auth.session.setCookieHeaders);
+    return response;
   } catch (error) {
     console.error('Error fetching notifications:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -38,24 +39,31 @@ export async function POST(request: Request) {
     if (!id) {
       return NextResponse.json({ error: 'Notification ID is required' }, { status: 400 });
     }
-    
-    const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    
-    // Check if user is authenticated
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+    const auth = await requireCustomerPortalDataAccess(request);
+    if ('response' in auth) {
+      return auth.response;
     }
-    
+
+    if (auth.adminWithoutImpersonation) {
+      const response = NextResponse.json(
+        { error: 'Select a customer from the admin toolbar first.' },
+        { status: 403 }
+      );
+      applyPlatformSetCookieHeaders(response, auth.session.setCookieHeaders);
+      return response;
+    }
+
     // Use the data service to mark notification as read
     const success = await markNotificationAsRead(id);
     
     if (!success) {
       return NextResponse.json({ error: 'Failed to mark notification as read' }, { status: 500 });
     }
-    
-    return NextResponse.json({ success: true });
+
+    const response = NextResponse.json({ success: true });
+    applyPlatformSetCookieHeaders(response, auth.session.setCookieHeaders);
+    return response;
   } catch (error) {
     console.error('Error marking notification as read:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

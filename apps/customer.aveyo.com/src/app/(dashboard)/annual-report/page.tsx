@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import AppShell from '@/components/layout/AppShell';
 import '@/styles/brand-colors.css';
 import Image from 'next/image';
 
@@ -33,7 +32,7 @@ export default function AnnualReportPage() {
   };
 
   return (
-    <AppShell>
+    <>
       <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 print-wrapper">
         {/* Print styles */}
         <style jsx global>{`
@@ -41,8 +40,12 @@ export default function AnnualReportPage() {
             /* Hide all navigation, headers, and UI chrome */
             header,
             nav,
+            aside,
             button:not(.report-container button),
             .no-print,
+            .customer-shell-sidebar,
+            .customer-shell-topbar,
+            .customer-shell-mobile-nav,
             [role="navigation"],
             [aria-label*="navigation"],
             [aria-label*="Navigation"] {
@@ -424,6 +427,6 @@ export default function AnnualReportPage() {
           </div>
         </div>
       </div>
-    </AppShell>
+    </>
   );
 }

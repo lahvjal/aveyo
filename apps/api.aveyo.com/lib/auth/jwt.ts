@@ -71,20 +71,52 @@ function normalizeRole(rawRole: string | undefined): AppRole {
   return "unknown";
 }
 
+function firstRecognizedRole(candidates: Array<string | undefined>): string | undefined {
+  for (const candidate of candidates) {
+    if (normalizeRole(candidate) !== "unknown") {
+      return candidate;
+    }
+  }
+
+  return undefined;
+}
+
 function roleFromClaims(claims: JwtClaims | undefined): string | undefined {
   if (!claims) {
     return undefined;
   }
 
-  const topLevelRole =
-    asString(claims.app_role) ?? asString(claims.user_role) ?? asString(claims.role);
+  const topLevelRole = firstRecognizedRole([
+    asString(claims.app_role),
+    asString(claims.user_role),
+    asString(claims.role)
+  ]);
   if (topLevelRole) {
     return topLevelRole;
   }
 
   const appMetadata = claims.app_metadata;
   if (appMetadata && typeof appMetadata === "object" && !Array.isArray(appMetadata)) {
-    const role = asString((appMetadata as Record<string, unknown>).role);
+    const appMetadataRecord = appMetadata as Record<string, unknown>;
+    const role = firstRecognizedRole([
+      asString(appMetadataRecord.app_role),
+      asString(appMetadataRecord.role),
+      asString(appMetadataRecord.user_type),
+      asString(appMetadataRecord.account_type)
+    ]);
+    if (role) {
+      return role;
+    }
+  }
+
+  const userMetadata = claims.user_metadata;
+  if (userMetadata && typeof userMetadata === "object" && !Array.isArray(userMetadata)) {
+    const userMetadataRecord = userMetadata as Record<string, unknown>;
+    const role = firstRecognizedRole([
+      asString(userMetadataRecord.role),
+      asString(userMetadataRecord.user_type),
+      asString(userMetadataRecord.account_type)
+    ]);
     if (role) {
       return role;
     }
@@ -94,15 +126,23 @@ function roleFromClaims(claims: JwtClaims | undefined): string | undefined {
 }
 
 function roleFromUser(user: User): string | undefined {
-  return (
-    asString(user.app_metadata?.app_role) ??
-    asString(user.app_metadata?.role) ??
-    asString(user.user_metadata?.role)
-  );
+  return firstRecognizedRole([
+    asString(user.app_metadata?.app_role),
+    asString(user.app_metadata?.role),
+    asString(user.app_metadata?.user_type),
+    asString(user.app_metadata?.account_type),
+    asString(user.user_metadata?.role),
+    asString(user.user_metadata?.user_type),
+    asString(user.user_metadata?.account_type)
+  ]);
 }
 
 export function resolveRole(claims: JwtClaims | undefined, user?: User): AppRole {
-  const claimRole = roleFromClaims(claims);
-  const userRole = user ? roleFromUser(user) : undefined;
-  return normalizeRole(claimRole ?? userRole);
+  const claimRole = normalizeRole(roleFromClaims(claims));
+  if (claimRole !== "unknown") {
+    return claimRole;
+  }
+
+  const userRole = normalizeRole(user ? roleFromUser(user) : undefined);
+  return userRole;
 }

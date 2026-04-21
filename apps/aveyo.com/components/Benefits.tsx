@@ -1,8 +1,9 @@
+/* eslint-disable jsx-a11y/media-has-caption */
 "use client";
 
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type BenefitSlide = {
   title: string;
@@ -47,12 +48,120 @@ const benefitSlides: BenefitSlide[] = [
 ];
 
 const extendedBenefitSlides = [...benefitSlides, ...benefitSlides, ...benefitSlides];
+const SAVINGS_VIDEO_SRC = "/images/web_photos/benefits.mp4";
+const SAVINGS_VIDEO_LAST_FRAME_EPSILON = 0.05;
+const SAVINGS_COUNTER_START = 150;
+const SAVINGS_COUNTER_END = 50;
+const SAVINGS_COUNTER_DURATION_MS = 52000;
+const easeOutExpo = (progress: number) =>
+  progress === 1 ? 1 : 1 - Math.pow(2, -80 * progress);
 
 export default function Benefits() {
   const [currentIndex, setCurrentIndex] = useState(benefitSlides.length);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [slideWidth, setSlideWidth] = useState(885);
   const [gap] = useState(20);
+  const [displayedSavings, setDisplayedSavings] = useState(SAVINGS_COUNTER_START);
+  const savingsScrollRef = useRef<HTMLDivElement>(null);
+  const savingsVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const sectionEl = savingsScrollRef.current;
+    const videoEl = savingsVideoRef.current;
+    if (!sectionEl || !videoEl) return;
+
+    let rafId = 0;
+    let counterRafId = 0;
+    let hasStarted = false;
+    let hasCompleted = false;
+    let hasAnimatedSavings = false;
+
+    const startSavingsAnimation = () => {
+      if (hasAnimatedSavings) return;
+      hasAnimatedSavings = true;
+
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        setDisplayedSavings(SAVINGS_COUNTER_END);
+        return;
+      }
+
+      const animationStart = performance.now();
+
+      const tick = (now: number) => {
+        const elapsed = now - animationStart;
+        const progress = Math.min(elapsed / SAVINGS_COUNTER_DURATION_MS, 1);
+        const easedProgress = easeOutExpo(progress);
+        const nextValue = Math.round(
+          SAVINGS_COUNTER_START +
+            (SAVINGS_COUNTER_END - SAVINGS_COUNTER_START) * easedProgress
+        );
+
+        setDisplayedSavings(nextValue);
+
+        if (progress < 1) {
+          counterRafId = window.requestAnimationFrame(tick);
+        }
+      };
+
+      counterRafId = window.requestAnimationFrame(tick);
+    };
+
+    const requestUpdate = () => {
+      if (rafId) return;
+      rafId = window.requestAnimationFrame(() => {
+        rafId = 0;
+
+        if (hasStarted || hasCompleted) return;
+
+        const rect = sectionEl.getBoundingClientRect();
+        const fullyInViewport = rect.top >= 0 && rect.bottom <= window.innerHeight;
+
+        if (fullyInViewport) {
+          hasStarted = true;
+          startSavingsAnimation();
+          void videoEl.play().catch(() => {
+            hasStarted = false;
+          });
+        }
+      });
+    };
+
+    const handleMetadata = () => {
+      hasStarted = false;
+      hasCompleted = false;
+      hasAnimatedSavings = false;
+      videoEl.currentTime = 0;
+      videoEl.pause();
+      setDisplayedSavings(SAVINGS_COUNTER_START);
+      requestUpdate();
+    };
+
+    const handleEnded = () => {
+      hasCompleted = true;
+      videoEl.pause();
+      videoEl.currentTime = Math.max(videoEl.duration - SAVINGS_VIDEO_LAST_FRAME_EPSILON, 0);
+    };
+
+    if (videoEl.readyState >= 1) {
+      handleMetadata();
+    } else {
+      videoEl.addEventListener("loadedmetadata", handleMetadata);
+    }
+
+    videoEl.addEventListener("ended", handleEnded);
+    requestUpdate();
+    window.addEventListener("scroll", requestUpdate, { passive: true });
+    window.addEventListener("resize", requestUpdate);
+
+    return () => {
+      if (rafId) window.cancelAnimationFrame(rafId);
+      if (counterRafId) window.cancelAnimationFrame(counterRafId);
+      videoEl.removeEventListener("loadedmetadata", handleMetadata);
+      videoEl.removeEventListener("ended", handleEnded);
+      window.removeEventListener("scroll", requestUpdate);
+      window.removeEventListener("resize", requestUpdate);
+    };
+  }, []);
 
   useEffect(() => {
     const updateWidth = () => {
@@ -182,30 +291,40 @@ export default function Benefits() {
     >
       <div className="flex flex-col gap-5">
         {/* Row 1 - Savings Hero */}
-        <div 
-          className="relative flex h-[100vh] min-h-[80vh] w-full flex-col items-center overflow-hidden rounded-[var(--home-card-radius)] pt-[240px]"
-          style={{
-            background: "linear-gradient(to bottom, #d9f0ff 0%, #669bbc 100%)"
-          }}
+        <div
+          ref={savingsScrollRef}
+          className="relative flex h-[calc(100vh-40px)] min-h-[80vh] w-full flex-col items-center justify-center overflow-hidden rounded-[var(--home-card-radius)] px-6 py-16 text-center sm:px-10 lg:px-16"
+          style={{ background: "#5f91af" }}
         >
-          {/* Roof Background Image */}
-          <div className="absolute bottom-0 left-0 right-0 w-[100%] h-[100%] pointer-events-none">
-            <Image
-              src="/images/roof.png"
-              alt="Roof"
-              objectFit="fit"
-              width={1000}
-              height={1000}
-              className="object-cover object-top"
-              sizes="100vw"
-              style={{ position: "absolute", top: "auto", height: "auto", width: "100%", bottom: "0" }}
-            />
+          <div className="absolute inset-0">
+            <video
+              ref={savingsVideoRef}
+              muted
+              playsInline
+              preload="auto"
+              className="h-full w-full object-cover"
+              aria-hidden="true"
+            >
+              <source src={SAVINGS_VIDEO_SRC} type="video/mp4" />
+            </video>
           </div>
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(180deg, rgba(17, 45, 78, 0.18) 0%, rgba(9, 40, 61, 0.55) 100%)",
+            }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(circle at center 38%, rgba(217, 240, 255, 0.24) 0%, rgba(217, 240, 255, 0) 48%)",
+            }}
+          />
 
-          {/* Content */}
-          <div className="relative z-10 flex flex-col items-center gap-8 lg:gap-[60px] text-center">
-            {/* Heading */}
-            <div className="flex flex-col gap-5 items-center">
+          <div className="relative z-10 flex max-w-[980px] flex-col items-center gap-8 lg:gap-[60px]">
+            <div className="flex flex-col items-center gap-5">
               <h2 className="text-white text-[40px] leading-[1.2] capitalize sm:text-[55px] lg:text-[length:var(--home-h2)]">
                 How Much Could You
                 <br />
@@ -216,76 +335,28 @@ export default function Benefits() {
               </p>
             </div>
 
-            {/* Savings Display */}
             <div className="flex flex-col items-center justify-center">
               <div className="flex items-start justify-center gap-1.5">
-                <span className="text-white text-[80px] lg:text-[122px] font-black leading-[0.8] tracking-tight self-end pb-6 lg:pb-10">
+                <span className="self-end pb-6 text-[80px] font-black leading-[0.8] tracking-tight text-white lg:pb-10 lg:text-[122px]">
                   $
                 </span>
-                <span 
-                  className="text-[180px] lg:text-[287px] font-black leading-[0.8] tracking-tight"
+                <span
+                  className="inline-block tabular-nums text-[180px] font-black leading-[0.8] tracking-tight lg:text-[287px]"
                   style={{
-                    background: "linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.3) 100%)",
+                    background:
+                      "linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.3) 100%)",
                     WebkitBackgroundClip: "text",
                     WebkitTextFillColor: "transparent",
                     backgroundClip: "text",
                   }}
                 >
-                  50
+                  {displayedSavings.toLocaleString()}
                 </span>
-                <div className="flex flex-col justify-end text-white text-lg lg:text-2xl leading-[1.16] tracking-tight self-end pb-6 lg:pb-10">
-                  <span>per</span>
-                  <span>month</span>
+                <div className="self-end pb-6 text-lg leading-[1.16] tracking-tight text-white lg:pb-10 lg:text-2xl">
+                  <span className="block">per</span>
+                  <span className="block">month</span>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Floating Solar Panels */}
-          <div className="absolute bottom-[40%] left-1/2 -translate-x-1/2 w-[45%] h-[200px] lg:h-[250px] flex items-center justify-center z-20">
-            {/* Left Panel */}
-            <div 
-              className="w-[33.3%] h-[240px] mr-[-5%]"
-              style={{ filter: "drop-shadow(0px 60px 40px rgba(0,0,0,0.4))" }}
-            >
-              <Image
-                src="/images/70c7503126cf0e979006cc52f143f6f9e8c48785.png"
-                alt="Solar panel"
-                fill
-                className="object-contain"
-                sizes="281px"
-                style={{position: "absolute", top: "20%" }}
-              />
-            </div>
-            {/* Center Panel */}
-            <div 
-              className="w-[33.3%] h-[240px] z-[1000] flex items-center justify-center"
-              style={{ filter: "drop-shadow(0px 60px 40px rgba(0,0,0,0.4))" }}
-            >
-              <Image
-                src="/images/287b6fd0335e31748824a52330fcbe2370906ae6.png"
-                alt="Solar panel"
-                objectFit="fit"
-                width={1000}
-                height={1000}
-                className="object-contain"
-                sizes="281px"
-                style={{ height: "88%", width: "100%" }}
-              />
-            </div>
-            {/* Right Panel */}
-            <div 
-              className="w-[33.3%] h-[240px] ml-[-5%]"
-              style={{ filter: "drop-shadow(0px 60px 40px rgba(0,0,0,0.4))" }}
-            >
-              <Image
-                src="/images/3ad96054047e30dbc89a51be9a76fcb8d78c6537.png"
-                alt="Solar panel"
-                fill
-                className="object-contain"
-                sizes="281px"
-                style={{position: "absolute", top: "40%" }}
-              />
             </div>
           </div>
         </div>

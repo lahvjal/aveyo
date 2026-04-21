@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   getAuthApiBaseUrl,
   getCustomerAppUrl,
   getEmployeeAppUrl
 } from "../../lib/config";
 import { getSupabaseBrowserClient } from "../../lib/supabase/client";
+
+const LOCAL_HOST_PATTERN =
+  /^(localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|::1|.+\.local)$/i;
+const PASSWORD_MIN_LENGTH = 8;
+const RECOVERY_MODE = "recovery";
 
 function describeAuthError(error, fallback) {
   if (error instanceof Error && error.message.trim()) {
@@ -15,9 +20,6 @@ function describeAuthError(error, fallback) {
 
   return fallback;
 }
-
-const LOCAL_HOST_PATTERN =
-  /^(localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|::1|.+\.local)$/i;
 
 function normalizeAllowlistOrigin(value) {
   const raw = typeof value === "string" ? value.trim() : "";
@@ -51,7 +53,11 @@ function isTrustedAveyoHostname(hostname) {
     return false;
   }
 
-  return normalized === "aveyo.com" || normalized.endsWith(".aveyo.com") || LOCAL_HOST_PATTERN.test(normalized);
+  return (
+    normalized === "aveyo.com" ||
+    normalized.endsWith(".aveyo.com") ||
+    LOCAL_HOST_PATTERN.test(normalized)
+  );
 }
 
 function resolveTrustedReturnToUrl(value) {
@@ -77,19 +83,90 @@ function resolveTrustedReturnToUrl(value) {
   }
 }
 
+function resolveRequestedReturnTo(params) {
+  const directReturnTo = resolveTrustedReturnToUrl(params.get("returnTo"));
+  if (directReturnTo) {
+    return directReturnTo;
+  }
+
+  const redirectTo = params.get("redirect_to");
+  if (!redirectTo) {
+    return "";
+  }
+
+  try {
+    const parsedRedirect = new URL(redirectTo);
+    return resolveTrustedReturnToUrl(parsedRedirect.searchParams.get("returnTo"));
+  } catch {
+    return "";
+  }
+}
+
+function normalizeOtpType(value) {
+  const normalized = typeof value === "string" ? value.trim().toLowerCase() : "";
+  if (!normalized) {
+    return "";
+  }
+
+  if (normalized === "magiclink" || normalized === "recovery" || normalized === "signup") {
+    return normalized;
+  }
+
+  return "";
+}
+
 function parseLoginRequestFromWindow() {
   if (typeof window === "undefined") {
     return {
       logoutRequested: false,
-      requestedReturnTo: ""
+      requestedReturnTo: "",
+      callbackCode: "",
+      callbackTokenHash: "",
+      callbackType: "",
+      callbackMode: "",
+      callbackError: ""
     };
   }
 
   const params = new URLSearchParams(window.location.search);
   return {
     logoutRequested: params.get("logout") === "1",
-    requestedReturnTo: resolveTrustedReturnToUrl(params.get("returnTo"))
+    requestedReturnTo: resolveRequestedReturnTo(params),
+    callbackCode: params.get("code")?.trim() ?? "",
+    callbackTokenHash: params.get("token_hash")?.trim() ?? "",
+    callbackType: normalizeOtpType(params.get("type")),
+    callbackMode: params.get("mode") === RECOVERY_MODE ? RECOVERY_MODE : "",
+    callbackError:
+      params.get("error_description")?.trim() || params.get("error")?.trim() || ""
   };
+}
+
+function replaceLoginUrl({ requestedReturnTo, mode = "" }) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const nextUrl = new URL("/login", window.location.origin);
+  if (requestedReturnTo) {
+    nextUrl.searchParams.set("returnTo", requestedReturnTo);
+  }
+  if (mode === RECOVERY_MODE) {
+    nextUrl.searchParams.set("mode", RECOVERY_MODE);
+  }
+  window.history.replaceState({}, "", nextUrl.toString());
+}
+
+function buildHostedRecoveryRedirectUrl(requestedReturnTo) {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const redirectUrl = new URL("/auth/callback", window.location.origin);
+  redirectUrl.searchParams.set("mode", RECOVERY_MODE);
+  if (requestedReturnTo) {
+    redirectUrl.searchParams.set("returnTo", requestedReturnTo);
+  }
+  return redirectUrl.toString();
 }
 
 function readApiErrorMessage(payload, fallback) {
@@ -205,25 +282,168 @@ async function bootstrapPlatformCookieSession(session) {
   return sessionCheckPayload;
 }
 
+async function startHostedLogin(email, requestedReturnTo) {
+  const response = await fetch(`${getAuthApiBaseUrl()}/api/auth/login/start`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    credentials: "include",
+    cache: "no-store",
+    body: JSON.stringify({
+      email,
+      returnTo: requestedReturnTo
+    })
+  });
+
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(readApiErrorMessage(payload, "Unable to continue sign in."));
+  }
+
+  if (payload?.nextStep !== "password" && payload?.nextStep !== "emailLinkNotice") {
+    throw new Error("Login service returned an unknown step.");
+  }
+
+  return payload.nextStep;
+}
+
+async function processIncomingAuthCallback(activeSupabase, callbackRequest) {
+  if (!callbackRequest.code && !(callbackRequest.tokenHash && callbackRequest.type)) {
+    if (callbackRequest.error) {
+      throw new Error(callbackRequest.error);
+    }
+    return false;
+  }
+
+  if (callbackRequest.code) {
+    const { error } = await activeSupabase.auth.exchangeCodeForSession(callbackRequest.code);
+    if (error) {
+      throw error;
+    }
+  } else if (callbackRequest.tokenHash && callbackRequest.type) {
+    const { error } = await activeSupabase.auth.verifyOtp({
+      token_hash: callbackRequest.tokenHash,
+      type: callbackRequest.type
+    });
+    if (error) {
+      throw error;
+    }
+  }
+
+  replaceLoginUrl({
+    requestedReturnTo: callbackRequest.requestedReturnTo,
+    mode: callbackRequest.mode
+  });
+  return true;
+}
+
+function getPanelCopy(loginStep) {
+  switch (loginStep) {
+    case "password":
+      return {
+        title: "Enter your password",
+        subtitle: "This email belongs to an employee account."
+      };
+    case "notice":
+      return {
+        title: "Check your email",
+        subtitle:
+          "If this email is associated with an active Aveyo project, we sent a secure sign-in link. Open it on this device to continue."
+      };
+    case "resetPassword":
+      return {
+        title: "Set a new password",
+        subtitle: "Create a new password for your employee account."
+      };
+    default:
+      return {
+        title: "Login",
+        subtitle: "Enter your email to continue."
+      };
+  }
+}
+
+function PasswordField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  autoComplete,
+  showValue,
+  onToggle,
+  toggleLabel,
+  disabled
+}) {
+  return (
+    <label className="login-field">
+      <span>{label}</span>
+      <div className="login-password-shell">
+        <input
+          type={showValue ? "text" : "password"}
+          placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          autoComplete={autoComplete}
+          required
+          disabled={disabled}
+        />
+        <button
+          type="button"
+          className="login-password-toggle"
+          aria-label={toggleLabel}
+          onClick={onToggle}
+          disabled={disabled}
+        >
+          <svg viewBox="0 0 20 13" aria-hidden="true">
+            <path d="M3.0858 2.69223C6.67563 -0.897383 12.496 -0.897435 16.0858 2.69223L18.8788 5.4852C19.2691 5.87564 19.269 6.50876 18.8788 6.89926L16.0858 9.69223L15.743 10.0184C12.251 13.1736 6.9207 13.1735 3.42857 10.0184L3.0858 9.69223L0.292831 6.89926C-0.097569 6.50872 -0.0976518 5.87568 0.292831 5.4852L3.0858 2.69223ZM14.6717 4.10629C11.863 1.29768 7.30864 1.29773 4.49986 4.10629L2.41392 6.19223L4.49986 8.27816C7.30867 11.0869 11.863 11.0869 14.6717 8.27816L16.7577 6.19223L14.6717 4.10629ZM9.5858 3.79477C10.9101 3.79477 11.984 4.86798 11.9842 6.19223C11.9842 7.51664 10.9102 8.59066 9.5858 8.59066C8.26144 8.5906 7.18834 7.5166 7.18834 6.19223C7.18854 4.86802 8.26156 3.79483 9.5858 3.79477Z" />
+          </svg>
+        </button>
+      </div>
+    </label>
+  );
+}
+
 export default function LoginPage() {
   const [supabase, setSupabase] = useState(null);
   const [logoutRequested, setLogoutRequested] = useState(false);
   const [requestedReturnTo, setRequestedReturnTo] = useState("");
+  const [callbackRequest, setCallbackRequest] = useState({
+    code: "",
+    tokenHash: "",
+    type: "",
+    mode: "",
+    error: ""
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loginStep, setLoginStep] = useState("email");
   const [isBootstrappingSession, setIsBootstrappingSession] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState("info");
 
+  const panelCopy = useMemo(() => getPanelCopy(loginStep), [loginStep]);
+  const callbackCode = callbackRequest.code;
+  const callbackTokenHash = callbackRequest.tokenHash;
+  const callbackType = callbackRequest.type;
+  const callbackMode = callbackRequest.mode;
+  const callbackError = callbackRequest.error;
+
   useEffect(() => {
-    const {
-      logoutRequested: shouldLogout,
-      requestedReturnTo: parsedReturnTo
-    } = parseLoginRequestFromWindow();
-    setLogoutRequested(shouldLogout);
-    setRequestedReturnTo(parsedReturnTo);
+    const parsedRequest = parseLoginRequestFromWindow();
+    setLogoutRequested(parsedRequest.logoutRequested);
+    setRequestedReturnTo(parsedRequest.requestedReturnTo);
+    setCallbackRequest({
+      code: parsedRequest.callbackCode,
+      tokenHash: parsedRequest.callbackTokenHash,
+      type: parsedRequest.callbackType,
+      mode: parsedRequest.callbackMode,
+      error: parsedRequest.callbackError
+    });
 
     try {
       setSupabase(getSupabaseBrowserClient());
@@ -241,15 +461,45 @@ export default function LoginPage() {
     }
 
     let cancelled = false;
+
     async function bootstrapSession() {
       setIsBootstrappingSession(true);
       setStatusTone("info");
-      setStatus(logoutRequested ? "Signing out old session..." : "Checking existing session...");
+
+      if (logoutRequested) {
+        setStatus("Signing out old session...");
+      } else if (callbackCode || callbackTokenHash || callbackError) {
+        setStatus("Completing sign in...");
+      } else if (callbackMode === RECOVERY_MODE) {
+        setStatus("Preparing password reset...");
+      } else {
+        setStatus("Checking existing session...");
+      }
 
       try {
         if (logoutRequested) {
           await supabase.auth.signOut();
           await clearPlatformCookieSession();
+          replaceLoginUrl({ requestedReturnTo });
+        }
+
+        if (callbackError) {
+          replaceLoginUrl({
+            requestedReturnTo,
+            mode: callbackMode
+          });
+          throw new Error(callbackError);
+        }
+
+        if (callbackCode || (callbackTokenHash && callbackType)) {
+          await processIncomingAuthCallback(supabase, {
+            code: callbackCode,
+            tokenHash: callbackTokenHash,
+            type: callbackType,
+            mode: callbackMode,
+            error: callbackError,
+            requestedReturnTo
+          });
         }
 
         const {
@@ -259,8 +509,18 @@ export default function LoginPage() {
           return;
         }
 
+        if (session?.user?.email) {
+          setEmail(session.user.email);
+        }
+
         if (session) {
-          setStatus("Active session found. Establishing shared cookies...");
+          if (callbackMode === RECOVERY_MODE) {
+            setLoginStep("resetPassword");
+            setStatus("");
+            return;
+          }
+
+          setStatus("Establishing shared cookies...");
           const sessionPayload = await bootstrapPlatformCookieSession(session);
           if (cancelled) {
             return;
@@ -271,13 +531,27 @@ export default function LoginPage() {
           return;
         }
 
+        if (callbackMode === RECOVERY_MODE) {
+          setLoginStep("password");
+          setStatusTone("error");
+          setStatus("Unable to verify that password reset link. Request a new one.");
+          return;
+        }
+
         setStatus("");
       } catch (error) {
         if (cancelled) {
           return;
         }
         setStatusTone("error");
-        setStatus(describeAuthError(error, "Unable to initialize auth session."));
+        setStatus(
+          describeAuthError(
+            error,
+            callbackMode === RECOVERY_MODE
+              ? "Unable to complete password reset."
+              : "Unable to initialize auth session."
+          )
+        );
       } finally {
         if (!cancelled) {
           setIsBootstrappingSession(false);
@@ -289,7 +563,16 @@ export default function LoginPage() {
     return () => {
       cancelled = true;
     };
-  }, [supabase, logoutRequested, requestedReturnTo]);
+  }, [
+    supabase,
+    logoutRequested,
+    requestedReturnTo,
+    callbackCode,
+    callbackTokenHash,
+    callbackType,
+    callbackMode,
+    callbackError
+  ]);
 
   function getActiveSupabaseClient() {
     if (supabase) {
@@ -307,7 +590,40 @@ export default function LoginPage() {
     }
   }
 
-  async function handleSignIn(event) {
+  async function handleEmailContinue(event) {
+    event.preventDefault();
+
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setStatusTone("error");
+      setStatus("Enter your email to continue.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setStatusTone("info");
+    setStatus("Checking your account...");
+    try {
+      const nextStep = await startHostedLogin(trimmedEmail, requestedReturnTo);
+      if (nextStep === "password") {
+        setPassword("");
+        setShowPassword(false);
+        setLoginStep("password");
+        setStatus("");
+        return;
+      }
+
+      setLoginStep("notice");
+      setStatus("");
+    } catch (error) {
+      setStatusTone("error");
+      setStatus(describeAuthError(error, "Unable to continue sign in."));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handlePasswordSignIn(event) {
     event.preventDefault();
     const activeSupabase = getActiveSupabaseClient();
     if (!activeSupabase) {
@@ -353,6 +669,7 @@ export default function LoginPage() {
     if (!activeSupabase) {
       return;
     }
+
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
       setStatusTone("error");
@@ -364,7 +681,8 @@ export default function LoginPage() {
     setStatusTone("info");
     setStatus("Sending password reset email...");
     try {
-      const { error } = await activeSupabase.auth.resetPasswordForEmail(trimmedEmail);
+      const redirectTo = buildHostedRecoveryRedirectUrl(requestedReturnTo);
+      const { error } = await activeSupabase.auth.resetPasswordForEmail(trimmedEmail, redirectTo ? { redirectTo } : undefined);
       if (error) {
         throw error;
       }
@@ -377,6 +695,76 @@ export default function LoginPage() {
     }
   }
 
+  async function handleResetPassword(event) {
+    event.preventDefault();
+    const activeSupabase = getActiveSupabaseClient();
+    if (!activeSupabase) {
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setStatusTone("error");
+      setStatus("Passwords do not match.");
+      return;
+    }
+
+    if (password.length < PASSWORD_MIN_LENGTH) {
+      setStatusTone("error");
+      setStatus(`Password must be at least ${PASSWORD_MIN_LENGTH} characters.`);
+      return;
+    }
+
+    setIsSubmitting(true);
+    setStatusTone("info");
+    setStatus("Updating password...");
+
+    try {
+      const { error } = await activeSupabase.auth.updateUser({
+        password
+      });
+      if (error) {
+        throw error;
+      }
+
+      const {
+        data: { session }
+      } = await activeSupabase.auth.getSession();
+      if (!session) {
+        throw new Error("Password updated but no session was returned.");
+      }
+
+      replaceLoginUrl({ requestedReturnTo });
+      setStatus("Establishing shared cookies...");
+      const sessionPayload = await bootstrapPlatformCookieSession(session);
+      const target = resolveRedirectTarget({ sessionPayload, session, requestedReturnTo });
+      setStatus(`Password updated. Redirecting to ${target.label}...`);
+      window.location.replace(target.url);
+    } catch (error) {
+      setStatusTone("error");
+      setStatus(describeAuthError(error, "Unable to update password."));
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleUseDifferentEmail() {
+    if (loginStep === "resetPassword") {
+      const activeSupabase = getActiveSupabaseClient();
+      if (activeSupabase) {
+        await activeSupabase.auth.signOut().catch(() => null);
+      }
+      await clearPlatformCookieSession().catch(() => null);
+    }
+
+    replaceLoginUrl({ requestedReturnTo });
+    setPassword("");
+    setConfirmPassword("");
+    setShowPassword(false);
+    setShowConfirmPassword(false);
+    setLoginStep("email");
+    setStatus("");
+    setStatusTone("info");
+  }
+
   return (
     <main className="login-shell" aria-busy={isBootstrappingSession || isSubmitting}>
       <img src="/aveyo-logo.svg" alt="Aveyo" className="login-brand" />
@@ -385,74 +773,144 @@ export default function LoginPage() {
         <div className="login-visual" aria-hidden="true" />
 
         <section className="login-panel">
-          <h1 className="login-title">Login</h1>
-          <p className="login-subtitle">Access your Aveyo account</p>
+          <h1 className="login-title">{panelCopy.title}</h1>
+          <p className="login-subtitle">{panelCopy.subtitle}</p>
 
-          <form onSubmit={handleSignIn} className="login-form">
-            <label className="login-field">
-              <span>Your email</span>
-              <input
-                type="email"
-                placeholder="name@email.com"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                autoComplete="email"
-                required
-                disabled={isSubmitting}
-              />
-            </label>
-
-            <label className="login-field">
-              <span>Password</span>
-              <div className="login-password-shell">
+          {loginStep === "email" ? (
+            <form onSubmit={handleEmailContinue} className="login-form">
+              <label className="login-field">
+                <span>Your email</span>
                 <input
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••••••••"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                  autoComplete="current-password"
+                  type="email"
+                  placeholder="name@email.com"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  autoComplete="email"
                   required
                   disabled={isSubmitting}
                 />
+              </label>
+
+              <button type="submit" className="login-primary-button" disabled={isSubmitting}>
+                Continue
+              </button>
+            </form>
+          ) : null}
+
+          {loginStep === "password" ? (
+            <form onSubmit={handlePasswordSignIn} className="login-form">
+              <div className="login-chip" aria-label="Email address">
+                {email}
+              </div>
+
+              <PasswordField
+                label="Password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="••••••••••••••"
+                autoComplete="current-password"
+                showValue={showPassword}
+                onToggle={() => setShowPassword((current) => !current)}
+                toggleLabel={showPassword ? "Hide password" : "Show password"}
+                disabled={isSubmitting}
+              />
+
+              <button type="submit" className="login-primary-button" disabled={isSubmitting}>
+                Sign in
+              </button>
+
+              <div className="login-actions">
                 <button
                   type="button"
-                  className="login-password-toggle"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
-                  onClick={() => setShowPassword((current) => !current)}
+                  className="login-secondary-button"
+                  onClick={() => {
+                    void handleUseDifferentEmail();
+                  }}
                   disabled={isSubmitting}
                 >
-                  <svg viewBox="0 0 20 13" aria-hidden="true">
-                    <path d="M3.0858 2.69223C6.67563 -0.897383 12.496 -0.897435 16.0858 2.69223L18.8788 5.4852C19.2691 5.87564 19.269 6.50876 18.8788 6.89926L16.0858 9.69223L15.743 10.0184C12.251 13.1736 6.9207 13.1735 3.42857 10.0184L3.0858 9.69223L0.292831 6.89926C-0.097569 6.50872 -0.0976518 5.87568 0.292831 5.4852L3.0858 2.69223ZM14.6717 4.10629C11.863 1.29768 7.30864 1.29773 4.49986 4.10629L2.41392 6.19223L4.49986 8.27816C7.30867 11.0869 11.863 11.0869 14.6717 8.27816L16.7577 6.19223L14.6717 4.10629ZM9.5858 3.79477C10.9101 3.79477 11.984 4.86798 11.9842 6.19223C11.9842 7.51664 10.9102 8.59066 9.5858 8.59066C8.26144 8.5906 7.18834 7.5166 7.18834 6.19223C7.18854 4.86802 8.26156 3.79483 9.5858 3.79477Z" />
-                  </svg>
+                  Use a different email
+                </button>
+                <button
+                  type="button"
+                  className="login-forgot-button"
+                  onClick={(event) => {
+                    void handleForgotPassword(event);
+                  }}
+                  disabled={isSubmitting}
+                >
+                  Forgot password?
                 </button>
               </div>
-            </label>
+            </form>
+          ) : null}
 
-            <button type="submit" className="login-primary-button" disabled={isSubmitting}>
-              Login
-            </button>
-          </form>
+          {loginStep === "notice" ? (
+            <div className="login-form">
+              <div className="login-chip" aria-label="Email address">
+                {email}
+              </div>
+              <p className="login-note">
+                We only email secure sign-in links for active customer-project accounts.
+              </p>
+              <button
+                type="button"
+                className="login-primary-button"
+                onClick={() => {
+                  void handleUseDifferentEmail();
+                }}
+                disabled={isSubmitting}
+              >
+                Use a different email
+              </button>
+            </div>
+          ) : null}
 
-          <div className="login-divider" aria-hidden="true">
-            <span className="login-divider-line" />
-            <p>Or continue with</p>
-            <span className="login-divider-line" />
-          </div>
+          {loginStep === "resetPassword" ? (
+            <form onSubmit={handleResetPassword} className="login-form">
+              <div className="login-chip" aria-label="Email address">
+                {email}
+              </div>
 
-          <button type="button" className="login-google-button" disabled>
-            Google
-          </button>
+              <PasswordField
+                label="New password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Create a new password"
+                autoComplete="new-password"
+                showValue={showPassword}
+                onToggle={() => setShowPassword((current) => !current)}
+                toggleLabel={showPassword ? "Hide new password" : "Show new password"}
+                disabled={isSubmitting}
+              />
 
-          <button
-            type="button"
-            className="login-forgot-button"
-            onClick={(event) => {
-              void handleForgotPassword(event);
-            }}
-            disabled={isSubmitting}
-          >
-            Forgot password?
-          </button>
+              <PasswordField
+                label="Confirm password"
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                placeholder="Re-enter your password"
+                autoComplete="new-password"
+                showValue={showConfirmPassword}
+                onToggle={() => setShowConfirmPassword((current) => !current)}
+                toggleLabel={showConfirmPassword ? "Hide password confirmation" : "Show password confirmation"}
+                disabled={isSubmitting}
+              />
+
+              <button type="submit" className="login-primary-button" disabled={isSubmitting}>
+                Save password
+              </button>
+
+              <button
+                type="button"
+                className="login-secondary-button"
+                onClick={() => {
+                  void handleUseDifferentEmail();
+                }}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </button>
+            </form>
+          ) : null}
 
           {status ? (
             <p className="login-status" data-tone={statusTone}>

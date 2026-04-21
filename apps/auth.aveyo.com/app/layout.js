@@ -1,5 +1,6 @@
 import "./globals.css";
 import AvaWidgetEmbed from "./AvaWidgetEmbed";
+import { authStyleVars } from "../lib/auth-design-system";
 
 export const metadata = {
   title: "Auth | Aveyo",
@@ -9,7 +10,7 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body>
+      <body style={authStyleVars}>
         {children}
         <AvaWidgetEmbed />
       </body>

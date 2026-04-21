@@ -4,6 +4,7 @@ import { extractAccessTokenFromNextRequest } from "@/lib/auth/token";
 
 const publicApiPaths = new Set([
   "/api/health",
+  "/api/auth/login/start",
   "/api/auth/session",
   "/api/auth/session/bootstrap",
   "/api/auth/session/logout",

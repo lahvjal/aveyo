@@ -47,6 +47,7 @@ export interface PlatformSideNavProps {
   canAccessManagerPanel?: boolean;
   canAccessAdminPanel?: boolean;
   canAccessKpiDashboard?: boolean;
+  canAccessCustomerPortal?: boolean;
 }
 
 const DEFAULT_PATHNAME = "/";
@@ -180,8 +181,39 @@ function canShowPrimaryItemByRole(
     userType?: string;
     role?: string;
     canAccessKpiDashboard?: boolean;
+    canAccessCustomerPortal?: boolean;
+    canAccessAdminPanel?: boolean;
   }
 ): boolean {
+  if (itemId === "customer-portal") {
+    if (options.canAccessCustomerPortal === false) {
+      return false;
+    }
+    if (options.canAccessCustomerPortal === true) {
+      return true;
+    }
+    if (typeof options.canAccessAdminPanel === "boolean") {
+      if (!options.canAccessAdminPanel) {
+        return false;
+      }
+      const normalizedUserType = normalizeAccessValue(options.userType);
+      return !normalizedUserType || normalizedUserType === "employee";
+    }
+
+    const hasRoleContext = typeof options.role === "string" || typeof options.userType === "string";
+    if (!hasRoleContext) {
+      return true;
+    }
+
+    const normalizedUserType = normalizeAccessValue(options.userType);
+    if (normalizedUserType && normalizedUserType !== "employee") {
+      return false;
+    }
+
+    const normalizedRole = normalizeAccessValue(options.role);
+    return ADMIN_PANEL_ROLE_KEYS.has(normalizedRole);
+  }
+
   if (itemId !== "kpi") {
     return true;
   }
@@ -390,7 +422,8 @@ export function PlatformSideNav({
   role,
   canAccessManagerPanel,
   canAccessAdminPanel,
-  canAccessKpiDashboard
+  canAccessKpiDashboard,
+  canAccessCustomerPortal
 }: PlatformSideNavProps) {
   const classNames = SHARED_CLASS_NAMES;
   const [runtimeEnvironment, setRuntimeEnvironment] = useState<RuntimeEnvironment>(
@@ -426,10 +459,12 @@ export function PlatformSideNav({
         canShowPrimaryItemByRole(item.id, {
           userType,
           role,
-          canAccessKpiDashboard
+          canAccessKpiDashboard,
+          canAccessCustomerPortal,
+          canAccessAdminPanel
         })
       ),
-    [primaryNavItems, userType, role, canAccessKpiDashboard]
+    [primaryNavItems, userType, role, canAccessKpiDashboard, canAccessCustomerPortal, canAccessAdminPanel]
   );
   const configuredUtilityItems = useMemo(
     () => {

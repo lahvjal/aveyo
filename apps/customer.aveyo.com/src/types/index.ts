@@ -36,6 +36,7 @@ export interface Project {
   milestone: string | MilestoneObject; // Can be either a string (milestone name) or the full milestone object
   milestones?: Milestone[]; // Array of processed milestone objects
   customer_email?: string;
+  customer_name?: string;
   system_size?: number;
   estimated_yearly_production?: number;
   project_manager?: string;

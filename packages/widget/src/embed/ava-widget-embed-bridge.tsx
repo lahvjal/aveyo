@@ -287,7 +287,7 @@ export function AvaWidgetEmbedBridge({
     const windowWithAvaAuth = window as Window & { AvaAuth?: AvaAuthWindowApi };
     const previousApi = windowWithAvaAuth.AvaAuth;
     windowWithAvaAuth.AvaAuth = {
-      setSession: (sessionData) => {
+      setSession: (sessionData: LegacyAvaSessionData) => {
         const normalized = normalizeLegacySession(sessionData);
         if (!normalized) {
           return;

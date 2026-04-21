@@ -1,46 +1,125 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import AppShell from '@/components/layout/AppShell';
+import { useEffect, useMemo, useState } from 'react';
 import '@/styles/brand-colors.css';
 import Link from 'next/link';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import StatusBadge from '@/components/ui/StatusBadge';
 import { Project } from '@/types';
 import { getProjectHomePhotoUrl } from '@/utils/projectUtils';
-import { getMilestoneDisplayName, getNextMilestoneDisplayName, sectionDisplayNames } from '@/utils/milestoneUtils';
+import { getNextMilestoneDisplayName } from '@/utils/milestoneUtils';
 import { useProjects } from '@/context/ProjectsContext';
 import { useAuth } from '@/context/AuthContext';
 import { analytics } from '@/lib/analytics';
+import {
+  getDashboardStageSections,
+  getNextMilestoneDescription,
+  getProjectStatusSnapshot
+} from '@/utils/customerDashboardUtils';
 
-// Declare AvaAuth interface for TypeScript
-declare global {
-  interface Window {
-    AvaAuth: {
-      setSession: (sessionData: {
-        email: string;
-        userId?: string;
-        name?: string;
-        token?: string;
-        customData?: any;
-      }) => void;
-      clearSession: () => void;
-      getSession: () => any;
-      open: () => void;
-      close: () => void;
-      isOpen: () => boolean;
-    };
-  }
+function formatDate(dateString: string) {
+  const date = new Date(dateString);
+  return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
+}
+
+function StageMenuDots({ active = false }: { active?: boolean }) {
+  return (
+    <div className="absolute right-5 top-5 flex items-center gap-1">
+      <span className={`h-1 w-1 rounded-full ${active ? 'bg-[var(--customer-color-text-primary)]' : 'bg-[var(--customer-color-text-muted)]'}`}></span>
+      <span className={`h-1 w-1 rounded-full ${active ? 'bg-[var(--customer-color-text-primary)]' : 'bg-[var(--customer-color-text-muted)]'}`}></span>
+      <span className={`h-1 w-1 rounded-full ${active ? 'bg-[var(--customer-color-text-primary)]' : 'bg-[var(--customer-color-text-muted)]'}`}></span>
+    </div>
+  );
+}
+
+const emptyStageLabels = ['Pre-Approvals', 'Approvals', 'Construction', 'Activation'];
+
+function StageMilestoneDots({
+  visualState,
+  completedCount,
+  totalMilestones
+}: {
+  visualState: 'completed' | 'active' | 'pending';
+  completedCount: number;
+  totalMilestones: number;
+}) {
+  return (
+    <div className="flex items-center justify-center gap-3">
+      {Array.from({ length: totalMilestones }).map((_, index) => {
+        if (index < completedCount) {
+          return (
+            <span
+              key={index}
+              className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--customer-color-stage-complete)] text-white"
+            >
+              <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="m3.5 8 2.5 2.5 6-6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+          );
+        }
+
+        if (visualState === 'active' && index === completedCount) {
+          return (
+            <span
+              key={index}
+              className="h-6 w-6 rounded-full border-2 border-[rgba(33,33,32,0.55)] bg-transparent"
+            ></span>
+          );
+        }
+
+        if (visualState === 'active') {
+          return (
+            <span
+              key={index}
+              className="h-6 w-6 rounded-full bg-[var(--customer-color-text-primary)]"
+            ></span>
+          );
+        }
+
+        return (
+          <span
+            key={index}
+            className="h-4 w-4 rounded-full bg-[var(--customer-color-border)]"
+          ></span>
+        );
+      })}
+    </div>
+  );
 }
 
 export default function DashboardPage() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, customerPortalView } = useAuth();
   const { projects, loading, error } = useProjects();
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
+  const projectScopeKey =
+    customerPortalView?.effectiveCustomerEmail?.trim().toLowerCase() ??
+    user?.email?.trim().toLowerCase() ??
+    '';
 
   useEffect(() => {
-    // Track page view
     analytics.pageView('dashboard');
   }, []);
+
+  useEffect(() => {
+    setSelectedProjectId(null);
+  }, [projectScopeKey]);
+
+  useEffect(() => {
+    if (!projects.length) {
+      setSelectedProjectId(null);
+      return;
+    }
+
+    if (!selectedProjectId || !projects.some((project) => project.id === selectedProjectId)) {
+      setSelectedProjectId(projects[0].id);
+    }
+  }, [projects, selectedProjectId]);
+
+  const selectedProject = useMemo(
+    () => projects.find((project) => project.id === selectedProjectId) ?? projects[0] ?? null,
+    [projects, selectedProjectId]
+  );
 
   if (authLoading) {
     return (
@@ -66,366 +145,265 @@ export default function DashboardPage() {
     );
   }
 
-  // Helper function to determine milestone status for progress bar
-  const getMilestoneProgress = (project: any) => {
-    // Import helper functions from InstallationProgress component
-    const isCompleted = (date: string | undefined, status: string | undefined) => {
-      if (date) {
-        return true;
-      }
-      
-      if (status && typeof status === 'string') {
-        return status.toLowerCase() === 'complete' || status.toLowerCase() === 'completed';
-      }
-      
-      return false;
-    };
-    
-    // Extract milestone data from project
-    const milestone = project.milestone || {};
-    const podioData = project.podio_data?.raw_payload || {};
-    
-    // Extract milestone data from different sources
-    const preApprovals = {
-      'site-survey-complete': milestone['site-survey-complete'] || podioData['site-survey-complete'],
-      'site-survey-status': milestone['site-survey-status'] || podioData['site-survey-status'],
-      'ntp-complete': milestone['ntp-complete'] || podioData['ntp-complete'],
-      'engineering-complete': milestone['engineering-complete'] || podioData['engineering-complete'],
-      'engineering-status': milestone['engineering-status'] || podioData['engineering-status']
-    };
-    
-    const approvals = {
-      'pre-install-review-complete': milestone['pre-install-review-complete'] || podioData['pre-install-review-complete']
-    };
-    
-    const construction = {
-      'install-appointment': milestone['install-appointment'] || podioData['install-appointment'] || milestone['estimated-install-date'] || podioData['estimated-install-date'],
-      'install-complete': milestone['install-complete'] || podioData['install-complete'],
-      'ahj-inspection-complete': milestone['ahj-inspection-complete'] || podioData['ahj-inspection-complete']
-    };
-    
-    const energization = {
-      'pto-received': milestone['pto-received'] || podioData['pto-received'],
-      'pto-status': milestone['pto-status'] || podioData['pto-status'],
-      'energize-complete-date': milestone['energize-complete-date'] || podioData['energize-complete-date'],
-      'engergize-status': milestone['engergize-status'] || podioData['engergize-status']
-    };
-    
-    // Calculate section statuses
-    const getSectionStatus = (section: string) => {
-      let status = 'Not Started';
-      let allCompleted = false;
-      let anyCompleted = false;
-      
-      if (section === 'pre-approvals') {
-        const siteCompleted = isCompleted(preApprovals?.['site-survey-complete'], preApprovals?.['site-survey-status']);
-        const ntpCompleted = isCompleted(preApprovals?.['ntp-complete'], undefined);
-        const engineeringCompleted = isCompleted(preApprovals?.['engineering-complete'], preApprovals?.['engineering-status']);
-        
-        allCompleted = siteCompleted && ntpCompleted && engineeringCompleted;
-        anyCompleted = siteCompleted || ntpCompleted || engineeringCompleted;
-      } else if (section === 'approvals') {
-        const reviewCompleted = isCompleted(approvals?.['pre-install-review-complete'], undefined);
-        
-        allCompleted = reviewCompleted;
-        anyCompleted = reviewCompleted;
-      } else if (section === 'construction') {
-        const appointmentCompleted = isCompleted(construction?.['install-appointment'], undefined);
-        const installCompleted = isCompleted(construction?.['install-complete'], undefined);
-        const inspectionCompleted = isCompleted(construction?.['ahj-inspection-complete'], undefined);
-        
-        allCompleted = appointmentCompleted && installCompleted && inspectionCompleted;
-        anyCompleted = appointmentCompleted || installCompleted || inspectionCompleted;
-      } else if (section === 'energization') {
-        const ptoCompleted = isCompleted(energization?.['pto-received'], energization?.['pto-status']);
-        const energizeCompleted = isCompleted(energization?.['energize-complete-date'], energization?.['engergize-status']);
-        
-        allCompleted = ptoCompleted && energizeCompleted;
-        anyCompleted = ptoCompleted || energizeCompleted;
-      }
-      
-      if (allCompleted) {
-        status = 'Completed';
-      } else if (anyCompleted) {
-        status = 'In Progress';
-      }
-      
-      return { status };
-    };
-    
-    // Get status for each section
-    const preApprovalStatus = getSectionStatus('pre-approvals');
-    const approvalsStatus = getSectionStatus('approvals');
-    const constructionStatus = getSectionStatus('construction');
-    const energizationStatus = getSectionStatus('energization');
-    
-    // Determine current stage and next milestone
-    let currentStage = { name: 'Planning', status: 'Not Started', nextMilestone: 'Site Survey' };
-    
-    // Calculate progress percentage
-    let completedMilestones = 0;
-    const totalMilestones = 9;
-    
-    // Count completed milestones
-    if (isCompleted(preApprovals?.['site-survey-complete'], preApprovals?.['site-survey-status'])) completedMilestones++;
-    if (isCompleted(preApprovals?.['ntp-complete'], undefined)) completedMilestones++;
-    if (isCompleted(preApprovals?.['engineering-complete'], preApprovals?.['engineering-status'])) completedMilestones++;
-    if (isCompleted(approvals?.['pre-install-review-complete'], undefined)) completedMilestones++;
-    if (isCompleted(construction?.['install-appointment'], undefined)) completedMilestones++;
-    if (isCompleted(construction?.['install-complete'], undefined)) completedMilestones++;
-    if (isCompleted(construction?.['ahj-inspection-complete'], undefined)) completedMilestones++;
-    if (isCompleted(energization?.['pto-received'], energization?.['pto-status'])) completedMilestones++;
-    if (isCompleted(energization?.['energize-complete-date'], energization?.['engergize-status'])) completedMilestones++;
-    
-    // Calculate progress percentage
-    const progressPercentage = Math.round((completedMilestones / totalMilestones) * 100);
-    
-    // Determine current stage
-    if (preApprovalStatus.status !== 'Completed') {
-      currentStage = { 
-        name: 'Pre-Approvals', 
-        status: preApprovalStatus.status,
-        nextMilestone: isCompleted(preApprovals?.['site-survey-complete'], preApprovals?.['site-survey-status']) ?
-          (isCompleted(preApprovals?.['ntp-complete'], undefined) ? 'Engineering Complete' : 'Notice to Proceed') :
-          'Site Survey'
-      };
-    } else if (approvalsStatus.status !== 'Completed') {
-      currentStage = { 
-        name: 'Approvals', 
-        status: approvalsStatus.status,
-        nextMilestone: 'Pre-Install Review'
-      };
-    } else if (constructionStatus.status !== 'Completed') {
-      currentStage = { 
-        name: 'Construction', 
-        status: constructionStatus.status,
-        nextMilestone: isCompleted(construction?.['install-appointment'], undefined) ?
-          (isCompleted(construction?.['install-complete'], undefined) ? 'Inspection Complete' : 'Installation Complete') :
-          'Installation Appointment'
-      };
-    } else if (energizationStatus.status !== 'Completed') {
-      currentStage = { 
-        name: 'Activation', 
-        status: energizationStatus.status,
-        nextMilestone: isCompleted(energization?.['pto-received'], energization?.['pto-status']) ? 'System Energized' : 'Permission to Operate'
-      };
-    } else if (preApprovalStatus.status === 'Completed' && 
-               approvalsStatus.status === 'Completed' && 
-               constructionStatus.status === 'Completed' && 
-               energizationStatus.status === 'Completed') {
-      currentStage = { 
-        name: 'Completed', 
-        status: 'Completed',
-        nextMilestone: 'System Active and Producing'
-      };
-    }
-    
-    return { 
-      color: 'bg-green-500', 
-      width: `${progressPercentage}%`, 
-      status: currentStage.name, 
-      tag: currentStage.nextMilestone,
-      progress: progressPercentage
-    };
-  };
+  if (error) {
+    return (
+      <div className="customer-panel space-y-4 p-6 text-red-700">
+        <p>{error}</p>
+        {customerPortalView?.canImpersonate ? (
+          <p className="text-sm text-[var(--customer-color-text-subtle)]">
+            Use the <span className="font-semibold text-[var(--customer-color-text-primary)]">Internal</span> bar at the
+            top of the page to search and open a customer account.
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
-  // Format date to MM/DD/YYYY
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
-  };
-  
-  // Get user's first name
-  const getFirstName = () => {
-    if (!user?.user_metadata?.full_name) return '';
-    return user.user_metadata.full_name.split(' ')[0];
+  const selectedProjectStatus = selectedProject ? getProjectStatusSnapshot(selectedProject) : null;
+  const selectedProjectStages = selectedProject ? getDashboardStageSections(selectedProject) : [];
+  const isEmptyState = !loading && !selectedProject;
+
+  const openAvaChat = () => {
+    analytics.avaChatOpened('banner');
+    const avaAuth = typeof window !== 'undefined' ? (window as Window & { AvaAuth?: { open: () => void } }).AvaAuth : undefined;
+    if (avaAuth) {
+      try {
+        avaAuth.open();
+      } catch (error) {
+        console.error('Error opening Ava chat from dashboard panel:', error);
+      }
+    }
   };
 
   return (
-    <>
-      <AppShell>
-      <div className="py-4 sm:py-6 px-2">
-        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-1">
-          WELCOME <span className="truncate inline-block max-w-[70%] align-bottom">{user?.email?.toUpperCase()}</span>
-        </h1>
-        
-        <p className="text-base sm:text-lg text-gray-700 mb-6 sm:mb-8">Your solar projects.</p>
-
-        {/* Annual Report Card */}
-        <Link href="/annual-report">
-          <div className="mb-6 sm:mb-8 bg-white border-2 border-gray-200 rounded-xl shadow-md overflow-hidden hover:shadow-lg hover:border-blue-400 transition-all cursor-pointer">
-            <div className="p-6 sm:p-8 flex flex-col sm:flex-row items-center justify-between">
-              <div className="mb-4 sm:mb-0">
-                <div className="flex items-center space-x-3 mb-2">
-                  <div className="text-3xl">📊</div>
-                  <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
-                    Your 2026 Solar Value Report
-                  </h2>
-                </div>
-                <p className="text-gray-700 text-sm sm:text-base font-medium">
-                  See your annual energy production, environmental impact, and savings
-                </p>
-              </div>
-              <div className="flex-shrink-0">
-                <div className="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-colors">
-                  View Report
-                  <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </div>
+    <div className="pb-8">
+      {loading ? (
+        <LoadingSpinner size="large" className="py-12" />
+      ) : (
+        <div className="grid gap-[var(--customer-layout-grid-gap)] lg:grid-cols-3">
+          <section
+            key={`properties-${selectedProject?.id ?? 'none'}`}
+            className="customer-panel customer-panel-soft min-h-[620px] overflow-hidden xl:min-h-[931px]"
+          >
+            <div className="border-b border-[var(--customer-color-border-muted)] p-[var(--customer-space-panel-padding)]">
+              <h2 className="text-[length:var(--customer-font-h7)] font-bold text-[var(--customer-color-text-primary)]">
+                Properties
+              </h2>
             </div>
-          </div>
-        </Link>
 
-        {loading ? (
-          <LoadingSpinner size="large" className="py-12" />
-        ) : (
-          <div className="grid gap-4 mb-[100px] sm:gap-6 md:gap-8 md:grid-cols-2">
-            {projects.map((project) => {
-              // Use the calculatedStatus from the project if available, otherwise fall back to local calculation
-              let progress;
-              
-              if (project.calculatedStatus) {
-                // Use the server-calculated status
-                progress = {
-                  color: 'bg-green-500',
-                  width: `${project.calculatedStatus.progressPercentage}%`,
-                  status: project.calculatedStatus.currentStage.name,
-                  tag: project.calculatedStatus.nextMilestone,
-                  progress: project.calculatedStatus.progressPercentage
-                };
-              } else {
-                // Fall back to local calculation if calculatedStatus is not available
-                progress = getMilestoneProgress(project);
-              }
-              
-              return (
-                <div
-                  key={project.id}
-                  className="bg-white rounded-lg shadow-md overflow-hidden"
-                >
-                  <div className="relative h-48 bg-gray-200">
-                    <img
-                      src={getProjectHomePhotoUrl(project)}
-                      alt={`${project.name} - Home`}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/placeholder-home.jpg';
+            {isEmptyState ? (
+              <div className="flex h-[calc(100%-62px)] flex-col items-center justify-center gap-3 px-8 text-center">
+                <p className="text-[length:var(--customer-font-h5)] font-medium text-[var(--customer-color-text-muted)]">
+                  No projects found
+                </p>
+                {customerPortalView?.canImpersonate ? (
+                  <p className="max-w-sm text-sm text-[var(--customer-color-text-subtle)]">
+                    Use the <span className="font-semibold">Internal</span> bar at the top of the page to search, then
+                    pick a customer to load their properties here.
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <div className="flex flex-col">
+                {projects.map((project) => {
+                  const projectStatus = getProjectStatusSnapshot(project);
+                  const isSelected = project.id === selectedProject?.id;
+                  const isComplete =
+                    projectStatus.currentStage.name.toLowerCase() === 'completed' ||
+                    projectStatus.currentStage.status === 'completed';
+                  const progressWidth = `${Math.max(projectStatus.progressPercentage, isComplete ? 100 : 14)}%`;
+
+                  return (
+                    <button
+                      key={project.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedProjectId(project.id);
+                        analytics.projectView(project.id);
                       }}
-                    />
-                  </div>
-                  
-                  {/* Project details */}
-                  <div className="w-full sm:w-2/3 p-3 sm:p-4">
-                    <h3 className="text-lg sm:text-xl font-semibold text-gray-900 line-clamp-1">{project.address}</h3>
-                    
-                    <div className="mt-2 flex flex-col space-y-2">
-                      <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-                        <span className="text-xs font-medium text-gray-500">Current Stage:</span>
-                        <div className="px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          {sectionDisplayNames[progress.status.toLowerCase().replace(' ', '-')] || progress.status}
+                      className={`grid min-h-[163px] grid-cols-[120px_minmax(0,1fr)] border-b border-[var(--customer-color-border-muted)] text-left transition-colors ${
+                        isSelected
+                          ? 'bg-[var(--customer-gradient-selected-row)] shadow-[inset_-4px_0_0_0_var(--customer-color-action)]'
+                          : 'bg-transparent hover:bg-[rgba(110,185,254,0.04)]'
+                      }`}
+                    >
+                      <div className="relative h-full overflow-hidden">
+                        <img
+                          src={getProjectHomePhotoUrl(project)}
+                          alt={project.address}
+                          className="h-full w-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.src = 'https://via.placeholder.com/600x300?text=House+Image';
+                          }}
+                        />
+                      </div>
+
+                      <div className="flex min-w-0 flex-col justify-center px-5 py-6">
+                        <h3 className="truncate text-[length:var(--customer-font-h6)] font-extrabold tracking-[-0.03em] text-[var(--customer-color-text-primary)]">
+                          {project.address}
+                        </h3>
+
+                        <div className="mt-4 flex flex-wrap items-center gap-2 text-[length:var(--customer-font-paragraph)] font-semibold text-[var(--customer-color-text-primary)]">
+                          <span>{isComplete ? 'Completed' : 'Last Updated:'}</span>
+                          <span className="font-normal text-[var(--customer-color-text-subtle)]">
+                            {formatDate(project.updated_at)}
+                          </span>
+                        </div>
+
+                        <div className="mt-5 h-2.5 rounded-full bg-[var(--customer-color-border-muted)]">
+                          <div
+                            className={`h-full rounded-full ${
+                              isComplete
+                                ? 'bg-[var(--customer-color-progress-track)]'
+                                : 'bg-[var(--customer-color-progress)]'
+                            }`}
+                            style={{ width: progressWidth }}
+                          ></div>
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-                        <span className="text-xs font-medium text-gray-500">Next Milestone:</span>
-                        <span className="px-2 py-1 text-xs font-extrabold rounded-full bg-yellow-50 text-amber-800">
-                          {getNextMilestoneDisplayName(project.calculatedStatus?.nextMilestone || progress.tag)}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    {/* Progress bar */}
-                    <div className="mt-3 sm:mt-4 w-full bg-gray-200 rounded-full h-2.5">
-                      <div 
-                        className={`${progress.color} h-2.5 rounded-full`} 
-                        style={{ width: progress.width }}
-                      ></div>
-                    </div>
-                    
-                    <div className="mt-3 sm:mt-4 flex flex-col sm:flex-row justify-between sm:items-center space-y-2 sm:space-y-0">
-                      <div className="text-xs sm:text-sm">
-                        <span className="text-gray-500">Last Updated: </span>
-                        <span className="text-gray-700">{formatDate(project.updated_at)}</span>
-                      </div>
-                      <Link
-                        href={`/dashboard/${project.id}`}
-                        className="inline-flex items-center justify-center px-3 sm:px-4 py-1.5 sm:py-2 border border-transparent text-xs sm:text-sm font-medium rounded-md text-white brand-button"
-                        onClick={() => {
-                          // Track project view
-                          analytics.projectView(project.id);
-                        }}
-                      >
-                        View Details
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
-        {/* Ava AI Chatbot CTA Banner */}
-        <div className="relative flex justify-center items-center
-         rounded-lg shadow-lg p-6 mb-6 sm:mb-8 text-white overflow-hidden h-[300px]" style={{backgroundImage: 'url("/background-color.png")', backgroundSize: 'cover', backgroundPosition: 'center center' }}>
-          {/* Ava background image */}
-          {/* <div 
-            className="absolute inset-0 bg-cover bg-center bg-no-repeat rounded-lg"
-            
-          ></div>
-          <div className="absolute inset-0 bg-black bg-opacity-40 rounded-lg"></div> */}
-          
-          <div className="relative z-10 flex flex-col items-center sm:items-center justify-center">
-            <div className="flex-1">
-              <div className="flex flex-col items-center mb-2">
-                <div className="mb-2">
-                  <img src="/ava-logo2.svg" alt="Ava Logo" className="h-12 w-42" />
-                </div>
-                <h2 className="text-xl sm:text-2xl font-bold text-center">
-                  Meet Ava, Your AI Solar Assistant!
+          <section
+            key={`stages-${selectedProject?.id ?? 'none'}`}
+            className="customer-panel customer-panel-soft flex min-h-[620px] flex-col overflow-hidden xl:min-h-[931px]"
+          >
+            <div className="border-b border-[var(--customer-color-border-muted)] p-[var(--customer-space-panel-padding)]">
+              <h2 className="text-[length:var(--customer-font-h7)] font-bold text-[var(--customer-color-text-primary)]">
+                Stages
+              </h2>
+            </div>
+
+            <div className="flex min-h-0 flex-1 flex-col">
+              {isEmptyState
+                ? emptyStageLabels.map((label, index) => (
+                    <div
+                      key={label}
+                      className={`relative flex min-h-[170px] flex-1 basis-0 flex-col items-center justify-center px-8 py-8 text-center ${
+                        index < emptyStageLabels.length - 1
+                          ? 'border-b border-[var(--customer-color-border-muted)]'
+                          : ''
+                      }`}
+                    >
+                      <StageMenuDots />
+                      <h3 className="text-[length:var(--customer-font-h5)] font-medium tracking-[-0.03em] text-[var(--customer-color-text-muted)]">
+                        {label}
+                      </h3>
+                      <p className="mt-4 text-[length:var(--customer-font-paragraph)] font-medium text-[var(--customer-color-text-muted)]">
+                        No Project
+                      </p>
+                    </div>
+                  ))
+                : selectedProjectStages.map((section, index) => (
+                    <div
+                      key={section.key}
+                      className={`relative flex min-h-[170px] flex-1 basis-0 flex-col items-center justify-center px-8 py-8 text-center ${
+                        index < selectedProjectStages.length - 1
+                          ? 'border-b border-[var(--customer-color-border-muted)]'
+                          : ''
+                      } ${section.visualState === 'active' ? '' : 'bg-transparent'}`}
+                      style={
+                        section.visualState === 'active'
+                          ? { background: 'var(--customer-gradient-stage-active)' }
+                          : undefined
+                      }
+                    >
+                      <StageMenuDots active={section.visualState === 'active'} />
+                      <h3
+                        className={`${
+                          section.visualState === 'active'
+                            ? 'text-[length:var(--customer-font-h6)] leading-[1.5] tracking-[0]'
+                            : 'text-[length:var(--customer-font-h5)] tracking-[-0.03em]'
+                        } font-extrabold ${
+                          section.visualState === 'active'
+                            ? 'text-[var(--customer-color-text-primary)]'
+                            : 'text-[var(--customer-color-text-muted)]'
+                        }`}
+                      >
+                        {section.label}
+                      </h3>
+                      <div className="mt-6">
+                        <StageMilestoneDots
+                          visualState={section.visualState}
+                          completedCount={section.completedCount}
+                          totalMilestones={section.totalMilestones}
+                        />
+                      </div>
+                    </div>
+                  ))}
+            </div>
+          </section>
+
+          <div className="flex min-h-[620px] flex-col gap-[var(--customer-layout-grid-gap)] xl:min-h-[931px]">
+            <section
+              key={`milestone-${selectedProject?.id ?? 'none'}`}
+              className="customer-panel customer-panel-soft flex min-h-[300px] flex-col overflow-hidden xl:min-h-[300px]"
+            >
+              <div className="border-b border-[var(--customer-color-border-muted)] p-[var(--customer-space-panel-padding)]">
+                <h2 className="text-[length:var(--customer-font-h7)] font-bold text-[var(--customer-color-text-primary)]">
+                  Next Milestone
                 </h2>
               </div>
-              <p className="text-purple-100 mb-4 max-w-[600px] text-center leading-relaxed">
-                Get instant answers about your solar project, installation timeline, and more. Ava is here 24/7 to help you navigate your solar journey.
-              </p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-              <button
-                onClick={() => {
-                  // Track Ava chat opened from banner
-                  analytics.avaChatOpened('banner');
-                  
-                  if (typeof window !== 'undefined' && window.AvaAuth) {
-                    try {
-                      window.AvaAuth.open();
-                      
-                      // Check if widget stays open after a delay
-                      setTimeout(() => {
-                        if (window.AvaAuth && !window.AvaAuth.isOpen()) {
-                          try {
-                            window.AvaAuth.open();
-                          } catch (retryError) {
-                            console.error('Failed to reopen widget:', retryError);
-                          }
-                        }
-                      }, 2000);
-                    } catch (error) {
-                      console.error('Error calling AvaAuth.open():', error);
-                    }
-                  }
-                }}
-                className="inline-flex items-center justify-start gap-2 px-3 sm:px-4 py-1.5 sm:py-2 border border-transparent text-xs sm:text-sm font-medium rounded-md bg-white text-gray-900 hover:bg-gray-50 transition-colors"
-              >
-                <img src="/ava-icon.svg" alt="Ava Icon" className="h-8 w-8" />
-                <span>Chat with Ava</span>
-              </button>
-            </div>
+              <div className="flex flex-1 flex-col items-center justify-center p-[var(--customer-space-panel-padding)]">
+                {isEmptyState || !selectedProjectStatus ? (
+                  <h5 className="max-w-sm text-balance text-[length:var(--customer-font-h5)] font-[var(--customer-font-weight-regular)] leading-[var(--customer-line-height-regular)] tracking-[var(--customer-letter-spacing-h5)] text-[var(--customer-color-text-muted)]">
+                    No more milestones
+                  </h5>
+                ) : (
+                  <>
+                    <h5 className="max-w-sm text-balance text-[length:var(--customer-font-h5)] font-[var(--customer-font-weight-heading)] leading-[var(--customer-line-height-h5)] tracking-[var(--customer-letter-spacing-h5)] text-[var(--customer-color-text-primary)]">
+                      {getNextMilestoneDisplayName(selectedProjectStatus.nextMilestone)}
+                    </h5>
+                    <p className="mt-6 max-w-md text-center text-base leading-7 text-[var(--customer-color-text-primary)]">
+                      {getNextMilestoneDescription(selectedProjectStatus.nextMilestone)}
+                    </p>
+                  </>
+                )}
+              </div>
+            </section>
+
+            <button
+              type="button"
+              onClick={openAvaChat}
+              className="customer-panel flex min-h-[300px] flex-1 flex-col p-[var(--customer-space-panel-padding)] text-center"
+              style={{ background: 'var(--customer-gradient-ava-panel)' }}
+            >
+              <h2 className="text-left text-[length:var(--customer-font-h7)] font-bold text-[var(--customer-color-text-primary)]">
+                Ava
+              </h2>
+              <div className="flex flex-1 flex-col items-center justify-center">
+                <h3 className="text-[length:var(--customer-font-h5)] font-extrabold tracking-[-0.05em] text-[var(--customer-color-text-primary)]">
+                  Got questions?
+                </h3>
+                <p className="mt-6 max-w-sm text-base leading-7 text-[var(--customer-color-text-primary)]">
+                  Ask me anything about your project. I bet I have an answer.
+                </p>
+                <span className="mt-10 flex h-[70px] w-[70px] items-center justify-center rounded-full bg-white/60 shadow-[0_18px_48px_rgba(111,99,255,0.16)]">
+                  <img src="/ava-icon.svg" alt="Ava" className="h-10 w-10" />
+                </span>
+              </div>
+            </button>
           </div>
         </div>
-      </div>
-    </AppShell>
-    </>
+      )}
+
+      {selectedProject && (
+        <div className="mt-6 flex justify-end">
+          <Link
+            href={`/dashboard/${selectedProject.id}`}
+            className="brand-button inline-flex items-center gap-2 px-5 py-3 text-sm"
+          >
+            <span>Open project details</span>
+            <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M6 3.5 10.5 8 6 12.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </Link>
+        </div>
+      )}
+    </div>
   );
 }

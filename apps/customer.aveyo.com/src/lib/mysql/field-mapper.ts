@@ -23,10 +23,9 @@ export function mapProjectDataToProject(
   const address = projectData.fullAddress ||
     `${projectData.address || ''}, ${projectData.city || ''}, ${projectData.state || ''} ${projectData.zip || ''}`.trim();
 
-  // Format project name
-  const customerName = projectData.customerName ||
-    projectData.email.split('@')[0] ||
-    'Customer';
+  // Prefer a full customer name when the source provides split first/last columns.
+  const fullCustomerName = [projectData.firstName, projectData.lastName].filter(Boolean).join(' ').trim();
+  const customerName = fullCustomerName || projectData.customerName || projectData.email.split('@')[0] || 'Customer';
   const projectName = `Solar Installation - ${customerName}`;
 
   // Map milestone data from timeline table
@@ -48,6 +47,7 @@ export function mapProjectDataToProject(
     status: projectData.projectStatus || 'not_started',
     milestone: milestone,
     customer_email: projectData.email,
+    customer_name: customerName,
     system_size: projectData.systemSize || undefined,
     estimated_yearly_production: projectData.estimatedYearlyProduction || undefined,
     project_manager: projectData.projectManager || undefined,
@@ -64,6 +64,7 @@ export function mapProjectDataToProject(
         city: projectData.city,
         state: projectData.state,
         zip: projectData.zip,
+        'customer-name': customerName,
         'system-size': projectData.systemSize,
         'estimated-yearly-production': projectData.estimatedYearlyProduction,
         'project-manager': projectData.projectManager,

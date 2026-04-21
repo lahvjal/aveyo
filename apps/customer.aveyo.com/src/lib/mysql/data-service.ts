@@ -403,3 +403,67 @@ export async function completeActionItem(id: string): Promise<boolean> {
   return true;
 }
 
+export interface PortalCustomerSearchResult {
+  email: string;
+  label: string;
+}
+
+const PORTAL_CUSTOMER_SEARCH_MIN_LEN = 2;
+const PORTAL_CUSTOMER_SEARCH_LIMIT = 25;
+const PORTAL_CUSTOMER_SEARCH_SCAN = 120;
+
+/**
+ * Distinct customer emails from project data for admin portal search (name or email substring).
+ */
+export async function searchPortalCustomers(rawQuery: string): Promise<PortalCustomerSearchResult[]> {
+  const q = rawQuery.trim();
+  if (q.length < PORTAL_CUSTOMER_SEARCH_MIN_LEN) {
+    return [];
+  }
+
+  try {
+    const rows = await prisma.projectData.findMany({
+      where: {
+        isDeleted: false,
+        OR: [
+          { email: { contains: q } },
+          { customerName: { contains: q } },
+          { firstName: { contains: q } },
+          { lastName: { contains: q } }
+        ]
+      },
+      select: {
+        email: true,
+        customerName: true,
+        firstName: true,
+        lastName: true
+      },
+      orderBy: {
+        dataUpdatedTimestamp: 'desc'
+      },
+      take: PORTAL_CUSTOMER_SEARCH_SCAN
+    });
+
+    const seen = new Set<string>();
+    const out: PortalCustomerSearchResult[] = [];
+    for (const row of rows) {
+      const emailTrim = row.email.trim();
+      const key = emailTrim.toLowerCase();
+      if (!key || seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+      const combinedName = [row.firstName, row.lastName].filter(Boolean).join(' ').trim();
+      const name = combinedName || row.customerName?.trim() || '';
+      const label = name ? `${name} · ${emailTrim}` : emailTrim;
+      out.push({ email: emailTrim, label });
+      if (out.length >= PORTAL_CUSTOMER_SEARCH_LIMIT) {
+        break;
+      }
+    }
+    return out;
+  } catch (error) {
+    console.error('[MySQL] searchPortalCustomers failed:', error);
+    return [];
+  }
+}

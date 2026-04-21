@@ -19,8 +19,8 @@
 }
 
 :root {
-  --background: #ffffff;
-  --foreground: #212121; /* Updated to brand dark color */
+  --background: var(--customer-color-canvas);
+  --foreground: var(--customer-color-text-primary);
   --font-telegraf:
     "PPTelegraf",
     "PP Telegraf",
@@ -28,27 +28,18 @@
     "Inter",
     "Segoe UI",
     sans-serif;
-  
-  /* Brand colors */
-  --brand-dark: #212121;
+  --brand-dark: var(--customer-color-text-primary);
   --brand-white: #FFFFFF;
-  --brand-light-blue: #D9E8F6;
-  --brand-blue: #0F62DE;
-}
-
-/* Global theme variables */
-:root {
+  --brand-light-blue: var(--customer-color-border-muted);
+  --brand-blue: var(--customer-color-action);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-telegraf);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--customer-color-canvas);
 }
 
 body {
@@ -56,4 +47,16 @@ body {
   color: var(--foreground);
   font-family: var(--font-telegraf), Arial, Helvetica, sans-serif;
   min-height: 100vh;
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
 }

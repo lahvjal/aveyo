@@ -1,27 +1,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
 import '@/styles/brand-colors.css';
 import { getProjectHomePhotoUrl } from '@/utils/projectUtils';
 import { getNextMilestoneDisplayName, sectionDisplayNames } from '@/utils/milestoneUtils';
-import { supabase } from '@/lib/supabase/client';
-import AppShell from '@/components/layout/AppShell';
 import Link from 'next/link';
 import InstallationProgress from '@/components/ui/InstallationProgress';
-import StatusBadge from '@/components/ui/StatusBadge';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { Project, Milestone } from '@/types';
+import { Project } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 
 export default function ProjectPage() {
-  const router = useRouter();
   const params = useParams();
+  const { user, loading: authLoading } = useAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [progressPercentage, setProgressPercentage] = useState(0);
   const [currentStage, setCurrentStage] = useState<{ name: string; status: string; nextMilestone: string }>({ 
     name: 'Pre-Approvals', 
     status: 'Not Started',
@@ -33,73 +28,60 @@ export default function ProjectPage() {
     'construction': 0,
     'energization': 0
   });
+  const projectId = Array.isArray(params.id) ? params.id[0] : params.id;
 
-  // Handle progress percentage calculation from InstallationProgress component
-  const handleProgressCalculated = (percentage: number) => {
-    setProgressPercentage(percentage);
-  };
+  // Calculate section progress on component mount
+  useEffect(() => {
+    if (!project) {
+      return;
+    }
 
-  // Handle current stage calculation from InstallationProgress component
-  const handleStageCalculated = (stage: { name: string; status: string; nextMilestone: string }) => {
-    setCurrentStage(stage);
-  };
-
-  // Calculate section progress percentages
-  const calculateSectionProgress = () => {
-    if (!project) return;
-    
     // Extract milestone data from the project
     const milestoneData = typeof project.milestone === 'object' ? project.milestone : {};
-    
+
     const preApprovals = milestoneData?.['pre-approvals'] || {};
     const approvals = milestoneData?.['approvals'] || {};
     const construction = milestoneData?.['construction'] || {};
     const energization = milestoneData?.['energization'] || {};
-    
+
     // Helper function to check if a milestone is completed
     const isCompleted = (date: string | undefined | null) => {
       return date !== undefined && date !== null && date !== '';
     };
-    
+
     // Calculate completion percentages for each section
     const preApprovalsProgress = [
       isCompleted(preApprovals?.['site-survey-complete']),
       isCompleted(preApprovals?.['ntp-complete']),
       isCompleted(preApprovals?.['engineering-complete'])
     ].filter(Boolean).length / 3 * 100;
-    
+
     const approvalsProgress = [
       isCompleted(approvals?.['pre-install-review-complete'])
     ].filter(Boolean).length / 1 * 100;
-    
+
     const constructionProgress = [
       isCompleted(construction?.['install-appointment']),
       isCompleted(construction?.['install-complete']),
       isCompleted(construction?.['ahj-inspection-complete'])
     ].filter(Boolean).length / 3 * 100;
-    
+
     const energizationProgress = [
       isCompleted(energization?.['pto-received']),
       isCompleted(energization?.['energize-complete-date'])
     ].filter(Boolean).length / 2 * 100;
-    
+
     setSectionProgress({
       'pre-approvals': preApprovalsProgress,
       'approvals': approvalsProgress,
       'construction': constructionProgress,
       'energization': energizationProgress
     });
-  };
-
-  // Calculate section progress on component mount
-  useEffect(() => {
-    calculateSectionProgress();
   }, [project]);
 
   // Update progress and stage when project data changes
   useEffect(() => {
     if (project?.calculatedStatus) {
-      setProgressPercentage(project.calculatedStatus.progressPercentage);
       setCurrentStage({
         name: project.calculatedStatus.currentStage.name,
         status: project.calculatedStatus.currentStage.status,
@@ -108,62 +90,30 @@ export default function ProjectPage() {
     }
   }, [project]);
 
-  // Add authentication check
   useEffect(() => {
-    const getUser = async () => {
-      try {
-        // First try to get the session
-        const { data: sessionData } = await supabase.auth.getSession();
-        
-        // If we have a session, get the user
-        if (sessionData?.session) {
-          const { data } = await supabase.auth.getUser();
-          setUser(data.user);
-        } else {
-          // No active session found
-        }
-      } catch (error) {
-        console.error('Error retrieving authentication:', error);
-      }
-    };
+    if (authLoading) {
+      return;
+    }
 
-    getUser();
+    if (!user || !projectId) {
+      setLoading(false);
+      return;
+    }
 
-    // Set up auth state change listener
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event: string, session: any) => {
+    let cancelled = false;
 
-        if (session?.user) {
-          setUser(session.user);
-        } else {
-          setUser(null);
-        }
-      }
-    );
-
-    // Cleanup subscription
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!user) return;
-    
     const fetchProjectData = async () => {
-      if (!params.id) return;
-      
       setLoading(true);
-      try {
+      setError(null);
 
-        
+      try {
         // Fetch project from the API endpoint that includes calculated status
         const response = await fetch('/api/projects', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ id: params.id }),
+          body: JSON.stringify({ id: projectId }),
         });
         
         if (!response.ok) {
@@ -172,27 +122,30 @@ export default function ProjectPage() {
         }
         
         const projectData = await response.json();
-        
 
-        
-        setProject(projectData);
+        if (!cancelled) {
+          setProject(projectData);
+        }
       } catch (error) {
-        // Error handled with error state
-        setError('Failed to load project details.');
+        if (!cancelled) {
+          setError('Failed to load project details.');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     };
-    
-    fetchProjectData();
-  }, [params.id, user]);
 
-  if (loading) {
-    return (
-      <AppShell>
-        <LoadingSpinner size="large" className="py-12" />
-      </AppShell>
-    );
+    void fetchProjectData();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [authLoading, projectId, user]);
+
+  if (authLoading || loading) {
+    return <LoadingSpinner size="large" className="py-12" />;
   }
   
   // Check if user is authenticated
@@ -214,25 +167,23 @@ export default function ProjectPage() {
 
   if (!project && !loading) {
     return (
-      <AppShell>
-        <div className="bg-white shadow sm:rounded-lg p-6">
-          <h3 className="text-lg font-medium text-red-600">Project not found</h3>
-          {error && (
-            <div className="mt-2 p-4 bg-red-50 rounded-md">
-              <p className="text-sm text-red-800">{error}</p>
-              <p className="text-sm text-gray-600 mt-2">Project ID: {params.id}</p>
-            </div>
-          )}
-          <div className="mt-5">
-            <Link
-              href="/dashboard"
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white brand-button"
-            >
-              Return to Dashboard
-            </Link>
+      <div className="customer-panel p-6">
+        <h3 className="text-lg font-medium text-red-600">Project not found</h3>
+        {error && (
+          <div className="mt-2 rounded-md bg-red-50 p-4">
+            <p className="text-sm text-red-800">{error}</p>
+            <p className="mt-2 text-sm text-gray-600">Project ID: {projectId}</p>
           </div>
+        )}
+        <div className="mt-5">
+          <Link
+            href="/dashboard"
+            className="brand-button inline-flex items-center px-4 py-2 text-sm font-medium"
+          >
+            Return to Dashboard
+          </Link>
         </div>
-      </AppShell>
+      </div>
     );
   }
 
@@ -243,8 +194,7 @@ export default function ProjectPage() {
   }
   
   return (
-    <AppShell>
-      <div className="py-3 sm:py-6">
+    <div className="py-3 sm:py-6">
         {/* Project header with image */}
         <div className="flex flex-col md:flex-row mb-4 sm:mb-6">
           <div className="w-full md:w-1/4 h-48 md:h-100% bg-gray-200 rounded-lg overflow-hidden">
@@ -385,6 +335,5 @@ export default function ProjectPage() {
 
         {/* Action buttons - removed as they're not in the design */}
       </div>
-    </AppShell>
   );
 }

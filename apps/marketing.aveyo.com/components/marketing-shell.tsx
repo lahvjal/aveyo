@@ -166,6 +166,7 @@ export function MarketingShell({
         utilityItems={utilityNavItems}
         role={session.role}
         userType="employee"
+        canAccessCustomerPortal={Boolean(session.access?.isAdmin || session.access?.isSuperAdmin)}
         profile={{
           displayName,
           roleLabel,

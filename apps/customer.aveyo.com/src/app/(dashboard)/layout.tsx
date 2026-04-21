@@ -14,7 +14,7 @@ export default function DashboardLayout({
 
   return (
     <ProjectsProvider>
-      {children}
+      <AppShell>{children}</AppShell>
       <WelcomeModal isOpen={showWelcomeModal} onClose={dismissWelcomeModal} />
     </ProjectsProvider>
   );

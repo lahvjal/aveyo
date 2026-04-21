@@ -1,8 +1,8 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { getCurrentAppUser } from '@/lib/supabase/auth-utils';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { Project, ActionItem } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 
 interface ProjectsContextType {
   projects: Project[];
@@ -27,6 +27,7 @@ interface ProjectsProviderProps {
 }
 
 export function ProjectsProvider({ children }: ProjectsProviderProps) {
+  const { user, loading: authLoading, customerPortalView } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [actionItems, setActionItems] = useState<ActionItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -34,7 +35,7 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   // Helper function to map string status to valid ActionItem status type
-  const mapStatusToValidType = (status: string): 'completed' | 'pending' | 'overdue' => {
+  const mapStatusToValidType = useCallback((status: string): 'completed' | 'pending' | 'overdue' => {
     // Convert to lowercase for case-insensitive comparison
     const statusLower = (status || '').toLowerCase();
     
@@ -56,10 +57,10 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
     // For any other status, log it for debugging
     console.log(`ProjectsContext - Unmapped status value: "${status}" - defaulting to pending`);
     return 'pending';
-  };
+  }, []);
 
   // Extract action items from projects
-  const extractActionItems = (projects: Project[]): ActionItem[] => {
+  const extractActionItems = useCallback((projects: Project[]): ActionItem[] => {
     const items: ActionItem[] = [];
     const now = new Date();
     
@@ -152,34 +153,51 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
       }
       return item;
     });
-  };
+  }, [mapStatusToValidType, userEmail]);
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
+    if (authLoading) {
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-      
-      // Use getCurrentAppUser to ensure user belongs to this app
-      const user = await getCurrentAppUser();
-      const email = user?.email;
-      setUserEmail(email || null);
-      
+
+      const email = user?.email ?? null;
+      setUserEmail(email);
+
       if (!email) {
-        setError('User not authenticated or does not belong to the Customer Portal');
+        setProjects([]);
+        setActionItems([]);
         return;
       }
       
       try {
         // Fetch projects from the API endpoint that includes calculated status
         console.log('=== ProjectsContext: Fetching projects ===');
+        console.log(
+          '[ProjectsContext] customer email used for project data (resolved on server as auth.userEmail):',
+          'session user:',
+          user?.email ?? null,
+          '| impersonation:',
+          Boolean(customerPortalView?.impersonationActive),
+          '| effective customer (from session API):',
+          customerPortalView?.effectiveCustomerEmail ?? null,
+          '— check terminal for [customer-portal/api/projects] for exact MySQL lookup email'
+        );
         const response = await fetch('/api/projects');
         
         console.log('API response status:', response.status);
         
         if (!response.ok) {
-          const errorData = await response.json();
+          const errorData = (await response.json().catch(() => null)) as { error?: string } | null;
           console.error('API error response:', errorData);
-          throw new Error(errorData.error || 'Failed to fetch projects');
+          const message =
+            typeof errorData?.error === 'string' && errorData.error.trim()
+              ? errorData.error
+              : 'Failed to fetch projects';
+          throw new Error(message);
         }
         
         const projectsData = await response.json();
@@ -201,22 +219,26 @@ export function ProjectsProvider({ children }: ProjectsProviderProps) {
       }
     } catch (error) {
       console.error('Error fetching projects:', error);
-      setError('Failed to load projects data');
-      
-      // No fallback to mock data anymore
-      console.error('Error fetching projects:', error);
+      const message = error instanceof Error && error.message.trim() ? error.message : 'Failed to load projects data';
+      setError(message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    authLoading,
+    extractActionItems,
+    user?.email,
+    customerPortalView?.impersonationActive,
+    customerPortalView?.effectiveCustomerEmail
+  ]);
 
-  const refreshProjects = async () => {
+  const refreshProjects = useCallback(async () => {
     await fetchProjects();
-  };
+  }, [fetchProjects]);
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    void fetchProjects();
+  }, [fetchProjects]);
 
   const value = {
     projects,

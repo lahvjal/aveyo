@@ -3,7 +3,7 @@
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const testimonials = [
   {
@@ -30,12 +30,46 @@ const testimonials = [
 
 export default function Hero() {
   const [activeSlide, setActiveSlide] = useState(0);
+  const heroVideoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveSlide((prev) => (prev + 1) % testimonials.length);
     }, 5000);
     return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const videoEl = heroVideoRef.current;
+    if (!videoEl) return;
+
+    const ensurePlaying = () => {
+      if (document.visibilityState === "hidden") return;
+      void videoEl.play().catch(() => {});
+    };
+
+    const handleLoadedData = () => {
+      ensurePlaying();
+    };
+
+    const handleVisibilityChange = () => {
+      ensurePlaying();
+    };
+
+    videoEl.defaultMuted = true;
+
+    if (videoEl.readyState >= 2) {
+      ensurePlaying();
+    } else {
+      videoEl.addEventListener("loadeddata", handleLoadedData);
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      videoEl.removeEventListener("loadeddata", handleLoadedData);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   return (
@@ -46,10 +80,12 @@ export default function Hero() {
       {/* Background Video with Gradient Overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <video
+          ref={heroVideoRef}
           autoPlay
           loop
           muted
           playsInline
+          preload="auto"
           className="absolute inset-0 w-full h-full object-cover"
         >
           <source src="https://wg22fhqtugwjii3h.public.blob.vercel-storage.com/video/hero-vid.mp4" type="video/mp4" />

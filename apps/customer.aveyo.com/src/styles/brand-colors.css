@@ -2,14 +2,11 @@
 
 :root {
   /* Base colors */
-  --color-dark: #212121;
+  --color-dark: var(--customer-color-text-primary);
   --color-white: #FFFFFF;
-  --color-light-blue: #D9E8F6;
-  --color-blue: #0F62DE;
-  
-  /* Gradients */
-  --gradient-page-bg: linear-gradient(to bottom, #FFFFFF, #D0E3F4);
-  --gradient-button: linear-gradient(to right, #0F62DE, #3B83F6);
+  --color-light-blue: var(--customer-color-border-muted);
+  --color-blue: var(--customer-color-action);
+  --gradient-page-bg: var(--customer-gradient-page);
 }
 
 /* Page background styles */
@@ -18,34 +15,67 @@
   min-height: 100vh;
 }
 
+.customer-panel {
+  background: var(--customer-color-surface);
+  border: 1px solid var(--customer-color-border);
+  border-radius: var(--customer-radius-card);
+  box-shadow: var(--customer-shadow-panel);
+}
+
+.customer-panel-soft {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(251, 251, 249, 0.98) 100%);
+}
+
 /* Button styles */
 .brand-button {
-  background: var(--gradient-button);
+  background: var(--customer-color-action);
   color: var(--color-white);
   border: none;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: var(--customer-radius-button);
+  font-weight: 600;
+  transition:
+    background-color 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  box-shadow: var(--customer-shadow-panel);
 }
 
 .brand-button:hover {
-  opacity: 0.9;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+  background: var(--customer-color-action-hover);
+  box-shadow: 0 18px 40px rgba(33, 33, 32, 0.08);
 }
 
-.brand-button:disabled {
+.brand-button-secondary {
+  background: var(--customer-color-text-primary);
+  color: var(--color-white);
+  border: none;
+  border-radius: var(--customer-radius-button);
+  font-weight: 600;
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+  box-shadow: var(--customer-shadow-panel);
+}
+
+.brand-button-secondary:hover {
+  opacity: 0.92;
+  box-shadow: 0 18px 40px rgba(33, 33, 32, 0.08);
+}
+
+.brand-button:disabled,
+.brand-button-secondary:disabled {
   background: #CBD5E1;
   cursor: not-allowed;
   opacity: 0.7;
+  box-shadow: none;
 }
 
 /* Text colors */
 .text-brand-dark {
-  color: var(--color-dark);
+  color: var(--customer-color-text-primary);
 }
 
 .text-brand-blue {
-  color: var(--color-blue);
+  color: var(--customer-color-action);
 }

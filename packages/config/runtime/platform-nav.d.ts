@@ -10,11 +10,19 @@ export type PlatformNavIconKey =
   | "marketing"
   | "assets"
   | "culture"
+  | "documents"
   | "manager"
   | "admin"
   | "settings";
 
-export type ExternalAppKey = "dashboard" | "org" | "operations" | "kpi" | "ava" | "marketing";
+export type ExternalAppKey =
+  | "dashboard"
+  | "org"
+  | "operations"
+  | "kpi"
+  | "ava"
+  | "marketing"
+  | "customer";
 
 export interface PlatformPrimaryNavItem {
   id: string;

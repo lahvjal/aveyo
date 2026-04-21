@@ -1,34 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import AppShell from '@/components/layout/AppShell';
-import { supabase } from '@/lib/supabase/client';
+import { useState, useEffect, useCallback } from 'react';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import { Document } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 
 // Types are now imported from @/types
 
 export default function DocumentsPage() {
+  const { user, loading: authLoading } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
 
-  useEffect(() => {
-    const getUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      setUser(data.user);
-      
-      if (data.user && data.user.email) {
-        fetchDocuments();
-      } else {
-        setLoading(false);
-      }
-    };
-
-    getUser();
-  }, []);
-
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     try {
       // Fetch documents via API route
       const response = await fetch('/api/documents');
@@ -44,7 +28,20 @@ export default function DocumentsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (authLoading) {
+      return;
+    }
+
+    if (!user?.email) {
+      setLoading(false);
+      return;
+    }
+
+    void fetchDocuments();
+  }, [authLoading, fetchDocuments, user?.email]);
 
   // Group documents by project
   const documentsByProject = documents.reduce((acc, doc) => {
@@ -82,11 +79,11 @@ export default function DocumentsPage() {
   };
 
   return (
-    <AppShell>
-      <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-4 sm:mb-6">
+    <>
+      <div className="customer-panel overflow-hidden mb-4 sm:mb-6">
         <div className="px-3 sm:px-4 py-4 sm:py-5">
-          <h3 className="text-base sm:text-lg leading-6 font-medium text-gray-900">Project Documents</h3>
-          <p className="mt-1 max-w-2xl text-xs sm:text-sm text-gray-500">
+          <h3 className="text-base sm:text-lg leading-6 font-medium text-[var(--customer-color-text-primary)]">Project Documents</h3>
+          <p className="mt-1 max-w-2xl text-xs sm:text-sm text-[var(--customer-color-text-subtle)]">
             Access and download important files related to your solar installation
           </p>
         </div>
@@ -97,22 +94,22 @@ export default function DocumentsPage() {
       ) : (
         <div className="space-y-8">
           {Object.entries(documentsByProject).map(([projectId, { project_name, documents }]) => (
-            <div key={projectId} className="bg-white shadow sm:rounded-lg overflow-hidden">
-              <div className="px-3 sm:px-4 py-3 sm:py-5 border-b border-gray-200">
-                <h3 className="text-base sm:text-lg leading-6 font-medium text-gray-900">{project_name}</h3>
+            <div key={projectId} className="customer-panel overflow-hidden">
+              <div className="px-3 sm:px-4 py-3 sm:py-5 border-b border-[var(--customer-color-border-muted)]">
+                <h3 className="text-base sm:text-lg leading-6 font-medium text-[var(--customer-color-text-primary)]">{project_name}</h3>
               </div>
-              <ul className="divide-y divide-gray-200">
+              <ul className="divide-y divide-[var(--customer-color-border-muted)]">
                 {documents.map((doc) => (
-                  <li key={doc.id} className="px-3 sm:px-4 py-3 sm:py-4 hover:bg-gray-50">
+                  <li key={doc.id} className="px-3 sm:px-4 py-3 sm:py-4 hover:bg-[rgba(110,185,254,0.05)]">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
                       <div className="flex items-center">
                         <div className="flex-shrink-0 mr-2 sm:mr-3">
                           {getFileIcon(doc.type)}
                         </div>
                         <div>
-                          <div className="text-xs sm:text-sm font-medium text-blue-600 line-clamp-1">{doc.name}</div>
-                          <div className="text-xs sm:text-sm text-gray-500 line-clamp-1">{doc.description}</div>
-                          <div className="mt-1 flex items-center text-xs text-gray-400">
+                          <div className="text-xs sm:text-sm font-medium text-brand-blue line-clamp-1">{doc.name}</div>
+                          <div className="text-xs sm:text-sm text-[var(--customer-color-text-subtle)] line-clamp-1">{doc.description}</div>
+                          <div className="mt-1 flex items-center text-xs text-[var(--customer-color-text-muted)]">
                             <span>{new Date(doc.created_at).toLocaleDateString()}</span>
                             <span className="mx-1">•</span>
                             <span>{doc.size}</span>
@@ -121,7 +118,7 @@ export default function DocumentsPage() {
                       </div>
                       <button
                         type="button"
-                        className="inline-flex items-center justify-center w-full sm:w-auto px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 mt-2 sm:mt-0"
+                        className="brand-button inline-flex items-center justify-center w-full sm:w-auto px-4 py-2 text-xs font-medium mt-2 sm:mt-0"
                       >
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -136,6 +133,6 @@ export default function DocumentsPage() {
           ))}
         </div>
       )}
-    </AppShell>
+    </>
   );
 }

@@ -50,6 +50,7 @@ interface AppSideRailProps {
   userRole?: string | null;
   authRole?: string | null;
   userType?: string | null;
+  canAccessCustomerPortal?: boolean;
   signOutPending?: boolean;
   onSignOut: () => void;
   onCollapsedChange?: (collapsed: boolean) => void;
@@ -61,6 +62,7 @@ export function AppSideRail({
   userRole,
   authRole,
   userType,
+  canAccessCustomerPortal,
   signOutPending = false,
   onSignOut,
   onCollapsedChange
@@ -82,6 +84,7 @@ export function AppSideRail({
       utilityItems={utilityNavItems}
       role={authRole ?? undefined}
       userType={userType ?? undefined}
+      canAccessCustomerPortal={canAccessCustomerPortal}
       onCollapsedChange={onCollapsedChange}
       profile={{
         displayName,

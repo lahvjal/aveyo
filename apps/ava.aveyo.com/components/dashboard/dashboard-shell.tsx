@@ -610,6 +610,9 @@ export function DashboardShell() {
         utilityItems={sideNavUtilityItems}
         role={authSession.role}
         userType={authSession.userType}
+        canAccessCustomerPortal={Boolean(
+          authSession.access?.isAdmin || authSession.access?.isSuperAdmin
+        )}
         onCollapsedChange={setIsNavCollapsed}
         profile={{
           displayName: authSession.user?.name?.trim() || "Ava Agent",

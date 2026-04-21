@@ -766,6 +766,9 @@ export function DashboardBoardShell() {
         userRole={toRoleLabel(authSession.role)}
         authRole={authSession.role}
         userType={authSession.userType}
+        canAccessCustomerPortal={Boolean(
+          authSession.access?.isAdmin || authSession.access?.isSuperAdmin
+        )}
         signOutPending={signOutPending}
         onCollapsedChange={setIsNavCollapsed}
         onSignOut={() => {

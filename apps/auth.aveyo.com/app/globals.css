@@ -15,8 +15,8 @@
     "Inter",
     "Segoe UI",
     sans-serif;
-  background: #f5f5f5;
-  color: #1e1e1e;
+  background: var(--auth-color-canvas);
+  color: var(--auth-color-text-primary);
 }
 
 * {
@@ -26,8 +26,9 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #f5f5f5;
-  color: #1e1e1e;
+  background: var(--auth-color-canvas);
+  color: var(--auth-color-text-primary);
+  font-size: var(--auth-font-body-size);
 }
 
 .login-shell {
@@ -109,43 +110,49 @@ body {
 }
 
 .login-field span {
-  font-size: 16px;
-  font-weight: 700;
-  color: #000000;
-  line-height: 1.25;
+  font-size: var(--auth-font-body-size);
+  font-weight: var(--auth-font-body-weight);
+  color: var(--auth-color-text-subtle);
+  line-height: var(--auth-font-body-line-height);
 }
 
 .login-field input,
 .login-password-shell {
   width: 100%;
-  height: 42px;
-  border: 1px solid #f0f0f0;
-  background: #ffffff;
-  border-radius: 10px;
-  padding: 8px 12px;
-  font-size: 14px;
-  color: #1e1e1e;
+  min-height: 56px;
+  border: 1px solid var(--auth-color-border);
+  background: var(--auth-color-surface-muted);
+  border-radius: var(--auth-radius-field);
+  padding: 14px 18px;
+  font-size: var(--auth-font-body-size);
+  line-height: var(--auth-font-body-line-height);
+  color: var(--auth-color-text-primary);
   font-family: inherit;
-  transition: outline-color 120ms ease;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    box-shadow 120ms ease;
 }
 
 .login-field input::placeholder,
 .login-password-shell input::placeholder {
-  color: #c6c6c6;
+  color: var(--auth-color-text-muted);
 }
 
 .login-field input:focus,
 .login-password-shell:focus-within {
-  outline: 2px solid rgba(112, 190, 255, 0.45);
-  outline-offset: 0;
+  outline: none;
+  border-color: var(--auth-color-accent);
+  background: var(--auth-color-surface);
+  box-shadow: var(--auth-shadow-focus);
 }
 
 .login-password-shell {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding-right: 14px;
+  gap: 14px;
+  padding-right: 18px;
 }
 
 .login-password-shell input {
@@ -167,7 +174,7 @@ body {
   align-items: center;
   justify-content: center;
   background: transparent;
-  color: #c6c6c6;
+  color: var(--auth-color-text-muted);
   cursor: pointer;
 }
 
@@ -179,20 +186,38 @@ body {
 }
 
 .login-primary-button,
-.login-google-button {
+.login-google-button,
+.login-secondary-button,
+.login-forgot-button {
   width: 100%;
-  height: 42px;
-  border: 0;
-  border-radius: 10px;
+  min-height: 54px;
+  padding: var(--auth-space-button-y) var(--auth-space-button-x);
+  border-radius: var(--auth-radius-button);
   font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
+  font-size: var(--auth-font-action-size);
+  font-weight: var(--auth-font-action-weight);
+  line-height: 1.2;
+  transition:
+    background-color 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
 }
 
 .login-primary-button {
   margin-top: 2px;
-  background: #000000;
-  color: #ffffff;
+  border: 0;
+  background: var(--auth-color-primary);
+  color: var(--auth-color-surface);
+  box-shadow: var(--auth-shadow-primary);
+  cursor: pointer;
+}
+
+.login-secondary-button {
+  border: 1px solid var(--auth-color-border);
+  background: var(--auth-color-surface);
+  color: var(--auth-color-text-primary);
   cursor: pointer;
 }
 
@@ -217,22 +242,74 @@ body {
 }
 
 .login-google-button {
-  background: #e1e1e1;
-  color: #ffffff;
+  border: 1px solid var(--auth-color-border);
+  background: var(--auth-color-surface-muted);
+  color: var(--auth-color-text-muted);
   cursor: not-allowed;
 }
 
 .login-forgot-button {
-  border: 0;
-  background: transparent;
-  padding: 0;
-  align-self: center;
-  color: #70beff;
-  text-decoration: underline;
-  font-size: 14px;
-  font-weight: 700;
-  font-family: inherit;
+  border: 1px solid color-mix(in srgb, var(--auth-color-accent) 16%, var(--auth-color-border));
+  background: var(--auth-color-accent-soft);
+  color: var(--auth-color-primary);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+}
+
+.login-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.login-actions .login-secondary-button,
+.login-actions .login-forgot-button {
+  flex: 1 1 220px;
+}
+
+.login-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-height: 56px;
+  border-radius: var(--auth-radius-field);
+  border: 1px solid var(--auth-color-border);
+  background: var(--auth-color-accent-soft);
+  padding: 0 18px;
+  font-size: var(--auth-font-body-size);
+  font-weight: var(--auth-font-body-weight);
+  line-height: var(--auth-font-body-line-height);
+  color: var(--auth-color-text-primary);
+}
+
+.login-note {
+  margin: 0;
+  font-size: var(--auth-font-body-size);
+  line-height: var(--auth-font-body-line-height);
+  color: var(--auth-color-text-subtle);
+}
+
+.login-primary-button:hover:not(:disabled),
+.login-primary-button:focus-visible:not(:disabled) {
+  background: var(--auth-color-primary-hover);
+  transform: translateY(-1px);
+}
+
+.login-secondary-button:hover:not(:disabled),
+.login-secondary-button:focus-visible:not(:disabled) {
+  border-color: var(--auth-color-border-strong);
+  background: var(--auth-color-surface-muted);
+}
+
+.login-forgot-button:hover:not(:disabled),
+.login-forgot-button:focus-visible:not(:disabled) {
+  border-color: color-mix(in srgb, var(--auth-color-accent) 28%, var(--auth-color-border));
+  background: color-mix(in srgb, var(--auth-color-accent-soft) 72%, var(--auth-color-surface));
 }
 
 .login-status {
@@ -258,6 +335,7 @@ body {
 
 .login-primary-button:disabled,
 .login-google-button:disabled,
+.login-secondary-button:disabled,
 .login-forgot-button:disabled,
 .login-password-toggle:disabled {
   opacity: 0.55;

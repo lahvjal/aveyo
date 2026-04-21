@@ -1,5 +1,6 @@
 import { Project, MilestoneObject } from '../types';
 import { milestoneSequence, sectionOrder, getMilestoneDisplayName } from './milestoneUtils';
+import { extractProjectSections } from './projectMilestoneSections';
 
 export interface ProjectStatus {
   currentStage: {
@@ -90,7 +91,7 @@ const milestoneStatusMap: Record<SectionKey, MilestoneInfo[]> = {
   'energization': [
     { key: 'pto-received', statusKey: 'pto-status' },
     { key: 'energize-complete-date', statusKey: 'engergize-status' },
-    { key: 'system-active', statusKey: 'system-active-status' }
+    { key: 'system-active', statusKey: undefined }
   ]
 };
 
@@ -197,114 +198,12 @@ export function isCompleted(date: any, status: any, milestoneKey?: string, secti
  * Calculate the project status including current stage, next milestone, and progress percentage
  */
 export function calculateProjectStatus(project: Project): ProjectStatus {
-  // console.log('Calculating project status for project:', project.id);
-  
-  // Extract milestone data from project
-  const milestoneData: Record<string, any> = {};
-  
-  // Handle milestone data which can be string or object
-  if (typeof project.milestone === 'object' && project.milestone !== null) {
-    // Direct milestone object
-    Object.assign(milestoneData, project.milestone);
-    // console.log('Milestone data is an object:', project.milestone);
-    
-    // Check for nested milestone sections
-    if (project.milestone['pre-approvals']) {
-      Object.assign(milestoneData, project.milestone['pre-approvals']);
-    }
-    if (project.milestone.approvals) {
-      Object.assign(milestoneData, project.milestone.approvals);
-    }
-    if (project.milestone.construction) {
-      Object.assign(milestoneData, project.milestone.construction);
-    }
-    if (project.milestone.energization) {
-      Object.assign(milestoneData, project.milestone.energization);
-    }
-  } else if (typeof project.milestone === 'string') {
-    // Try to parse string milestone data
-    try {
-      const parsedMilestone = JSON.parse(project.milestone);
-      Object.assign(milestoneData, parsedMilestone);
-    } catch (e) {
-      console.log('Failed to parse milestone string:', e);
-    }
-    // console.log('Milestone data is a string:', project.milestone);
-  } else {
-    // console.log('Milestone data is not an object or string:', project.milestone);
-  }
-  
-  // Add podio data if available
-  const podioData = project.podio_data?.raw_payload || {};
-  let parsedPodioData = podioData;
-  
-  // If podio_data.raw_payload is a string, try to parse it
-  if (typeof podioData === 'string') {
-    try {
-      parsedPodioData = JSON.parse(podioData);
-    } catch (e) {
-      console.log('Failed to parse podio_data.raw_payload:', e);
-    }
-  }
-  
-  if (typeof parsedPodioData === 'object' && parsedPodioData !== null) {
-    // Add top-level podio data
-    Object.assign(milestoneData, parsedPodioData);
-    
-    // Check for nested milestone sections in podio data
-    if (parsedPodioData['pre-approvals']) {
-      Object.assign(milestoneData, parsedPodioData['pre-approvals']);
-    }
-    if (parsedPodioData.approvals) {
-      Object.assign(milestoneData, parsedPodioData.approvals);
-    }
-    if (parsedPodioData.construction) {
-      Object.assign(milestoneData, parsedPodioData.construction);
-    }
-    if (parsedPodioData.energization) {
-      Object.assign(milestoneData, parsedPodioData.energization);
-    }
-  }
-  
-  // Check if there's any additional data in the podio_data object
-  if (project.podio_data) {
-    // Add any additional fields from podio_data
-    Object.assign(milestoneData, project.podio_data);
-  }
-  
-  // Extract milestone data from combined sources
-  // Pre-Approvals section milestones
-  const preApprovals = {
-    'site-survey-complete': milestoneData['site-survey-complete'] || milestoneData['site_survey_complete'],
-    'ntp-complete': milestoneData['ntp-complete'] || milestoneData['ntp_complete'],
-    'engineering-complete': milestoneData['engineering-complete'] || milestoneData['engineering_complete']
-  };
-  
-  // Approvals section milestones
-  const approvals = {
-    'pre-install-review-complete': milestoneData['pre-install-review-complete'] || milestoneData['pre_install_review_complete']
-  };
-  
-  // Construction section milestones
-  const construction = {
-    'install-appointment': milestoneData['install-appointment'] || milestoneData['install_appointment'],
-    'install-complete': milestoneData['install-complete'] || milestoneData['install_complete'],
-    'ahj-inspection-complete': milestoneData['ahj-inspection-complete'] || milestoneData['ahj_inspection_complete']
-  };
-  
-  // Energization section milestones
-  const energization = {
-    'pto-received': milestoneData['pto-received'] || milestoneData['pto_received'],
-    'energize-complete-date': milestoneData['energize-complete-date'] || milestoneData['energize_complete_date']
-  };
-  
-  // Log the extracted milestone data
-  // console.log('Extracted milestone data:');
-  // console.log('Pre-Approvals:', preApprovals);
-  // console.log('Approvals:', approvals);
-  // console.log('Construction:', construction);
-  // console.log('Energization:', energization);
-  
+  const sections = extractProjectSections(project);
+  const preApprovals = sections['pre-approvals'] as Record<string, unknown>;
+  const approvals = sections.approvals as Record<string, unknown>;
+  const construction = sections.construction as Record<string, unknown>;
+  const energization = sections.energization as Record<string, unknown>;
+
   // Prepare complete milestones object for auto-completion logic
   const allMilestones = {
     preApprovals,
@@ -320,9 +219,21 @@ export function calculateProjectStatus(project: Project): ProjectStatus {
     let anyCompleted = false;
     
     if (section === 'pre-approvals') {
-      const siteCompleted = isCompleted(preApprovals['site-survey-complete'], undefined, 'site-survey-complete', section, allMilestones);
+      const siteCompleted = isCompleted(
+        preApprovals['site-survey-complete'],
+        preApprovals['site-survey-status'],
+        'site-survey-complete',
+        section,
+        allMilestones
+      );
       const ntpCompleted = isCompleted(preApprovals['ntp-complete'], undefined, 'ntp-complete', section, allMilestones);
-      const engineeringCompleted = isCompleted(preApprovals['engineering-complete'], undefined, 'engineering-complete', section, allMilestones);
+      const engineeringCompleted = isCompleted(
+        preApprovals['engineering-complete'],
+        preApprovals['engineering-status'],
+        'engineering-complete',
+        section,
+        allMilestones
+      );
       
       // console.log(`Pre-Approvals completion: site=${siteCompleted}, ntp=${ntpCompleted}, engineering=${engineeringCompleted}`);
       
@@ -345,13 +256,30 @@ export function calculateProjectStatus(project: Project): ProjectStatus {
       allCompleted = appointmentCompleted && installCompleted && inspectionCompleted;
       anyCompleted = appointmentCompleted || installCompleted || inspectionCompleted;
     } else if (section === 'energization') {
-      const ptoCompleted = isCompleted(energization['pto-received'], undefined, 'pto-received', section, allMilestones);
-      const energizeCompleted = isCompleted(energization['energize-complete-date'], undefined, 'energize-complete-date', section, allMilestones);
-      
-      // console.log(`Energization completion: pto=${ptoCompleted}, energize=${energizeCompleted}`);
-      
-      allCompleted = ptoCompleted && energizeCompleted;
-      anyCompleted = ptoCompleted || energizeCompleted;
+      const ptoCompleted = isCompleted(
+        energization['pto-received'],
+        energization['pto-status'],
+        'pto-received',
+        section,
+        allMilestones
+      );
+      const energizeCompleted = isCompleted(
+        energization['energize-complete-date'],
+        energization['engergize-status'],
+        'energize-complete-date',
+        section,
+        allMilestones
+      );
+      const systemActiveCompleted = isCompleted(
+        energization['system-active'],
+        undefined,
+        'system-active',
+        section,
+        allMilestones
+      );
+
+      allCompleted = ptoCompleted && energizeCompleted && systemActiveCompleted;
+      anyCompleted = ptoCompleted || energizeCompleted || systemActiveCompleted;
     }
 
     if (allCompleted) {
@@ -372,72 +300,197 @@ export function calculateProjectStatus(project: Project): ProjectStatus {
   
   // Calculate progress percentage
   let completedMilestones = 0;
-  const totalMilestones = 9; // 3 pre-approvals + 1 approvals + 3 construction + 2 energization
-  
-  // Count completed milestones
-  // Pre-Approvals section (3 milestones)
-  if (isCompleted(preApprovals['site-survey-complete'], undefined, 'site-survey-complete', 'pre-approvals', allMilestones)) completedMilestones++;
-  if (isCompleted(preApprovals['ntp-complete'], undefined, 'ntp-complete', 'pre-approvals', allMilestones)) completedMilestones++;
-  if (isCompleted(preApprovals['engineering-complete'], undefined, 'engineering-complete', 'pre-approvals', allMilestones)) completedMilestones++;
-  // Approvals section (1 milestone)
-  if (isCompleted(approvals['pre-install-review-complete'], undefined, 'pre-install-review-complete', 'approvals', allMilestones)) completedMilestones++;
-  // Construction section (3 milestones)
-  if (isCompleted(construction['install-appointment'], undefined, 'install-appointment', 'construction', allMilestones)) completedMilestones++;
-  if (isCompleted(construction['install-complete'], undefined, 'install-complete', 'construction', allMilestones)) completedMilestones++;
-  if (isCompleted(construction['ahj-inspection-complete'], undefined, 'ahj-inspection-complete', 'construction', allMilestones)) completedMilestones++;
-  // Energization section (2 milestones)
-  if (isCompleted(energization['pto-received'], undefined, 'pto-received', 'energization', allMilestones)) completedMilestones++;
-  if (isCompleted(energization['energize-complete-date'], undefined, 'energize-complete-date', 'energization', allMilestones)) completedMilestones++;
+  const totalMilestones = 10; // 3 + 1 + 3 + 3 activation milestones
+
+  // Count completed milestones (must match dashboard stage definitions)
+  if (
+    isCompleted(
+      preApprovals['site-survey-complete'],
+      preApprovals['site-survey-status'],
+      'site-survey-complete',
+      'pre-approvals',
+      allMilestones
+    )
+  ) {
+    completedMilestones++;
+  }
+  if (isCompleted(preApprovals['ntp-complete'], undefined, 'ntp-complete', 'pre-approvals', allMilestones)) {
+    completedMilestones++;
+  }
+  if (
+    isCompleted(
+      preApprovals['engineering-complete'],
+      preApprovals['engineering-status'],
+      'engineering-complete',
+      'pre-approvals',
+      allMilestones
+    )
+  ) {
+    completedMilestones++;
+  }
+  if (
+    isCompleted(
+      approvals['pre-install-review-complete'],
+      undefined,
+      'pre-install-review-complete',
+      'approvals',
+      allMilestones
+    )
+  ) {
+    completedMilestones++;
+  }
+  if (
+    isCompleted(
+      construction['install-appointment'],
+      undefined,
+      'install-appointment',
+      'construction',
+      allMilestones
+    )
+  ) {
+    completedMilestones++;
+  }
+  if (
+    isCompleted(construction['install-complete'], undefined, 'install-complete', 'construction', allMilestones)
+  ) {
+    completedMilestones++;
+  }
+  if (
+    isCompleted(
+      construction['ahj-inspection-complete'],
+      undefined,
+      'ahj-inspection-complete',
+      'construction',
+      allMilestones
+    )
+  ) {
+    completedMilestones++;
+  }
+  if (
+    isCompleted(energization['pto-received'], energization['pto-status'], 'pto-received', 'energization', allMilestones)
+  ) {
+    completedMilestones++;
+  }
+  if (
+    isCompleted(
+      energization['energize-complete-date'],
+      energization['engergize-status'],
+      'energize-complete-date',
+      'energization',
+      allMilestones
+    )
+  ) {
+    completedMilestones++;
+  }
+  if (
+    isCompleted(energization['system-active'], undefined, 'system-active', 'energization', allMilestones)
+  ) {
+    completedMilestones++;
+  }
   
   // Calculate percentage
   const progressPercentage = Math.round((completedMilestones / totalMilestones) * 100);
   
   // Determine current stage and next milestone
   let currentStage = { name: 'Pre-Approvals', status: 'Not Started' };
-  let nextMilestone = 'Site Survey';
-  
+  let nextMilestone = getMilestoneDisplayName('site-survey-complete');
+
   // Find the next incomplete milestone
   const findNextMilestone = (): string => {
-    // Check Pre-Approvals milestones
-    if (!isCompleted(preApprovals['site-survey-complete'], undefined, 'site-survey-complete', 'pre-approvals', allMilestones)) {
+    if (
+      !isCompleted(
+        preApprovals['site-survey-complete'],
+        preApprovals['site-survey-status'],
+        'site-survey-complete',
+        'pre-approvals',
+        allMilestones
+      )
+    ) {
       return getMilestoneDisplayName('site-survey-complete');
-    } else if (!isCompleted(preApprovals['ntp-complete'], undefined, 'ntp-complete', 'pre-approvals', allMilestones)) {
+    }
+    if (!isCompleted(preApprovals['ntp-complete'], undefined, 'ntp-complete', 'pre-approvals', allMilestones)) {
       return getMilestoneDisplayName('ntp-complete');
-    } else if (!isCompleted(preApprovals['engineering-complete'], undefined, 'engineering-complete', 'pre-approvals', allMilestones)) {
+    }
+    if (
+      !isCompleted(
+        preApprovals['engineering-complete'],
+        preApprovals['engineering-status'],
+        'engineering-complete',
+        'pre-approvals',
+        allMilestones
+      )
+    ) {
       return getMilestoneDisplayName('engineering-complete');
     }
-    
-    // Check Approvals milestones
-    if (!isCompleted(approvals['pre-install-review-complete'], undefined, 'pre-install-review-complete', 'approvals', allMilestones)) {
+
+    if (
+      !isCompleted(
+        approvals['pre-install-review-complete'],
+        undefined,
+        'pre-install-review-complete',
+        'approvals',
+        allMilestones
+      )
+    ) {
       return getMilestoneDisplayName('pre-install-review-complete');
     }
-    
-    // Check Construction milestones
-    if (!isCompleted(construction['install-appointment'], undefined, 'install-appointment', 'construction', allMilestones)) {
+
+    if (
+      !isCompleted(
+        construction['install-appointment'],
+        undefined,
+        'install-appointment',
+        'construction',
+        allMilestones
+      )
+    ) {
       return getMilestoneDisplayName('install-appointment');
-    } else if (!isCompleted(construction['install-complete'], undefined, 'install-complete', 'construction', allMilestones)) {
+    }
+    if (
+      !isCompleted(construction['install-complete'], undefined, 'install-complete', 'construction', allMilestones)
+    ) {
       return getMilestoneDisplayName('install-complete');
-    } else if (!isCompleted(construction['ahj-inspection-complete'], undefined, 'ahj-inspection-complete', 'construction', allMilestones)) {
+    }
+    if (
+      !isCompleted(
+        construction['ahj-inspection-complete'],
+        undefined,
+        'ahj-inspection-complete',
+        'construction',
+        allMilestones
+      )
+    ) {
       return getMilestoneDisplayName('ahj-inspection-complete');
     }
-    
-    // Check Energization milestones
-    // Use type assertion to handle the extended energization object with system-active property
-    const typedEnergization = energization as {
-      'pto-received': string | undefined;
-      'energize-complete-date': string | undefined;
-      'system-active': string | undefined;
-    };
-    
-    if (!isCompleted(typedEnergization['pto-received'], undefined, 'pto-received', 'energization', allMilestones)) {
+
+    if (
+      !isCompleted(
+        energization['pto-received'],
+        energization['pto-status'],
+        'pto-received',
+        'energization',
+        allMilestones
+      )
+    ) {
       return getMilestoneDisplayName('pto-received');
-    } else if (!isCompleted(typedEnergization['energize-complete-date'], undefined, 'energize-complete-date', 'energization', allMilestones)) {
+    }
+    if (
+      !isCompleted(
+        energization['energize-complete-date'],
+        energization['engergize-status'],
+        'energize-complete-date',
+        'energization',
+        allMilestones
+      )
+    ) {
       return getMilestoneDisplayName('energize-complete-date');
-    } else if (!isCompleted(typedEnergization['system-active'], undefined, 'system-active', 'energization', allMilestones)) {
+    }
+    if (
+      !isCompleted(energization['system-active'], undefined, 'system-active', 'energization', allMilestones)
+    ) {
       return getMilestoneDisplayName('system-active');
     }
-    
-    // All milestones are complete
+
     return 'Project Complete';
   };
   
@@ -453,7 +506,7 @@ export function calculateProjectStatus(project: Project): ProjectStatus {
   } else if (constructionStatus.status === 'Completed') {
     // Construction is completed, energization is next and automatically in progress
     currentStage = { name: 'Energization', status: 'in_progress' };
-    nextMilestone = 'PTO';
+    nextMilestone = getMilestoneDisplayName('pto-received');
   } else if (constructionStatus.status === 'In Progress') {
     // Construction is in progress
     currentStage = { name: 'Construction', status: 'in_progress' };
@@ -461,15 +514,15 @@ export function calculateProjectStatus(project: Project): ProjectStatus {
   } else if (approvalsStatus.status === 'Completed') {
     // Approvals are completed, construction is next and automatically in progress
     currentStage = { name: 'Construction', status: 'in_progress' };
-    nextMilestone = 'Installation Appointment';
+    nextMilestone = getMilestoneDisplayName('install-appointment');
   } else if (approvalsStatus.status === 'In Progress') {
     // Approvals are in progress
     currentStage = { name: 'Approvals', status: 'in_progress' };
-    nextMilestone = 'Pre-Install Review';
+    nextMilestone = getMilestoneDisplayName('pre-install-review-complete');
   } else if (preApprovalStatus.status === 'Completed') {
     // Pre-approvals are completed, approvals are next and automatically in progress
     currentStage = { name: 'Approvals', status: 'in_progress' };
-    nextMilestone = 'Pre-Install Review';
+    nextMilestone = getMilestoneDisplayName('pre-install-review-complete');
   } else if (preApprovalStatus.status === 'In Progress') {
     // Pre-approvals are in progress
     currentStage = { name: 'Pre-Approvals', status: 'in_progress' };
@@ -477,15 +530,26 @@ export function calculateProjectStatus(project: Project): ProjectStatus {
   } else {
     // Default case - project is in pre-approvals
     currentStage = { name: 'Pre-Approvals', status: 'not_started' };
-    nextMilestone = 'Site Survey';
+    nextMilestone = getMilestoneDisplayName('site-survey-complete');
   }
-  
+
   // Direct check for construction milestones to override the sequential logic if needed
-  const hasConstructionActivity = (
-    isCompleted(construction['install-appointment'], undefined, 'install-appointment', 'construction', allMilestones) ||
+  const hasConstructionActivity =
+    isCompleted(
+      construction['install-appointment'],
+      undefined,
+      'install-appointment',
+      'construction',
+      allMilestones
+    ) ||
     isCompleted(construction['install-complete'], undefined, 'install-complete', 'construction', allMilestones) ||
-    isCompleted(construction['ahj-inspection-complete'], undefined, 'ahj-inspection-complete', 'construction', allMilestones)
-  );
+    isCompleted(
+      construction['ahj-inspection-complete'],
+      undefined,
+      'ahj-inspection-complete',
+      'construction',
+      allMilestones
+    );
   
   // console.log(`Has construction activity: ${hasConstructionActivity}`);
   

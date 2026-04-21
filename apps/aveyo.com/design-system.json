@@ -2,9 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "meta": {
     "project": "aveyo.com",
-    "version": 4,
+    "version": 5,
     "lastUpdated": "2026-04-20",
-    "notes": "Design system tokens sourced from the Aveyo 2026 homepage, content pages, footer designs, and shared UI surface treatments.",
+    "notes": "Design system tokens sourced from the Aveyo 2026 homepage, content pages, footer designs, the customer portal dashboard, and shared UI surface treatments.",
     "sources": [
       {
         "name": "Aveyo 2026 Homepage",
@@ -20,6 +20,16 @@
         "name": "Aveyo 2026 Footer",
         "nodeId": "842:3516",
         "url": "https://www.figma.com/design/e3Wds3Xbguv28mRnMDTjIT/Aveyo-2026?node-id=842-3516&m=dev"
+      },
+      {
+        "name": "Aveyo 2026 Customer Portal Dashboard",
+        "nodeId": "447:2223",
+        "url": "https://www.figma.com/design/e3Wds3Xbguv28mRnMDTjIT/Aveyo-2026?node-id=447-2223&m=dev"
+      },
+      {
+        "name": "Aveyo 2026 Customer Portal Internal Preview Bar",
+        "nodeId": "449:1029",
+        "url": "https://www.figma.com/design/e3Wds3Xbguv28mRnMDTjIT/Aveyo-2026?node-id=449-1029&m=dev"
       }
     ]
   },
@@ -74,6 +84,7 @@
     "button hor padding": 22,
     "button vert padding": 18,
     "card padding": 40,
+    "card padding small": 20,
     "Button Corner": 60,
     "Card Corner": 10,
     "footer hor padding": 64,
@@ -102,7 +113,19 @@
       "footerSkyTop": "#FFFFFF",
       "footerSkyMid": "#EAF4FD",
       "footerSkyBottom": "#CFE4F8",
-      "footerAvaAccent": "#6F63FF"
+      "footerAvaAccent": "#6F63FF",
+      "customerCanvasBg": "#FBFBF9",
+      "customerSurface": "#FFFFFF",
+      "customerBorder": "#E9E4DB",
+      "customerBorderMuted": "#F2EEE7",
+      "customerTextMuted": "#B5B7BB",
+      "customerTextSubtle": "#7B7F87",
+      "customerNavMuted": "#C0C1C4",
+      "customerActionBlue": "#6EB9FE",
+      "customerActionBlueHover": "#57AEFC",
+      "customerProgressGreen": "#22C339",
+      "customerProgressTrack": "#A9BFD2",
+      "customerStageComplete": "#B3EAB8"
     },
     "fontSize": {
       "h1": 95,
@@ -153,7 +176,16 @@
       "buttonVertical": 8,
       "cardPadding": 40,
       "footerHorizontal": 64,
-      "footerVertical": 80
+      "footerVertical": 80,
+      "customerShellGutter": 40,
+      "customerPanelPadding": 16,
+      "customerSidebarPadding": 20
+    },
+    "layout": {
+      "customerSidebarWidth": 220,
+      "customerTopbarHeight": 66,
+      "customerContentMaxWidth": 1428,
+      "customerGridGap": 20
     },
     "radius": {
       "button": 60,
@@ -171,7 +203,8 @@
         "webkitMask": "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
         "webkitMaskComposite": "xor",
         "maskComposite": "exclude"
-      }
+      },
+      "customerPanelShadow": "0 16px 40px rgba(33, 33, 32, 0.04)"
     }
   },
   "components": {

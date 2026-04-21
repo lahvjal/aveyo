@@ -1,89 +1,124 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { buildAuthLoginUrl, getEmployeeAppUrl } from '@/lib/platform-auth/config';
+import {
+  canAccessCustomerPortalAsAdmin,
+  isCustomerPortalCustomerSession
+} from '@/lib/platform-auth/customer-portal-access';
+import {
+  applyPlatformSetCookieHeaders,
+  fetchPlatformSessionForRequest
+} from '@/lib/platform-auth/server-session';
+
+const protectedRoutePrefixes = [
+  '/dashboard',
+  '/documents',
+  '/actions',
+  '/annual-report',
+  '/expectations',
+  '/view-as-customer'
+];
+const publicLocalAccountRoutePrefixes = ['/register', '/forgot-password', '/reset-password'];
+
+function isHostedLoginRoute(pathname: string) {
+  return pathname === '/login' || pathname.startsWith('/login/');
+}
+
+function isProtectedRoute(pathname: string) {
+  return protectedRoutePrefixes.some((prefix) => pathname.startsWith(prefix));
+}
+
+function isPublicLocalAccountRoute(pathname: string) {
+  return publicLocalAccountRoutePrefixes.some((prefix) => pathname.startsWith(prefix));
+}
+
+function withPlatformCookies(response: NextResponse, setCookieHeaders: string[]) {
+  applyPlatformSetCookieHeaders(response, setCookieHeaders);
+  return response;
+}
+
+function buildHostedLoginRedirect(request: NextRequest) {
+  const destination =
+    request.nextUrl.pathname === '/'
+      ? `${request.nextUrl.origin}/dashboard`
+      : request.nextUrl.toString();
+  return NextResponse.redirect(buildAuthLoginUrl(destination));
+}
+
+function buildEmployeeRedirect(request: NextRequest) {
+  const employeeAppUrl = getEmployeeAppUrl();
+  return NextResponse.redirect(employeeAppUrl || new URL('/', request.url));
+}
 
 export async function middleware(request: NextRequest) {
-  const res = NextResponse.next();
-  
-  // Skip session check for password reset flow to reduce auth API calls
-  // These pages don't need session validation and will handle their own auth
-  if (request.nextUrl.pathname.startsWith('/reset-password') || 
-      request.nextUrl.pathname.startsWith('/forgot-password')) {
-    return res;
-  }
-  
-  // Workspace has mixed Next.js majors; cast to keep auth helper typing compatible.
-  const supabase = createMiddlewareClient({ req: request as never, res: res as never });
-  
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
+  const { pathname } = request.nextUrl;
 
-  // Check if the user is authenticated
-  const isAuthenticated = !!session;
-  
-  // Only log in development and limit frequency
-  if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
-    console.log('==== AUTH DEBUG ====');
-    console.log('Auth Status:', isAuthenticated ? 'Authenticated' : 'Not Authenticated');
-    console.log('User Email:', session?.user?.email);
-    console.log('==================');
-  }
-  
-  // All users are now considered part of the application
-  const isCorrectApp = true;
-  
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/login') || 
-    request.nextUrl.pathname.startsWith('/register') || 
-    request.nextUrl.pathname.startsWith('/forgot-password') || 
-    request.nextUrl.pathname.startsWith('/reset-password');
-  const isDashboardRoute = 
-    request.nextUrl.pathname.startsWith('/dashboard') || 
-    request.nextUrl.pathname.startsWith('/documents') || 
-    request.nextUrl.pathname.startsWith('/actions');
-    
-  // Redirect projects page to dashboard (since we're removing the projects page)
-  if (request.nextUrl.pathname.startsWith('/projects')) {
-    const redirectUrl = new URL('/dashboard', request.url);
-    return NextResponse.redirect(redirectUrl);
+  if (pathname.startsWith('/projects') || pathname.startsWith('/support')) {
+    return NextResponse.redirect(new URL('/dashboard', request.url));
   }
 
-  // Redirect support page to dashboard (support is now handled by Ava chat)
-  if (request.nextUrl.pathname.startsWith('/support')) {
-    const redirectUrl = new URL('/dashboard', request.url);
-    return NextResponse.redirect(redirectUrl);
+  if (isPublicLocalAccountRoute(pathname) || pathname.startsWith('/access-denied')) {
+    return NextResponse.next();
   }
 
-  // Redirect unauthenticated users to login page if they try to access protected routes
-  if (!isAuthenticated && isDashboardRoute) {
-    const redirectUrl = new URL('/login', request.url);
-    return NextResponse.redirect(redirectUrl);
-  }
-  
-  // Redirect authenticated users who don't belong to this app to the access-denied page
-  if (isAuthenticated && !isCorrectApp && isDashboardRoute) {
-    const redirectUrl = new URL('/access-denied', request.url);
-    return NextResponse.redirect(redirectUrl);
+  const needsSessionCheck =
+    pathname === '/' || isHostedLoginRoute(pathname) || isProtectedRoute(pathname);
+
+  if (!needsSessionCheck) {
+    return NextResponse.next();
   }
 
-  // Redirect authenticated users to dashboard if they try to access auth routes
-  if (isAuthenticated && isAuthRoute) {
-    const redirectUrl = new URL('/dashboard', request.url);
-    return NextResponse.redirect(redirectUrl);
-  }
+  try {
+    const session = await fetchPlatformSessionForRequest(request);
+    const payload = session.payload;
+    const isAuthenticated = Boolean(session.ok && payload?.authenticated);
+    const isCustomer = isCustomerPortalCustomerSession(payload);
+    const isAdminPortalViewer = Boolean(isAuthenticated && canAccessCustomerPortalAsAdmin(payload));
+    const isNonCustomerUser = isAuthenticated && !isCustomer && !isAdminPortalViewer;
 
-  // Redirect root to dashboard or login based on auth status
-  if (request.nextUrl.pathname === '/') {
-    const redirectUrl = new URL(
-      isAuthenticated ? '/dashboard' : '/login',
-      request.url
-    );
-    return NextResponse.redirect(redirectUrl);
-  }
+    if (isHostedLoginRoute(pathname)) {
+      if (isCustomer) {
+        return withPlatformCookies(
+          NextResponse.redirect(new URL('/dashboard', request.url)),
+          session.setCookieHeaders
+        );
+      }
 
-  return res;
+      if (isAdminPortalViewer) {
+        return withPlatformCookies(
+          NextResponse.redirect(new URL('/dashboard', request.url)),
+          session.setCookieHeaders
+        );
+      }
+
+      if (isNonCustomerUser) {
+        return withPlatformCookies(buildEmployeeRedirect(request), session.setCookieHeaders);
+      }
+
+      return withPlatformCookies(NextResponse.next(), session.setCookieHeaders);
+    }
+
+    if (!isAuthenticated) {
+      return withPlatformCookies(buildHostedLoginRedirect(request), session.setCookieHeaders);
+    }
+
+    if (isNonCustomerUser) {
+      return withPlatformCookies(buildEmployeeRedirect(request), session.setCookieHeaders);
+    }
+
+    if (pathname === '/') {
+      return withPlatformCookies(
+        NextResponse.redirect(new URL('/dashboard', request.url)),
+        session.setCookieHeaders
+      );
+    }
+
+    return withPlatformCookies(NextResponse.next(), session.setCookieHeaders);
+  } catch {
+    return NextResponse.next();
+  }
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|auth/callback).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|auth/callback).*)']
 };

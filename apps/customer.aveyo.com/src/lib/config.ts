@@ -2,7 +2,7 @@
  * Central configuration utility for environment-specific settings
  */
 
-import { getLocalAppUrl } from '@ava/config/runtime/app-urls';
+import { getLocalAppUrl, resolveAppUrl } from '@ava/config/runtime/app-urls';
 
 // Environment detection
 export const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
@@ -19,7 +19,7 @@ export const isStaging = typeof window !== 'undefined'
 export function getBaseUrl(): string {
   // First check for explicit override
   if (process.env.NEXT_PUBLIC_CUSTOMER_URL) {
-    return process.env.NEXT_PUBLIC_CUSTOMER_URL;
+    return process.env.NEXT_PUBLIC_CUSTOMER_URL.replace(/\/$/, '');
   }
   
   // For client-side, use window.location.origin
@@ -38,11 +38,11 @@ export function getBaseUrl(): string {
   }
   
   if (isStaging) {
-    return 'https://staging.goaveyo.com';
+    return resolveAppUrl('customer', 'staging');
   }
   
   // Default to production
-  return 'https://www.goaveyo.com';
+  return resolveAppUrl('customer', 'prod');
 }
 
 /**

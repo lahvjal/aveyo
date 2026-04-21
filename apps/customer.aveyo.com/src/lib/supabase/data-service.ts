@@ -324,6 +324,7 @@ export const getProjects = async (email: string): Promise<Project[]> => {
         status: status, // This will be overridden by calculatedStatus
         milestone: milestoneObj, // Use the milestone object structure directly
         customer_email: item.email,
+        customer_name: customerName,
         system_size: parsedItem['system-size'],
         estimated_yearly_production: parsedItem['estimated-yearly-production'],
         project_manager: parsedItem['project-manager'],
@@ -576,6 +577,7 @@ export const getProjectById = async (id: string): Promise<Project | null> => {
       status: status, // This will be overridden by calculatedStatus
       milestone, // Use the milestone object structure directly
       customer_email: projectData.email,
+      customer_name: customerName,
       system_size: parsedItem['system-size'],
       estimated_yearly_production: parsedItem['estimated-yearly-production'],
       project_manager: parsedItem['project-manager'],

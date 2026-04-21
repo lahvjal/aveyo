@@ -6,7 +6,8 @@ const EXTERNAL_APP_ID_BY_KEY = Object.freeze({
   operations: "org",
   kpi: "kpi",
   ava: "ava",
-  marketing: "marketing"
+  marketing: "marketing",
+  customer: "customer"
 });
 
 const ICON_FILE_BY_KEY = Object.freeze({
@@ -19,6 +20,7 @@ const ICON_FILE_BY_KEY = Object.freeze({
   marketing: "marketing",
   assets: "assets",
   culture: "culture",
+  documents: "documents",
   manager: "manager",
   admin: "admin",
   settings: "settings"
@@ -30,6 +32,12 @@ const PRIMARY_NAV_ITEMS = [
   { id: "operations", label: "Operations", icon: "operations", externalAppKey: "operations" },
   { id: "kpi", label: "KPI Dashboard", icon: "kpi", externalAppKey: "kpi" },
   { id: "ava", label: "Ava", icon: "ava", externalAppKey: "ava" },
+  {
+    id: "customer-portal",
+    label: "Customer Portal",
+    icon: "documents",
+    externalAppKey: "customer"
+  },
   {
     id: "paychex",
     label: "Paychex",

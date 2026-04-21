@@ -177,6 +177,7 @@ export function EmployeeSideNav() {
       userType="employee"
       canAccessManagerPanel={isManager}
       canAccessAdminPanel={isAdmin}
+      canAccessCustomerPortal={isAdmin}
       isUtilityItemActive={(item, currentPathname) =>
         routeMatches(currentPathname, item.matchPrefixes)
       }

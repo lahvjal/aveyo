@@ -65,33 +65,33 @@ export const getProjectHomePhotoUrl = (project: Project): string => {
   const placeholderUrl = 'https://via.placeholder.com/600x300?text=House+Image';
 
   if (!project) return placeholderUrl;
-  
-  // Try to get the project address
-  const address = getProjectAddress(project);
-  
-  // If we have an address, return a satellite view
-  if (address) {
-    return getSatelliteImageUrl(address);
-  }
-  
-  // Fallback to the original home photo logic if no address is available
+
+  // Prefer the uploaded home photo when available so the portal matches the intended property imagery.
   if (!project.podio_data || !project.podio_data.raw_payload) {
-    return placeholderUrl;
+    const address = getProjectAddress(project);
+    return address ? getSatelliteImageUrl(address) : placeholderUrl;
   }
   
   try {
-    // Handle case where raw_payload is a string that needs to be parsed
+    let homePhotoUrl: string | undefined;
+
     if (typeof project.podio_data.raw_payload === 'string') {
       try {
         const parsedPayload = JSON.parse(project.podio_data.raw_payload);
-        return parsedPayload['home-photo-url'] || placeholderUrl;
+        homePhotoUrl = parsedPayload['home-photo-url'];
       } catch (parseError) {
-        return placeholderUrl;
+        homePhotoUrl = undefined;
       }
+    } else {
+      homePhotoUrl = project.podio_data.raw_payload['home-photo-url'];
     }
-    
-    // Handle case where raw_payload is already an object
-    return project.podio_data.raw_payload['home-photo-url'] || placeholderUrl;
+
+    if (homePhotoUrl) {
+      return homePhotoUrl;
+    }
+
+    const address = getProjectAddress(project);
+    return address ? getSatelliteImageUrl(address) : placeholderUrl;
   } catch (error) {
     return placeholderUrl;
   }

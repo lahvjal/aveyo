@@ -1,4 +1,9 @@
-import { getLocalAppUrl, trimTrailingSlash } from "@ava/config/runtime/app-urls";
+import {
+  getLocalAppUrl,
+  resolveAppUrl,
+  resolveEnvironment,
+  trimTrailingSlash
+} from "@ava/config/runtime/app-urls";
 
 const LOCAL_HOST_PATTERN =
   /^(localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|::1|.+\.local)$/i;
@@ -54,29 +59,54 @@ function resolveNetworkAwareConfiguredUrl(value) {
   }
 }
 
-export function getEmployeeAppUrl() {
-  const configured = resolveNetworkAwareConfiguredUrl(process.env.NEXT_PUBLIC_PLATFORM_APP_URL);
-  if (!configured) {
-    return "https://app-staging.aveyo.com";
+function resolveRuntimeEnvironment() {
+  if (typeof window !== "undefined") {
+    return resolveEnvironment(window.location.hostname);
   }
 
-  return configured;
+  if (process.env.NODE_ENV !== "production") {
+    return "local";
+  }
+
+  if (process.env.VERCEL_ENV === "preview" || process.env.NEXT_PUBLIC_VERCEL_ENV === "preview") {
+    return "staging";
+  }
+
+  return "prod";
+}
+
+export function getEmployeeAppUrl() {
+  const configured = resolveNetworkAwareConfiguredUrl(
+    process.env.NEXT_PUBLIC_PLATFORM_APP_URL || process.env.NEXT_PUBLIC_AUTH_EMPLOYEE_APP_URL
+  );
+  if (configured) {
+    return configured;
+  }
+
+  const environment = resolveRuntimeEnvironment();
+  return environment === "local" ? getLocalAppUrl("dashboard") : resolveAppUrl("app", environment);
 }
 
 export function getCustomerAppUrl() {
   const configured = resolveNetworkAwareConfiguredUrl(process.env.NEXT_PUBLIC_AUTH_CUSTOMER_APP_URL);
-  if (!configured) {
-    return "https://customer.aveyo.com";
+  if (configured) {
+    return configured;
   }
 
-  return configured;
+  const environment = resolveRuntimeEnvironment();
+  return environment === "local"
+    ? getLocalAppUrl("customer")
+    : resolveAppUrl("customer", environment);
 }
 
 export function getAuthApiBaseUrl() {
-  const configured = resolveNetworkAwareConfiguredUrl(process.env.NEXT_PUBLIC_PLATFORM_API_BASE_URL);
-  if (!configured) {
-    return getLocalAppUrl("api");
+  const configured = resolveNetworkAwareConfiguredUrl(
+    process.env.NEXT_PUBLIC_PLATFORM_API_BASE_URL || process.env.NEXT_PUBLIC_AUTH_API_BASE_URL
+  );
+  if (configured) {
+    return configured;
   }
 
-  return configured;
+  const environment = resolveRuntimeEnvironment();
+  return environment === "local" ? getLocalAppUrl("api") : resolveAppUrl("api", environment);
 }
