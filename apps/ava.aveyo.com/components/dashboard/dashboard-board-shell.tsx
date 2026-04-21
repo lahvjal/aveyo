@@ -35,10 +35,11 @@ import { type CustomerPanelDetails, type HistoryNote, type Ticket } from "@/lib/
 import { useHandoffNotifications } from "@/lib/use-handoff-notifications";
 import { AppSideRail } from "@/components/app-side-rail";
 import { AvaSecondaryNav } from "@/components/ava-secondary-nav";
-import { ChatColumn } from "./chat-column";
-import { DetailColumn } from "./detail-column";
+import { ChatColumn, ChatComposer } from "./chat-column";
 import { HandoffTransferControls } from "./handoff-transfer-controls";
-import { QueueBoardColumns } from "./queue-board-columns";
+import { InitialChip } from "./initial-chip";
+import { QueueBoardColumns, type ActiveQueueSortOption } from "./queue-board-columns";
+import { WorkspaceDetailsOverlay } from "./resolved-details-overlay";
 
 function toRoleLabel(role: string | null | undefined) {
   if (role === "super_admin") {
@@ -103,6 +104,43 @@ function formatActiveChatSummary(activeCount: number, pendingCount: number) {
   return `${activeCount}/${totalCount} active chats`;
 }
 
+function getActiveQueueSortTimestamp(record: QueueRecord) {
+  return (
+    parseIsoToMs(record.lastMessageAt) ??
+    parseIsoToMs(record.claimedAt) ??
+    parseIsoToMs(record.requestedAt) ??
+    0
+  );
+}
+
+function compareActiveQueueRecords(
+  left: QueueRecord,
+  right: QueueRecord,
+  sort: ActiveQueueSortOption
+) {
+  if (sort === "unread") {
+    const unreadDiff =
+      Number(Boolean(right.hasUnreadCustomerReply)) - Number(Boolean(left.hasUnreadCustomerReply));
+    if (unreadDiff !== 0) {
+      return unreadDiff;
+    }
+  }
+
+  const leftTimestamp = getActiveQueueSortTimestamp(left);
+  const rightTimestamp = getActiveQueueSortTimestamp(right);
+  if (sort === "oldest") {
+    if (leftTimestamp !== rightTimestamp) {
+      return leftTimestamp - rightTimestamp;
+    }
+    return left.requestedAt.localeCompare(right.requestedAt);
+  }
+
+  if (leftTimestamp !== rightTimestamp) {
+    return rightTimestamp - leftTimestamp;
+  }
+  return right.requestedAt.localeCompare(left.requestedAt);
+}
+
 function SecondaryNavToggleIcon() {
   return (
     <svg viewBox="0 0 8 9" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -130,14 +168,17 @@ export function DashboardBoardShell() {
   const { notifyNewPendingHandoffs } = useHandoffNotifications();
   const [queueRecords, setQueueRecords] = useState<QueueRecord[]>([]);
   const [selectedActiveRequestId, setSelectedActiveRequestId] = useState<string | null>(null);
+  const [activeQueueSort, setActiveQueueSort] = useState<ActiveQueueSortOption>("unread");
   const [conversation, setConversation] = useState<ConversationThread>(seededConversation);
   const [composeMode, setComposeMode] = useState<"reply" | "note">("reply");
   const [replyDraft, setReplyDraft] = useState("");
   const [noteDraft, setNoteDraft] = useState("");
   const [historyNotes, setHistoryNotes] = useState<HistoryNote[]>([]);
+  const [historyNotesLoading, setHistoryNotesLoading] = useState(false);
   const [customerDetails, setCustomerDetails] = useState<CustomerPanelDetails | null>(null);
   const [customerDetailsLoading, setCustomerDetailsLoading] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
+  const [isDetailsPanelOpen, setIsDetailsPanelOpen] = useState(false);
   const [workspaceHint, setWorkspaceHint] = useState<string | null>(null);
   const [activeHintToast, setActiveHintToast] = useState<{ id: number; message: string } | null>(null);
   const [hintToastQueue, setHintToastQueue] = useState<Array<{ id: number; message: string }>>([]);
@@ -175,8 +216,8 @@ export function DashboardBoardShell() {
     () =>
       queueRecords
         .filter((item) => item.status === "active" || item.status === "claimed")
-        .sort((a, b) => b.requestedAt.localeCompare(a.requestedAt)),
-    [queueRecords]
+        .sort((left, right) => compareActiveQueueRecords(left, right, activeQueueSort)),
+    [activeQueueSort, queueRecords]
   );
   const pendingQueue = useMemo<Ticket[]>(
     () => pendingRecords.map((record) => createTicketFromQueueRecord(record)),
@@ -223,6 +264,7 @@ export function DashboardBoardShell() {
     }
     return createTicketFromQueueRecord(selectedQueueRecord, conversation);
   }, [conversation, selectedQueueRecord]);
+  const canOpenDetailsPanel = Boolean(selectedQueueRecord) && isConversationLoaded;
   const pendingTransfer = selectedQueueRecord?.transferRequest ?? activeTicket?.transferRequest;
   const canRequestTransfer =
     Boolean(selectedQueueRecord) &&
@@ -293,6 +335,42 @@ export function DashboardBoardShell() {
     }
     return "Queue is clear. New requests will appear in Pending Queue.";
   }, [activeQueue.length, isOnline, operationError, pendingQueue.length]);
+  const noChatComposeHelper = useMemo(() => {
+    if (!isOnline) {
+      return "You're offline. Go online to start new conversations.";
+    }
+    if (composeMode === "note") {
+      if (activeQueue.length > 0) {
+        return "Select an active chat to add internal notes.";
+      }
+      if (pendingQueue.length > 0) {
+        return "Claim a chat to add internal notes.";
+      }
+      return "Internal notes unlock when a conversation becomes active.";
+    }
+    if (activeQueue.length > 0) {
+      return "Select an active chat to unlock messaging.";
+    }
+    if (pendingQueue.length > 0) {
+      return "Claim a chat from the queue to unlock messaging.";
+    }
+    return "Messaging unlocks when a conversation becomes active.";
+  }, [activeQueue.length, composeMode, isOnline, pendingQueue.length]);
+  const noChatComposePlaceholder = useMemo(() => {
+    if (!isOnline) {
+      return composeMode === "note"
+        ? "Go online and select a chat to add internal notes."
+        : "Go online and select a chat to send messages.";
+    }
+    if (composeMode === "note") {
+      return activeQueue.length > 0
+        ? "Select an active chat to add internal notes."
+        : "Claim a chat to add internal notes.";
+    }
+    return activeQueue.length > 0
+      ? "Select an active chat to send messages."
+      : "Claim a chat to send messages.";
+  }, [activeQueue.length, composeMode, isOnline, pendingQueue.length]);
 
   const enqueueHintToast = useCallback((message: string) => {
     const trimmedMessage = message.trim();
@@ -478,8 +556,10 @@ export function DashboardBoardShell() {
     setReplyDraft("");
     setNoteDraft("");
     setHistoryNotes([]);
+    setHistoryNotesLoading(false);
     setCustomerDetails(null);
     setCustomerDetailsLoading(false);
+    setIsDetailsPanelOpen(false);
 
     if (!authSession.authenticated || !workspaceConversationId) {
       setConversation(seededConversation);
@@ -542,10 +622,12 @@ export function DashboardBoardShell() {
   useEffect(() => {
     if (!authSession.authenticated || !workspaceConversationId || !isConversationLoaded) {
       setHistoryNotes([]);
+      setHistoryNotesLoading(false);
       return;
     }
 
     let cancelled = false;
+    setHistoryNotesLoading(true);
     const loadNotes = async () => {
       try {
         const result = await listSupportNotesApi(workspaceConversationId);
@@ -556,6 +638,10 @@ export function DashboardBoardShell() {
       } catch {
         if (!cancelled) {
           setHistoryNotes([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setHistoryNotesLoading(false);
         }
       }
     };
@@ -598,6 +684,23 @@ export function DashboardBoardShell() {
       cancelled = true;
     };
   }, [authSession.authenticated, isConversationLoaded, workspaceConversationId]);
+
+  useEffect(() => {
+    if (!isDetailsPanelOpen || typeof window === "undefined") {
+      return;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsDetailsPanelOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isDetailsPanelOpen]);
 
   const handleRealtimeInvalidation = useCallback(
     async (conversationId?: string | null) => {
@@ -970,10 +1073,12 @@ export function DashboardBoardShell() {
             <QueueBoardColumns
               pendingQueue={pendingQueue}
               activeQueue={activeQueue}
+              activeSort={activeQueueSort}
               currentAgentId={agentId}
               selectedActiveTicketId={selectedQueueRecord?.requestId ?? null}
               claimPendingTicketId={claimPendingTicketId}
               onClaimChat={claimChat}
+              onActiveSortChange={setActiveQueueSort}
               onSelectActiveChat={selectActiveChat}
               onSplitChat={splitChatFromCard}
             />
@@ -984,14 +1089,11 @@ export function DashboardBoardShell() {
               {selectedQueueRecord ? (
                 <>
                   <div className="dashboard-workspace-status-selected">
-                    <span
-                      className={`dashboard-workspace-status-avatar ${
-                        activeTicket?.chipTone === "blue" ? "is-blue" : "is-pink"
-                      }`}
-                      aria-hidden="true"
-                    >
-                      {activeTicket?.initials ?? "CU"}
-                    </span>
+                    <InitialChip
+                      initials={activeTicket?.initials ?? "CU"}
+                      tone={activeTicket?.chipTone ?? "sand"}
+                      size={46}
+                    />
                     <strong className="dashboard-workspace-status-name">
                       {activeTicket?.fullName ?? "No active chat selected"}
                     </strong>
@@ -1025,11 +1127,23 @@ export function DashboardBoardShell() {
                         "RESOLVE & CLOSE"
                       )}
                     </button>
-                    <span className="dashboard-workspace-more" aria-hidden="true">
+                    <button
+                      type="button"
+                      className={`dashboard-workspace-more workspace-details-toggle${
+                        canOpenDetailsPanel ? "" : " is-disabled"
+                      }`}
+                      aria-label={isDetailsPanelOpen ? "Hide details panel" : "Show details panel"}
+                      aria-controls="workspace-details-panel"
+                      aria-expanded={isDetailsPanelOpen}
+                      disabled={!canOpenDetailsPanel}
+                      onClick={() => {
+                        setIsDetailsPanelOpen((current) => !current);
+                      }}
+                    >
                       <span />
                       <span />
                       <span />
-                    </span>
+                    </button>
                   </div>
                 </>
               ) : (
@@ -1041,7 +1155,7 @@ export function DashboardBoardShell() {
                     <strong className="dashboard-workspace-status-name is-placeholder">Customer</strong>
                     <span className="dashboard-workspace-status-timer is-placeholder">0:00</span>
                   </div>
-                  <div className="workspace-status-actions is-disabled" aria-hidden="true">
+                  <div className="workspace-status-actions is-disabled">
                     <button type="button" className="workspace-handoff-button is-disabled" disabled tabIndex={-1}>
                       <span>Handoff</span>
                       <span className="workspace-handoff-button-icon">
@@ -1064,11 +1178,19 @@ export function DashboardBoardShell() {
                     >
                       RESOLVE & CLOSE
                     </button>
-                    <span className="dashboard-workspace-more is-disabled">
+                    <button
+                      type="button"
+                      className="dashboard-workspace-more workspace-details-toggle is-disabled"
+                      aria-label="Show details panel"
+                      aria-controls="workspace-details-panel"
+                      aria-expanded="false"
+                      disabled
+                      tabIndex={-1}
+                    >
                       <span />
                       <span />
                       <span />
-                    </span>
+                    </button>
                   </div>
                 </>
               )}
@@ -1092,63 +1214,22 @@ export function DashboardBoardShell() {
                     <p>No chat selected</p>
                   </div>
                 </div>
-                <div className="dashboard-no-chat-compose">
-                  <div className="dashboard-no-chat-compose-card">
-                    <div className="dashboard-no-chat-compose-copy">
-                      <div className="dashboard-no-chat-compose-tabs" aria-hidden="true">
-                        <span className="is-active">Reply</span>
-                        <span>Note</span>
-                      </div>
-                      <p>Write your message here...</p>
-                    </div>
-                    <div className="dashboard-no-chat-compose-footer">
-                      <span className="dashboard-no-chat-compose-attachment" aria-hidden="true">
-                        <svg viewBox="0 0 20 21" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path
-                            d="M2.5 15.25V6.5C2.5 5.948 2.948 5.5 3.5 5.5H11.25L15.5 9.75V15.25C15.5 15.802 15.052 16.25 14.5 16.25H3.5C2.948 16.25 2.5 15.802 2.5 15.25Z"
-                            stroke="currentColor"
-                            strokeWidth="1.4"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M11.25 5.5V9C11.25 9.414 11.586 9.75 12 9.75H15.5"
-                            stroke="currentColor"
-                            strokeWidth="1.4"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M6 13.25L7.5 11.75L9.25 13.5L11.75 11"
-                            stroke="currentColor"
-                            strokeWidth="1.4"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                          <path
-                            d="M16.75 3.75V7.25M15 5.5H18.5"
-                            stroke="currentColor"
-                            strokeWidth="1.4"
-                            strokeLinecap="round"
-                          />
-                        </svg>
-                      </span>
-                      <span className="dashboard-no-chat-compose-send" aria-hidden="true">
-                        <svg viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <circle cx="15" cy="15" r="15" fill="currentColor" />
-                          <path
-                            d="M15 20V10M15 10L10.75 14.25M15 10L19.25 14.25"
-                            stroke="#ffffff"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </span>
-                    </div>
-                  </div>
+                <div className="dashboard-no-chat-compose uses-real-composer">
+                  <ChatComposer
+                    composeMode={composeMode}
+                    composeValue=""
+                    composePlaceholder={noChatComposePlaceholder}
+                    composeHelper={noChatComposeHelper}
+                    submitAriaLabel={composeMode === "note" ? "Save note" : "Send message"}
+                    composerDisabled
+                    onComposeModeChange={setComposeMode}
+                    onComposeValueChange={handleComposeValueChange}
+                    onSubmitCompose={handleSubmitCompose}
+                  />
                 </div>
               </div>
             ) : (
-              <div className="rep-workspace-columns dashboard-inline-columns">
+              <>
                 <ChatColumn
                   conversation={conversation}
                   activeTicket={activeTicket}
@@ -1175,13 +1256,19 @@ export function DashboardBoardShell() {
                   onRefreshAvaSuggestion={avaSuggestion.refreshSuggestion}
                 />
 
-                <DetailColumn
-                  activeTicket={activeTicket}
-                  customerDetails={customerDetails}
-                  customerDetailsLoading={customerDetailsLoading}
-                  historyNotes={historyNotes}
-                />
-              </div>
+                {isDetailsPanelOpen ? (
+                  <WorkspaceDetailsOverlay
+                    activeTicket={activeTicket}
+                    customerDetails={customerDetails}
+                    customerDetailsLoading={customerDetailsLoading}
+                    historyNotes={historyNotes}
+                    historyNotesLoading={historyNotesLoading}
+                    onClose={() => {
+                      setIsDetailsPanelOpen(false);
+                    }}
+                  />
+                ) : null}
+              </>
             )}
           </div>
         </div>

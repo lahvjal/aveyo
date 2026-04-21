@@ -26,6 +26,144 @@ function getNameInitials(name: string | null | undefined, fallback: string) {
   return parts.map((part) => part[0]?.toUpperCase() ?? "").join("");
 }
 
+export type ChatComposeMode = "reply" | "note";
+
+interface ChatComposerProps {
+  composeMode: ChatComposeMode;
+  composeValue: string;
+  composePlaceholder: string;
+  composeHelper: string;
+  submitAriaLabel: string;
+  composerDisabled?: boolean;
+  composeModeLocked?: boolean;
+  submitPending?: boolean;
+  showSuggestionCard?: boolean;
+  avaSuggestionText?: string | null;
+  avaSuggestionLoading?: boolean;
+  avaSuggestionError?: string | null;
+  onComposeModeChange: (mode: ChatComposeMode) => void;
+  onComposeValueChange: (value: string) => void;
+  onSubmitCompose: () => void;
+  onUseAvaSuggestion?: () => void;
+  onRefreshAvaSuggestion?: () => void;
+}
+
+export function ChatComposer({
+  composeMode,
+  composeValue,
+  composePlaceholder,
+  composeHelper,
+  submitAriaLabel,
+  composerDisabled = false,
+  composeModeLocked = false,
+  submitPending = false,
+  showSuggestionCard = false,
+  avaSuggestionText,
+  avaSuggestionLoading = false,
+  avaSuggestionError,
+  onComposeModeChange,
+  onComposeValueChange,
+  onSubmitCompose,
+  onUseAvaSuggestion,
+  onRefreshAvaSuggestion
+}: ChatComposerProps) {
+  const submitDisabled = composerDisabled || submitPending || composeValue.trim().length === 0;
+  const modeToggleDisabled = composeModeLocked || composerDisabled;
+
+  return (
+    <div className={`chat-note-compose${composerDisabled ? " is-disabled" : ""}`}>
+      {showSuggestionCard ? (
+        <div className="chat-ava-suggestion" aria-live="polite">
+          <div className="chat-ava-suggestion-header">
+            <AvaOrb size={16} />
+            <strong>Ava suggested reply</strong>
+          </div>
+
+          {avaSuggestionLoading ? (
+            <p className="chat-ava-suggestion-state">Drafting a response using project data...</p>
+          ) : avaSuggestionError ? (
+            <p className="chat-ava-suggestion-error">{avaSuggestionError}</p>
+          ) : avaSuggestionText ? (
+            <p className="chat-ava-suggestion-body">{avaSuggestionText}</p>
+          ) : (
+            <p className="chat-ava-suggestion-state">No draft available yet for this question.</p>
+          )}
+
+          <div className="chat-ava-suggestion-actions">
+            <button
+              type="button"
+              className="chat-ava-suggestion-action secondary"
+              onClick={onRefreshAvaSuggestion}
+              disabled={avaSuggestionLoading}
+            >
+              Refresh
+            </button>
+            <button
+              type="button"
+              className="chat-ava-suggestion-action primary"
+              onClick={onUseAvaSuggestion}
+              disabled={avaSuggestionLoading || !avaSuggestionText}
+            >
+              Use draft
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <div className="chat-compose-tabs" role="group" aria-label="Composer mode">
+        <button
+          type="button"
+          className={composeMode === "reply" ? "is-active" : ""}
+          aria-pressed={composeMode === "reply"}
+          disabled={modeToggleDisabled}
+          onClick={() => onComposeModeChange("reply")}
+        >
+          Reply
+        </button>
+        <button
+          type="button"
+          className={composeMode === "note" ? "is-active" : ""}
+          aria-pressed={composeMode === "note"}
+          disabled={modeToggleDisabled}
+          onClick={() => onComposeModeChange("note")}
+        >
+          Note
+        </button>
+      </div>
+
+      <textarea
+        value={composeValue}
+        disabled={composerDisabled}
+        onChange={(event) => onComposeValueChange(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            if (!submitDisabled) {
+              onSubmitCompose();
+            }
+          }
+        }}
+        placeholder={composePlaceholder}
+      />
+      <div className="chat-compose-footer">
+        <span className="chat-compose-attachment" aria-hidden="true">
+          +
+        </span>
+        <button
+          type="button"
+          className={`chat-send-button${submitPending ? " is-loading" : ""}`}
+          onClick={onSubmitCompose}
+          aria-label={submitAriaLabel}
+          disabled={submitDisabled}
+        >
+          {submitPending ? <span className="inline-button-spinner" aria-hidden="true" /> : "↑"}
+        </button>
+      </div>
+      <p className="compose-helper">{composeHelper}</p>
+    </div>
+  );
+}
+
 interface ChatColumnProps {
   conversation: ConversationThread;
   activeTicket: Ticket | null;
@@ -35,17 +173,18 @@ interface ChatColumnProps {
   isEmptyState: boolean;
   composerLocked?: boolean;
   composerLockedReason?: string;
-  composeMode: "reply" | "note";
+  composeMode: ChatComposeMode;
   composeValue: string;
   showAvaSuggestion?: boolean;
   avaSuggestionText?: string | null;
   avaSuggestionLoading?: boolean;
   avaSuggestionError?: string | null;
   showHeader?: boolean;
+  composeModeLocked?: boolean;
   agentInitials: string;
   agentAvatarUrl?: string | null;
   submitPending?: boolean;
-  onComposeModeChange: (mode: "reply" | "note") => void;
+  onComposeModeChange: (mode: ChatComposeMode) => void;
   onComposeValueChange: (value: string) => void;
   onSubmitCompose: () => void;
   onUseAvaSuggestion?: () => void;
@@ -68,6 +207,7 @@ export const ChatColumn = memo(function ChatColumn({
   avaSuggestionLoading = false,
   avaSuggestionError,
   showHeader = true,
+  composeModeLocked = false,
   agentInitials,
   agentAvatarUrl,
   submitPending = false,
@@ -79,9 +219,8 @@ export const ChatColumn = memo(function ChatColumn({
 }: ChatColumnProps) {
   const timelineRef = useRef<HTMLDivElement | null>(null);
   const isNoteMode = composeMode === "note";
+  const customerTone = activeTicket?.chipTone ?? "sand";
   const composerDisabled = isEmptyState || composerLocked;
-  const hasComposeText = composeValue.trim().length > 0;
-  const submitDisabled = composerDisabled || submitPending || !hasComposeText;
   const emptyStateEyebrow = !isOnline
     ? "Offline mode"
     : hasPendingChats
@@ -165,7 +304,7 @@ export const ChatColumn = memo(function ChatColumn({
       {showHeader ? (
         <header className="chat-topbar">
           <div className="chat-top-identity">
-            <InitialChip initials={activeTicket?.initials ?? "CU"} tone="sand" size={40} />
+            <InitialChip initials={activeTicket?.initials ?? "CU"} tone={customerTone} size={40} />
             <strong>{activeTicket?.fullName ?? "No active chat"}</strong>
           </div>
           <strong>{isEmptyState ? "--:--" : "0:02"}</strong>
@@ -226,7 +365,7 @@ export const ChatColumn = memo(function ChatColumn({
             return (
               <div className="timeline-row left" key={message.id}>
                 {isCustomer ? (
-                  <InitialChip initials={activeTicket?.initials ?? "CU"} tone="sand" size={25} />
+                  <InitialChip initials={activeTicket?.initials ?? "CU"} tone={customerTone} size={25} />
                 ) : (
                   <AvaOrb size={25} />
                 )}
@@ -244,94 +383,25 @@ export const ChatColumn = memo(function ChatColumn({
         </div>
       )}
 
-      <div className={`chat-note-compose${composerDisabled ? " is-disabled" : ""}`}>
-        {showSuggestionCard ? (
-          <div className="chat-ava-suggestion" aria-live="polite">
-            <div className="chat-ava-suggestion-header">
-              <AvaOrb size={16} />
-              <strong>Ava suggested reply</strong>
-            </div>
-
-            {avaSuggestionLoading ? (
-              <p className="chat-ava-suggestion-state">Drafting a response using project data...</p>
-            ) : avaSuggestionError ? (
-              <p className="chat-ava-suggestion-error">{avaSuggestionError}</p>
-            ) : avaSuggestionText ? (
-              <p className="chat-ava-suggestion-body">{avaSuggestionText}</p>
-            ) : (
-              <p className="chat-ava-suggestion-state">No draft available yet for this question.</p>
-            )}
-
-            <div className="chat-ava-suggestion-actions">
-              <button
-                type="button"
-                className="chat-ava-suggestion-action secondary"
-                onClick={onRefreshAvaSuggestion}
-                disabled={avaSuggestionLoading}
-              >
-                Refresh
-              </button>
-              <button
-                type="button"
-                className="chat-ava-suggestion-action primary"
-                onClick={onUseAvaSuggestion}
-                disabled={avaSuggestionLoading || !avaSuggestionText}
-              >
-                Use draft
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="chat-compose-tabs" role="group" aria-label="Composer mode">
-          <button
-            type="button"
-            className={composeMode === "reply" ? "is-active" : ""}
-            aria-pressed={composeMode === "reply"}
-            onClick={() => onComposeModeChange("reply")}
-          >
-            Reply
-          </button>
-          <button
-            type="button"
-            className={composeMode === "note" ? "is-active" : ""}
-            aria-pressed={composeMode === "note"}
-            onClick={() => onComposeModeChange("note")}
-          >
-            Note
-          </button>
-        </div>
-
-        <textarea
-          value={composeValue}
-          disabled={composerDisabled}
-          onChange={(event) => onComposeValueChange(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              if (!submitDisabled) {
-                onSubmitCompose();
-              }
-            }
-          }}
-          placeholder={composePlaceholder}
-        />
-        <div className="chat-compose-footer">
-          <span className="chat-compose-attachment" aria-hidden="true">
-            +
-          </span>
-          <button
-            type="button"
-            className={`chat-send-button${submitPending ? " is-loading" : ""}`}
-            onClick={onSubmitCompose}
-            aria-label={submitAriaLabel}
-            disabled={submitDisabled}
-          >
-            {submitPending ? <span className="inline-button-spinner" aria-hidden="true" /> : "↑"}
-          </button>
-        </div>
-        <p className="compose-helper">{composeHelper}</p>
-      </div>
+      <ChatComposer
+        composeMode={composeMode}
+        composeValue={composeValue}
+        composePlaceholder={composePlaceholder}
+        composeHelper={composeHelper}
+        submitAriaLabel={submitAriaLabel}
+        composerDisabled={composerDisabled}
+        composeModeLocked={composeModeLocked}
+        submitPending={submitPending}
+        showSuggestionCard={showSuggestionCard}
+        avaSuggestionText={avaSuggestionText}
+        avaSuggestionLoading={avaSuggestionLoading}
+        avaSuggestionError={avaSuggestionError}
+        onComposeModeChange={onComposeModeChange}
+        onComposeValueChange={onComposeValueChange}
+        onSubmitCompose={onSubmitCompose}
+        onUseAvaSuggestion={onUseAvaSuggestion}
+        onRefreshAvaSuggestion={onRefreshAvaSuggestion}
+      />
     </section>
   );
 });

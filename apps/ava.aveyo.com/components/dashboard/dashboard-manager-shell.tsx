@@ -8,6 +8,7 @@ import { canAccessAvaManagerViews } from "@/lib/auth/access";
 import { buildAuthLoginUrl } from "@/lib/auth/config";
 import { logoutAuthSession } from "@/lib/auth/session";
 import { useAuthSession } from "@/lib/auth/use-auth-session";
+import { useSupportPresence } from "@/lib/use-support-presence";
 import { useRealtimeInvalidation } from "@/lib/use-realtime-invalidation";
 import {
   getConversationApi,
@@ -91,8 +92,87 @@ function toRoleLabel(role: string | null | undefined) {
   return "Support Agent";
 }
 
+function parseIsoToMs(iso: string | null | undefined) {
+  if (!iso) {
+    return null;
+  }
+  const value = new Date(iso).getTime();
+  return Number.isNaN(value) ? null : value;
+}
+
+function toElapsedSeconds(startMs: number, endMs: number) {
+  return Math.max(0, Math.floor((endMs - startMs) / 1000));
+}
+
+function formatCompactDuration(totalSeconds: number) {
+  const safeSeconds = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safeSeconds / 3600);
+  const minutes = Math.floor((safeSeconds % 3600) / 60);
+  const seconds = safeSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  return `${minutes}:${String(seconds).padStart(2, "0")}`;
+}
+
+function formatActiveChatSummary(activeCount: number, pendingCount: number) {
+  const totalCount = activeCount + pendingCount;
+  if (totalCount === 0) {
+    return "0 active chats";
+  }
+  return `${activeCount}/${totalCount} active chats`;
+}
+
+function formatManagerCardTimer(
+  handoff: Pick<ManagerHandoffRecord, "requestedAt" | "claimedAt" | "resolvedAt">,
+  nowMs: number = Date.now()
+) {
+  const requestedAtMs = parseIsoToMs(handoff.requestedAt);
+  const claimedAtMs = parseIsoToMs(handoff.claimedAt);
+  const resolvedAtMs = parseIsoToMs(handoff.resolvedAt);
+
+  if (claimedAtMs !== null) {
+    return formatCompactDuration(toElapsedSeconds(claimedAtMs, resolvedAtMs ?? nowMs));
+  }
+  if (requestedAtMs !== null) {
+    return formatCompactDuration(toElapsedSeconds(requestedAtMs, resolvedAtMs ?? nowMs));
+  }
+  return "0:00";
+}
+
+function SecondaryNavToggleIcon() {
+  return (
+    <svg viewBox="0 0 8 9" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="4" cy="4.5" r="3.35" stroke="currentColor" strokeWidth="1.3" />
+      <circle cx="4" cy="4.5" r="1.25" fill="currentColor" />
+    </svg>
+  );
+}
+
 type ManagerMoodFilter = "all" | "calm" | "frustrated" | "escalated";
 type PipelineLaneId = "ai_handling" | "pending" | "with_agent" | "resolved";
+type ManagerLaneSortOption = "latest" | "oldest";
+
+function compareManagerHandoffs(
+  left: ManagerHandoffRecord,
+  right: ManagerHandoffRecord,
+  sort: ManagerLaneSortOption
+) {
+  const leftTime = getHandoffSortTime(left.lastMessageAt);
+  const rightTime = getHandoffSortTime(right.lastMessageAt);
+  if (sort === "oldest") {
+    if (leftTime !== rightTime) {
+      return leftTime - rightTime;
+    }
+    return left.requestedAt.localeCompare(right.requestedAt);
+  }
+  if (leftTime !== rightTime) {
+    return rightTime - leftTime;
+  }
+  return right.requestedAt.localeCompare(left.requestedAt);
+}
 
 function getPipelineLaneForHandoff(handoff: ManagerHandoffRecord): PipelineLaneId {
   const rawStatus =
@@ -146,6 +226,18 @@ function formatMoodLabel(mood: Exclude<ManagerMoodFilter, "all">) {
   return "Calm";
 }
 
+function ManagerPipelineCardStatusIcon({ tone }: { tone: Exclude<ManagerMoodFilter, "all"> }) {
+  return (
+    <svg viewBox="0 0 11.121 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M7.05243 1.41184V2.84134L11.121 4.60614L5.12065 6.49313V5.64738H1.48244V8H0V0L7.05243 1.41184Z"
+        className={`manager-chat-card-status-shape ${tone}`}
+        fill="currentColor"
+      />
+    </svg>
+  );
+}
+
 type ManagerCardStatus = "open" | "pending" | "claimed" | "active" | "resolved" | "ended";
 
 function getManagerCardStatus(handoff: ManagerHandoffRecord): ManagerCardStatus {
@@ -171,6 +263,10 @@ function formatManagerCardStatus(status: ManagerCardStatus) {
   return "AI handling";
 }
 
+function getManagerCustomerChipTone(handoff: ManagerHandoffRecord) {
+  return getPipelineLaneForHandoff(handoff) === "pending" ? "blue" : "sand";
+}
+
 function formatAgentSatisfaction(rating: ManagerHandoffRecord["customerRating"]) {
   if (rating === "thumbs_up") {
     return "Agent satisfaction: Thumbs up";
@@ -182,11 +278,7 @@ function formatAgentSatisfaction(rating: ManagerHandoffRecord["customerRating"])
 }
 
 function getHandoffSortTime(iso: string | null) {
-  if (!iso) {
-    return 0;
-  }
-  const value = new Date(iso).getTime();
-  return Number.isNaN(value) ? 0 : value;
+  return parseIsoToMs(iso) ?? 0;
 }
 
 function getNameInitials(name: string | null | undefined, fallback = "CU") {
@@ -222,8 +314,10 @@ interface ManagerPipelineCardProps {
 
 interface ManagerPipelineLaneSectionProps {
   lane: PipelineLaneViewModel;
+  sort: ManagerLaneSortOption;
   isInitialLoading: boolean;
   selectedRequestId: string | null;
+  onSortChange: (sort: ManagerLaneSortOption) => void;
   onOpenTranscriptPreview: (requestId: string) => void;
 }
 
@@ -237,23 +331,15 @@ const ManagerPipelineCard = memo(function ManagerPipelineCard({
   onOpenTranscriptPreview
 }: ManagerPipelineCardProps) {
   const customerMood = getMoodFromSensitivityBand(handoff.customerSensitivityBand);
-  const handoffLane = getPipelineLaneForHandoff(handoff);
-  const cardStatus = getManagerCardStatus(handoff);
-  const healthLabel = handoff.needsAttention
-    ? "Needs attention"
-    : handoff.slowFirstReply
-      ? "Slow first reply"
-      : null;
-  const agentLabel =
-    handoffLane === "pending" ? "Awaiting agent" : handoff.assignedAgentName || "AI Chatbot";
-  const showAgentProfile =
-    Boolean(handoff.assignedAgentName) || Boolean(handoff.assignedAgentAvatarUrl);
 
   return (
     <article
       className={`manager-chat-card mood-${customerMood} clickable${selected ? " selected" : ""}`}
       role="button"
       tabIndex={0}
+      aria-label={`${handoff.customerName}, ${formatMoodLabel(customerMood)}, ${formatManagerCardStatus(
+        getManagerCardStatus(handoff)
+      )}, ${handoff.assignedAgentName ? `assigned to ${handoff.assignedAgentName}` : "assigned to Ava"}`}
       onClick={() => onOpenTranscriptPreview(handoff.requestId)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -262,49 +348,41 @@ const ManagerPipelineCard = memo(function ManagerPipelineCard({
         }
       }}
     >
-      <div className="manager-chat-head">
-        <div className="manager-chat-identity">
+      <div className="manager-chat-card-main">
+        <div className="manager-chat-card-primary">
           <InitialChip
             initials={getNameInitials(handoff.customerName, "CU")}
             avatarUrl={handoff.customerAvatarUrl}
-            tone="sand"
-            size={28}
+            tone={getManagerCustomerChipTone(handoff)}
+            size={46}
           />
-          <div>
-            <h4>{handoff.customerName}</h4>
-            <p>Request {handoff.requestId.slice(0, 8)}</p>
+          <div className="manager-chat-card-copy">
+            <div className="manager-chat-card-title">
+              <h4>{handoff.customerName}</h4>
+              <span className={`manager-chat-card-status-icon ${customerMood}`} aria-hidden="true">
+                <ManagerPipelineCardStatusIcon tone={customerMood} />
+              </span>
+            </div>
+            <p className="manager-chat-card-preview">{handoff.previewText}</p>
           </div>
         </div>
-        <span className={`manager-mood-pill ${customerMood}`}>{formatMoodLabel(customerMood)}</span>
-      </div>
 
-      <div className="manager-chat-meta">
-        <span className="manager-chat-agent">
-          {showAgentProfile ? (
-            <InitialChip
-              initials={getNameInitials(handoff.assignedAgentName, "AG")}
-              avatarUrl={handoff.assignedAgentAvatarUrl}
-              tone="sand"
-              size={20}
-            />
-          ) : (
-            <AvaOrb size={20} />
-          )}
-          <span>{agentLabel}</span>
-        </span>
-        <span>{formatRelativeAgo(handoff.lastMessageAt)}</span>
+        <div className="manager-chat-card-meta">
+          <span className="manager-chat-card-time">{formatManagerCardTimer(handoff)}</span>
+          <span className="manager-chat-card-agent" aria-label={handoff.assignedAgentName || "AI Chatbot"}>
+            {handoff.assignedAgentAvatarUrl ? (
+              <InitialChip
+                initials={getNameInitials(handoff.assignedAgentName, "AG")}
+                avatarUrl={handoff.assignedAgentAvatarUrl}
+                tone="sand"
+                size={30}
+              />
+            ) : (
+              <AvaOrb size={30} />
+            )}
+          </span>
+        </div>
       </div>
-
-      <div className="manager-chat-meta">
-        <span className="manager-chat-satisfaction">
-          {formatAgentSatisfaction(handoff.customerRating)}
-        </span>
-        <span className={`manager-chat-status ${cardStatus}`}>
-          {formatManagerCardStatus(cardStatus)}
-        </span>
-      </div>
-
-      {healthLabel ? <p className="manager-chat-health-note">{healthLabel}</p> : null}
     </article>
   );
 });
@@ -312,15 +390,33 @@ const ManagerPipelineCard = memo(function ManagerPipelineCard({
 const ManagerPipelineLaneSection = memo(
   function ManagerPipelineLaneSection({
     lane,
+    sort,
     isInitialLoading,
     selectedRequestId,
+    onSortChange,
     onOpenTranscriptPreview
   }: ManagerPipelineLaneSectionProps) {
     return (
       <section className={`manager-pipeline-lane ${lane.id}`}>
         <header className="manager-pipeline-lane-head">
-          <strong>{lane.label}</strong>
-          <span className="manager-pipeline-count">{lane.count}</span>
+          <div className="manager-pipeline-lane-title">
+            <strong>{lane.label}</strong>
+            <span className="manager-pipeline-count">{lane.count}</span>
+          </div>
+          <label className="manager-pipeline-sort">
+            <span className="manager-pipeline-sort-label">Sort by:</span>
+            <span className="manager-pipeline-select-wrap">
+              <select
+                className="manager-pipeline-select"
+                value={sort}
+                onChange={(event) => onSortChange(event.target.value as ManagerLaneSortOption)}
+              >
+                <option value="latest">Latest</option>
+                <option value="oldest">Oldest</option>
+              </select>
+              <span className="manager-pipeline-caret" aria-hidden="true" />
+            </span>
+          </label>
         </header>
 
         <div className="manager-pipeline-list">
@@ -355,7 +451,9 @@ const ManagerPipelineLaneSection = memo(
   (prevProps, nextProps) => {
     if (
       prevProps.lane !== nextProps.lane ||
+      prevProps.sort !== nextProps.sort ||
       prevProps.isInitialLoading !== nextProps.isInitialLoading ||
+      prevProps.onSortChange !== nextProps.onSortChange ||
       prevProps.onOpenTranscriptPreview !== nextProps.onOpenTranscriptPreview
     ) {
       return false;
@@ -376,6 +474,7 @@ export function DashboardManagerShell() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const authSession = useAuthSession();
+  const { isOnline, syncing: presenceSyncing, toggleOnline } = useSupportPresence(authSession);
   const [signOutPending, setSignOutPending] = useState(false);
   const [isNavCollapsed, setIsNavCollapsed] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -385,6 +484,12 @@ export function DashboardManagerShell() {
   const [handoffs, setHandoffs] = useState<ManagerHandoffRecord[]>([]);
   const [moodFilter, setMoodFilter] = useState<ManagerMoodFilter>("all");
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [laneSorts, setLaneSorts] = useState<Record<PipelineLaneId, ManagerLaneSortOption>>({
+    ai_handling: "latest",
+    pending: "latest",
+    with_agent: "latest",
+    resolved: "latest"
+  });
   const [previewConversation, setPreviewConversation] = useState<ConversationThread | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
@@ -495,6 +600,10 @@ export function DashboardManagerShell() {
   const onlineAgentsCount = agents.filter((agent) => agent.status === "online").length;
   const totalAgentsCount = agents.length;
   const aiHandlingCount = handoffStatusCounts.aiHandling;
+  const activeChatSummary = useMemo(
+    () => formatActiveChatSummary(handoffStatusCounts.withAgent, handoffStatusCounts.pending),
+    [handoffStatusCounts.pending, handoffStatusCounts.withAgent]
+  );
   const moodCounts = useMemo(() => {
     const counts = {
       calm: 0,
@@ -538,9 +647,10 @@ export function DashboardManagerShell() {
       byLane[lane].push(handoff);
     }
 
-    for (const lane of Object.values(byLane)) {
-      lane.sort((left, right) => getHandoffSortTime(right.lastMessageAt) - getHandoffSortTime(left.lastMessageAt));
-    }
+    byLane.ai_handling.sort((left, right) => compareManagerHandoffs(left, right, laneSorts.ai_handling));
+    byLane.pending.sort((left, right) => compareManagerHandoffs(left, right, laneSorts.pending));
+    byLane.with_agent.sort((left, right) => compareManagerHandoffs(left, right, laneSorts.with_agent));
+    byLane.resolved.sort((left, right) => compareManagerHandoffs(left, right, laneSorts.resolved));
 
     return [
       { id: "ai_handling" as const, label: "AI Handling", count: byLane.ai_handling.length, items: byLane.ai_handling },
@@ -548,7 +658,7 @@ export function DashboardManagerShell() {
       { id: "with_agent" as const, label: "With Agent", count: byLane.with_agent.length, items: byLane.with_agent },
       { id: "resolved" as const, label: "Resolved", count: byLane.resolved.length, items: byLane.resolved }
     ];
-  }, [moodFilteredHandoffs]);
+  }, [laneSorts, moodFilteredHandoffs]);
   const resolvedLaneItems = useMemo(
     () => pipelineLanes.find((lane) => lane.id === "resolved")?.items ?? [],
     [pipelineLanes]
@@ -802,6 +912,33 @@ export function DashboardManagerShell() {
     [pathname, router]
   );
 
+  const handleLaneSortChange = useCallback((laneId: PipelineLaneId, sort: ManagerLaneSortOption) => {
+    setLaneSorts((current) => {
+      if (current[laneId] === sort) {
+        return current;
+      }
+      return {
+        ...current,
+        [laneId]: sort
+      };
+    });
+  }, []);
+
+  const handleToggleOnline = useCallback(async () => {
+    if (presenceSyncing) {
+      return;
+    }
+    try {
+      await toggleOnline();
+    } catch (toggleError) {
+      setError(
+        toggleError instanceof Error && toggleError.message
+          ? toggleError.message
+          : "Unable to update your online status."
+      );
+    }
+  }, [presenceSyncing, toggleOnline]);
+
   const signOutAgent = async () => {
     if (signOutPending) {
       return;
@@ -845,6 +982,29 @@ export function DashboardManagerShell() {
         <AvaSecondaryNav
           activeRoute="manager"
           canAccessManagerViews={canAccessAvaManagerViews(authSession.role, authSession.access)}
+          trailingContent={
+            <div className="rep-secondary-nav-presence">
+              <div className="rep-secondary-nav-presence-copy" aria-live="polite">
+                <div className={`rep-secondary-nav-status-dot ${isOnline ? "online" : "offline"}`} />
+                <div className="rep-secondary-nav-presence-text">
+                  <strong>{isOnline ? "Online" : "Offline"}</strong>
+                  <span>{activeChatSummary}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className={`rep-secondary-nav-toggle ${isOnline ? "online" : "offline"}`}
+                onClick={() => {
+                  void handleToggleOnline();
+                }}
+                disabled={presenceSyncing}
+                aria-pressed={isOnline}
+              >
+                <SecondaryNavToggleIcon />
+                <span>{isOnline ? "Go Offline" : "Go Online"}</span>
+              </button>
+            </div>
+          }
         />
         <div className="rep-main-scroll">
         {error ? (
@@ -866,7 +1026,7 @@ export function DashboardManagerShell() {
 
         <div className="manager-filter-bar">
           <div className="manager-filter-group">
-            <label htmlFor="manager-range-preset">Date range</label>
+            <label htmlFor="manager-range-preset">Date range:</label>
             <select
               id="manager-range-preset"
               value={draftRange.preset}
@@ -887,7 +1047,7 @@ export function DashboardManagerShell() {
             </select>
           </div>
           <div className="manager-filter-group">
-            <label htmlFor="manager-range-timezone">Timezone</label>
+            <label htmlFor="manager-range-timezone">Timezone:</label>
             <input
               id="manager-range-timezone"
               type="text"
@@ -904,7 +1064,7 @@ export function DashboardManagerShell() {
           {draftRange.preset === "custom" ? (
             <>
               <div className="manager-filter-group">
-                <label htmlFor="manager-range-from">From</label>
+                <label htmlFor="manager-range-from">From:</label>
                 <input
                   id="manager-range-from"
                   type="datetime-local"
@@ -918,7 +1078,7 @@ export function DashboardManagerShell() {
                 />
               </div>
               <div className="manager-filter-group">
-                <label htmlFor="manager-range-to">To</label>
+                <label htmlFor="manager-range-to">To:</label>
                 <input
                   id="manager-range-to"
                   type="datetime-local"
@@ -954,6 +1114,11 @@ export function DashboardManagerShell() {
               onClick={() => applyRange(draftRange)}
             >
               Apply
+            </button>
+            <button type="button" className="manager-filter-more" aria-label="More manager actions">
+              <span />
+              <span />
+              <span />
             </button>
           </div>
         </div>
@@ -1136,8 +1301,10 @@ export function DashboardManagerShell() {
                 <ManagerPipelineLaneSection
                   key={lane.id}
                   lane={lane}
+                  sort={laneSorts[lane.id]}
                   isInitialLoading={isInitialLoading}
                   selectedRequestId={selectedRequestId}
+                  onSortChange={(sort) => handleLaneSortChange(lane.id, sort)}
                   onOpenTranscriptPreview={openTranscriptPreview}
                 />
               ))}
@@ -1224,7 +1391,11 @@ export function DashboardManagerShell() {
                       return (
                         <div className="timeline-row left" key={message.id}>
                           {isCustomer ? (
-                            <InitialChip initials={selectedCustomerInitials} tone="sand" size={25} />
+                            <InitialChip
+                              initials={selectedCustomerInitials}
+                              tone={selectedHandoff ? getManagerCustomerChipTone(selectedHandoff) : "sand"}
+                              size={25}
+                            />
                           ) : (
                             <AvaOrb size={25} />
                           )}

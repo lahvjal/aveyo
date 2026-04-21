@@ -156,6 +156,8 @@ export function createTicketFromQueueRecord(
     claimedByAuthUserId: record.claimedByAuthUserId,
     resolvedAt: record.resolvedAt,
     resolvedByAuthUserId: record.resolvedByAuthUserId,
+    lastMessageAt: record.lastMessageAt ?? null,
+    hasUnreadCustomerReply: record.hasUnreadCustomerReply ?? false,
     representative: record.representative
       ? {
           id: record.representative.id,

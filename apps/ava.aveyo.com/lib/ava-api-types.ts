@@ -34,6 +34,8 @@ export interface QueueRecord {
   claimedByAuthUserId: string | null;
   resolvedAt: string | null;
   resolvedByAuthUserId: string | null;
+  lastMessageAt?: string | null;
+  hasUnreadCustomerReply?: boolean;
   customerRating: "thumbs_up" | "thumbs_down" | null;
   transferRequest?: QueueTransferRequest;
 }

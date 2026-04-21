@@ -19,6 +19,8 @@ export interface Ticket {
   claimedByAuthUserId: string | null;
   resolvedAt: string | null;
   resolvedByAuthUserId: string | null;
+  lastMessageAt?: string | null;
+  hasUnreadCustomerReply?: boolean;
   representative?: {
     id: string;
     name: string;

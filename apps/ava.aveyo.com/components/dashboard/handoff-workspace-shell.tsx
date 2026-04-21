@@ -594,7 +594,7 @@ export function HandoffWorkspaceShell({
           <div className="workspace-status-copy">
             {queueRecord ? (
               <div className="workspace-status-identity">
-                <InitialChip initials={activeTicket?.initials ?? "CU"} tone="sand" size={46} />
+                <InitialChip initials={activeTicket?.initials ?? "CU"} tone={activeTicket?.chipTone ?? "sand"} size={46} />
                 <div>
                   <strong>{activeTicket?.fullName ?? "No active chat selected"}</strong>
                   <small>

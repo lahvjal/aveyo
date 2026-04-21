@@ -69,6 +69,7 @@ export interface ManagerHandoffRecord {
   conversationId: string;
   customerName: string;
   customerAvatarUrl: string | null;
+  previewText: string;
   status: ManagerPipelineStatus;
   requestedAt: string;
   claimedAt: string | null;
@@ -307,6 +308,11 @@ function parseCustomerName(subject: string | null | undefined, fallback: string)
     return trimmed.replace(/^Impersonation test:\s*/i, "").trim() || fallback;
   }
   return fallback;
+}
+
+function getPreviewText(message: MessageRow | null) {
+  const body = message?.body?.trim();
+  return body && body.length > 0 ? body : "No messages yet.";
 }
 
 function isAgentTransferRequestsUnavailableError(error: unknown) {
@@ -1224,6 +1230,7 @@ async function buildManagerHandoffs(
 
     const customerFallbackName = customerProfile?.full_name?.trim() || customerProfile?.email?.trim() || "Customer";
     const customerName = parseCustomerName(conversation?.subject, customerFallbackName);
+    const previewText = getPreviewText(lastVisibleMessage);
     const slowFirstReply =
       firstReplySeconds !== null &&
       firstReplySeconds > managerConfigState.config.thresholds.slowFirstReplyMinutes * 60;
@@ -1238,6 +1245,7 @@ async function buildManagerHandoffs(
       conversationId: row.conversation_id,
       customerName,
       customerAvatarUrl: customerProfile?.profile_photo_url?.trim() || null,
+      previewText,
       status: row.status === "cancelled" ? "resolved" : row.status,
       requestedAt: row.requested_at,
       claimedAt: row.claimed_at,
@@ -1283,6 +1291,7 @@ async function buildManagerHandoffs(
     const customerFallbackName =
       customerProfile?.full_name?.trim() || customerProfile?.email?.trim() || "Customer";
     const customerName = parseCustomerName(normalizedConversation.subject, customerFallbackName);
+    const previewText = getPreviewText(lastMessage ?? null);
     const customerSensitivityScore = computeCustomerSensitivity({
       customerMessages,
       staleMinutes,
@@ -1304,6 +1313,7 @@ async function buildManagerHandoffs(
       conversationId: normalizedConversation.id,
       customerName,
       customerAvatarUrl: customerProfile?.profile_photo_url?.trim() || null,
+      previewText,
       status: "open",
       requestedAt:
         normalizedConversation.created_at ??
@@ -1346,6 +1356,7 @@ async function buildManagerHandoffs(
     const customerFallbackName =
       customerProfile?.full_name?.trim() || customerProfile?.email?.trim() || "Customer";
     const customerName = parseCustomerName(normalizedConversation.subject, customerFallbackName);
+    const previewText = getPreviewText(lastMessage ?? null);
     const customerSensitivityScore = computeCustomerSensitivity({
       customerMessages,
       staleMinutes: null,
@@ -1364,6 +1375,7 @@ async function buildManagerHandoffs(
       conversationId: normalizedConversation.id,
       customerName,
       customerAvatarUrl: customerProfile?.profile_photo_url?.trim() || null,
+      previewText,
       status: "resolved",
       requestedAt: normalizedConversation.created_at ?? closedAt ?? new Date().toISOString(),
       claimedAt: null,

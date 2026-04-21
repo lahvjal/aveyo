@@ -52,6 +52,8 @@ export interface QueueRecord {
   claimedByAuthUserId: string | null;
   resolvedAt: string | null;
   resolvedByAuthUserId: string | null;
+  lastMessageAt?: string | null;
+  hasUnreadCustomerReply?: boolean;
   customerRating: HandoffRating | null;
   transferRequest?: {
     id: string;
@@ -243,6 +245,8 @@ interface QueueConversationRow {
   customer_auth_user_id: string;
   channel: string | null;
   subject: string | null;
+  updated_at?: string;
+  last_message_at?: string | null;
 }
 
 interface CustomerProfileIdRow {
@@ -1812,6 +1816,8 @@ function toQueueRecordFromRequest(params: {
   supportAgentMap?: Map<string, RepresentativeProfile>;
   pendingPosition?: number;
   resolvedByAuthUserId?: string | null;
+  lastMessageAt?: string | null;
+  hasUnreadCustomerReply?: boolean;
   customerRating?: HandoffRating | null;
 }): QueueRecord {
   const {
@@ -1824,6 +1830,8 @@ function toQueueRecordFromRequest(params: {
     supportAgentMap,
     pendingPosition,
     resolvedByAuthUserId,
+    lastMessageAt,
+    hasUnreadCustomerReply,
     customerRating
   } = params;
   return {
@@ -1845,6 +1853,8 @@ function toQueueRecordFromRequest(params: {
     claimedByAuthUserId: request.claimed_by_auth_user_id,
     resolvedAt: request.resolved_at,
     resolvedByAuthUserId: resolvedByAuthUserId ?? null,
+    lastMessageAt: lastMessageAt ?? null,
+    hasUnreadCustomerReply: hasUnreadCustomerReply ?? false,
     customerRating: customerRating ?? null,
     transferRequest: toPendingTransferSummary(
       transferRequest,
@@ -2336,7 +2346,7 @@ export async function listQueue(
   const { data: conversationRows, error: conversationError } = await supabase
     .schema("ava")
     .from("conversations")
-    .select("id, customer_auth_user_id, channel, subject")
+    .select("id, customer_auth_user_id, channel, subject, updated_at, last_message_at")
     .in("id", conversationIds);
 
   if (conversationError) {
@@ -2405,6 +2415,7 @@ export async function listQueue(
     .map((row) => row.customer_auth_user_id)
     .filter((value): value is string => Boolean(value));
   const requestIds = dedupedQueueRows.map((row) => row.id);
+  const dedupedConversationIds = Array.from(new Set(dedupedQueueRows.map((row) => row.conversation_id)));
   const [customerNameMap, resolvedByRequestId, customerRatingByRequestId, pendingTransferByRequestId] =
     await Promise.all([
       getCustomerNameMapByAuthUserId(customerAuthIds),
@@ -2412,6 +2423,10 @@ export async function listQueue(
       getLatestCustomerRatingByRequestIds(requestIds),
       getPendingTransferRequestsByHandoffRequestIds(requestIds)
     ]);
+  const recentMessagesByConversation = await listRecentMessagesForConversations(
+    dedupedConversationIds,
+    8
+  );
 
   const transferAgentIds = Array.from(
     pendingTransferByRequestId.values()
@@ -2459,6 +2474,23 @@ export async function listQueue(
       pendingTransferRequest.requested_by_auth_user_id === row.claimed_by_auth_user_id
         ? pendingTransferRequest
         : undefined;
+    const recentMessages = recentMessagesByConversation.get(row.conversation_id) ?? [];
+    const latestRelevantMessage = recentMessages.reduce<MessageRow | null>((latest, message) => {
+      if (message.sender_kind === "system") {
+        return latest;
+      }
+      if (!latest) {
+        return message;
+      }
+      return latest.created_at.localeCompare(message.created_at) >= 0 ? latest : message;
+    }, null);
+    const lastMessageAt =
+      latestRelevantMessage?.created_at ??
+      conversation?.last_message_at ??
+      conversation?.updated_at ??
+      row.claimed_at ??
+      row.requested_at;
+    const hasUnreadCustomerReply = latestRelevantMessage?.sender_kind === "customer";
 
     return {
       requestId: row.id,
@@ -2479,6 +2511,8 @@ export async function listQueue(
       claimedByAuthUserId: row.claimed_by_auth_user_id,
       resolvedAt: row.resolved_at,
       resolvedByAuthUserId,
+      lastMessageAt,
+      hasUnreadCustomerReply,
       customerRating,
       transferRequest: toPendingTransferSummary(activePendingTransfer, profileMap)
     };

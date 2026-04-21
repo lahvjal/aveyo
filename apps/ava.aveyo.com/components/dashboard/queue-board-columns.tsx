@@ -2,13 +2,17 @@ import { memo, useSyncExternalStore } from "react";
 import { type Ticket } from "@/lib/dashboard-types";
 import { InitialChip } from "./initial-chip";
 
+export type ActiveQueueSortOption = "unread" | "latest" | "oldest";
+
 interface QueueBoardColumnsProps {
   pendingQueue: Ticket[];
   activeQueue: Ticket[];
+  activeSort: ActiveQueueSortOption;
   currentAgentId?: string | null;
   selectedActiveTicketId: string | null;
   claimPendingTicketId?: string | null;
   onClaimChat: (ticketId: string) => void;
+  onActiveSortChange: (sort: ActiveQueueSortOption) => void;
   onSelectActiveChat: (ticketId: string) => void;
   onSplitChat: (ticketId: string) => void;
 }
@@ -30,10 +34,12 @@ interface QueueLaneProps {
   lane: "pending" | "active";
   emptyCopy: string;
   tickets: Ticket[];
+  activeSort: ActiveQueueSortOption;
   currentAgentId?: string | null;
   selectedActiveTicketId: string | null;
   claimPendingTicketId?: string | null;
   onClaimChat: (ticketId: string) => void;
+  onActiveSortChange: (sort: ActiveQueueSortOption) => void;
   onSelectActiveChat: (ticketId: string) => void;
   onSplitChat: (ticketId: string) => void;
 }
@@ -277,6 +283,8 @@ const QueueLaneCard = memo(function QueueLaneCard({
       : null;
   const isPendingLane = lane === "pending";
   const showSelectedActiveAccent = lane === "active" && isSelected;
+  const showUnreadAccent =
+    lane === "active" && !showSelectedActiveAccent && Boolean(ticket.hasUnreadCustomerReply);
 
   const activateCard = () => {
     if (!interactiveCard) {
@@ -295,7 +303,7 @@ const QueueLaneCard = memo(function QueueLaneCard({
     <article
       className={`board-queue-card ${lane}${interactiveCard && isSelected ? " is-selected" : ""}${
         isPendingLane ? " is-compact" : ""
-      }${claimPending ? " is-loading" : ""}`}
+      }${claimPending ? " is-loading" : ""}${showUnreadAccent ? " is-unread" : ""}`}
       onClick={activateCard}
       onKeyDown={(event) => {
         if (!interactiveCard) {
@@ -327,17 +335,22 @@ const QueueLaneCard = memo(function QueueLaneCard({
     >
       <div className="board-queue-card-main">
         <div className={`board-queue-identity${isPendingLane ? " compact" : ""}`}>
-          <InitialChip
-            initials={ticket.initials}
-            tone={ticket.chipTone}
-            size={isPendingLane || showSelectedActiveAccent ? 46 : undefined}
-          />
+          <div className={`board-queue-avatar${showUnreadAccent ? " is-unread" : ""}`}>
+            <InitialChip
+              initials={ticket.initials}
+              tone={ticket.chipTone}
+              size={isPendingLane || showSelectedActiveAccent ? 46 : undefined}
+            />
+          </div>
           {!isPendingLane ? (
             <div className="board-queue-identity-copy">
               <div className="board-queue-identity-title">
                 <strong>{ticket.fullName}</strong>
-                {showSelectedActiveAccent ? (
-                  <span className="board-queue-active-status-icon" aria-hidden="true">
+                {showSelectedActiveAccent || showUnreadAccent ? (
+                  <span
+                    className={`board-queue-active-status-icon${showUnreadAccent ? " is-unread" : ""}`}
+                    aria-hidden="true"
+                  >
                     <QueueActiveStatusIcon />
                   </span>
                 ) : null}
@@ -375,10 +388,12 @@ const QueueLane = memo(function QueueLane({
   lane,
   emptyCopy,
   tickets,
+  activeSort,
   currentAgentId = null,
   selectedActiveTicketId,
   claimPendingTicketId,
   onClaimChat,
+  onActiveSortChange,
   onSelectActiveChat,
   onSplitChat
 }: QueueLaneProps) {
@@ -395,10 +410,19 @@ const QueueLane = memo(function QueueLane({
           </span>
         </div>
         {lane === "active" ? (
-          <div className="board-lane-sort" aria-hidden="true">
-            <span>Sort by:</span>
-            <button type="button" tabIndex={-1}>
-              <span>Unread first</span>
+          <label className="board-lane-sort">
+            <span className="board-lane-sort-label">Sort by:</span>
+            <span className="board-lane-sort-select-wrap">
+              <select
+                className="board-lane-sort-select"
+                aria-label="Sort active chats"
+                value={activeSort}
+                onChange={(event) => onActiveSortChange(event.target.value as ActiveQueueSortOption)}
+              >
+                <option value="unread">Unread first</option>
+                <option value="latest">Latest activity</option>
+                <option value="oldest">Oldest activity</option>
+              </select>
               <span className="board-lane-sort-chevron" aria-hidden="true">
                 <svg viewBox="0 0 8 4" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path
@@ -410,8 +434,8 @@ const QueueLane = memo(function QueueLane({
                   />
                 </svg>
               </span>
-            </button>
-          </div>
+            </span>
+          </label>
         ) : null}
       </header>
       <div className="board-lane-body">
@@ -455,10 +479,12 @@ const QueueLane = memo(function QueueLane({
 export const QueueBoardColumns = memo(function QueueBoardColumns({
   pendingQueue,
   activeQueue,
+  activeSort,
   currentAgentId = null,
   selectedActiveTicketId,
   claimPendingTicketId = null,
   onClaimChat,
+  onActiveSortChange,
   onSelectActiveChat,
   onSplitChat
 }: QueueBoardColumnsProps) {
@@ -469,11 +495,13 @@ export const QueueBoardColumns = memo(function QueueBoardColumns({
         count={pendingQueue.length}
         lane="pending"
         tickets={pendingQueue}
+        activeSort={activeSort}
         currentAgentId={currentAgentId}
         emptyCopy="No pending requests."
         selectedActiveTicketId={selectedActiveTicketId}
         claimPendingTicketId={claimPendingTicketId}
         onClaimChat={onClaimChat}
+        onActiveSortChange={onActiveSortChange}
         onSelectActiveChat={onSelectActiveChat}
         onSplitChat={onSplitChat}
       />
@@ -482,11 +510,13 @@ export const QueueBoardColumns = memo(function QueueBoardColumns({
         count={activeQueue.length}
         lane="active"
         tickets={activeQueue}
+        activeSort={activeSort}
         currentAgentId={currentAgentId}
         emptyCopy="No active chats."
         selectedActiveTicketId={selectedActiveTicketId}
         claimPendingTicketId={claimPendingTicketId}
         onClaimChat={onClaimChat}
+        onActiveSortChange={onActiveSortChange}
         onSelectActiveChat={onSelectActiveChat}
         onSplitChat={onSplitChat}
       />

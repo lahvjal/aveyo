@@ -326,6 +326,7 @@ export interface ManagerHandoffRecord {
   conversationId: string;
   customerName: string;
   customerAvatarUrl: string | null;
+  previewText: string;
   status: "open" | "pending" | "claimed" | "active" | "resolved";
   requestedAt: string;
   claimedAt: string | null;
