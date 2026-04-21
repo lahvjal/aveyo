@@ -1,8 +1,9 @@
 import { decodeJwtClaims, resolveRole } from "@/lib/auth/jwt";
-import { extractAuthTokensFromRequest } from "@/lib/auth/token";
+import { extractAuthTokensFromRequest, type RequestAuthTokens } from "@/lib/auth/token";
 import {
   type AppRole,
   type AppUserType,
+  type AuthSessionFailure,
   type AuthSessionResult,
   type SessionAccessContext,
   type SessionDepartmentNode
@@ -30,13 +31,35 @@ function fallbackAccessContext(role: AppRole): SessionAccessContext {
   };
 }
 
-function anonymousSession(): AuthSessionResult {
+function anonymousSession(failure?: AuthSessionFailure): AuthSessionResult {
   return {
     authenticated: false,
     role: "unknown",
     userType: "unknown",
     access: fallbackAccessContext("unknown"),
-    user: null
+    user: null,
+    failure
+  };
+}
+
+function toFailureFromTokenResolution(
+  tokens: Pick<RequestAuthTokens, "failureReason" | "expectedProjectRef" | "actualProjectRef">,
+  reason: AuthSessionFailure["reason"],
+  options: { preserveProjectMetadataOnly?: boolean } = {}
+): AuthSessionFailure {
+  return {
+    reason:
+      options.preserveProjectMetadataOnly && tokens.failureReason === "project_ref_mismatch"
+        ? "project_ref_mismatch"
+        : reason,
+    expectedProjectRef:
+      options.preserveProjectMetadataOnly || tokens.failureReason === "project_ref_mismatch"
+        ? tokens.expectedProjectRef ?? null
+        : null,
+    actualProjectRef:
+      options.preserveProjectMetadataOnly || tokens.failureReason === "project_ref_mismatch"
+        ? tokens.actualProjectRef ?? null
+        : null
   };
 }
 
@@ -292,39 +315,67 @@ interface GetAuthSessionOptions {
   allowTokenRefresh?: boolean;
 }
 
+async function refreshAccessToken(refreshToken: string) {
+  const supabaseServerClient = getSupabaseServerClient();
+  const { data: refreshed, error: refreshError } =
+    await supabaseServerClient.auth.refreshSession({ refresh_token: refreshToken });
+
+  if (refreshError || !refreshed.session?.access_token || !refreshed.session?.refresh_token) {
+    return null;
+  }
+
+  return {
+    accessToken: refreshed.session.access_token,
+    refreshToken: refreshed.session.refresh_token
+  };
+}
+
 export async function getAuthSessionResultWithOptions(
   request: Request,
   options: GetAuthSessionOptions = {}
 ): Promise<AuthSessionResult> {
-  const { accessToken: accessTokenFromCookie, refreshToken } = extractAuthTokensFromRequest(request);
-  if (!accessTokenFromCookie) {
-    return anonymousSession();
+  const tokenResolution = extractAuthTokensFromRequest(request);
+  const { accessToken: accessTokenFromCookie, refreshToken } = tokenResolution;
+  let accessToken = accessTokenFromCookie;
+  let refreshedTokens: AuthSessionResult["refreshedTokens"];
+
+  if (!accessToken && refreshToken && options.allowTokenRefresh) {
+    const refreshed = await refreshAccessToken(refreshToken);
+    if (!refreshed) {
+      return anonymousSession(
+        toFailureFromTokenResolution(tokenResolution, "refresh_failed", {
+          preserveProjectMetadataOnly: true
+        })
+      );
+    }
+    accessToken = refreshed.accessToken;
+    refreshedTokens = refreshed;
+  }
+
+  if (!accessToken) {
+    return anonymousSession(toFailureFromTokenResolution(tokenResolution, "missing_access_token"));
   }
 
   const supabaseServerClient = getSupabaseServerClient();
-  let accessToken = accessTokenFromCookie;
-  let refreshedTokens: AuthSessionResult["refreshedTokens"];
   let userResult = await supabaseServerClient.auth.getUser(accessToken);
 
   if ((userResult.error || !userResult.data.user) && refreshToken && options.allowTokenRefresh) {
-    const { data: refreshed, error: refreshError } =
-      await supabaseServerClient.auth.refreshSession({ refresh_token: refreshToken });
-
-    if (!refreshError && refreshed.session?.access_token && refreshed.session?.refresh_token) {
-      accessToken = refreshed.session.access_token;
-      refreshedTokens = {
-        accessToken: refreshed.session.access_token,
-        refreshToken: refreshed.session.refresh_token
-      };
-      userResult = await supabaseServerClient.auth.getUser(accessToken);
+    const refreshed = await refreshAccessToken(refreshToken);
+    if (!refreshed) {
+      return anonymousSession({ reason: "refresh_failed" });
     }
+    accessToken = refreshed.accessToken;
+    refreshedTokens = refreshed;
+    userResult = await supabaseServerClient.auth.getUser(accessToken);
   }
 
   const claims = decodeJwtClaims(accessToken);
   const { data, error } = userResult;
 
   if (error || !data.user) {
-    return anonymousSession();
+    return anonymousSession({
+      reason: refreshedTokens ? "refreshed_access_token_invalid" : "invalid_access_token"
+    });
   }
 
   const resolvedProfile = await resolveRoleWithProfileFlags(

@@ -4,7 +4,7 @@ import { loadCentralEnv } from "@ava/config/runtime/load-central-env";
 loadCentralEnv();
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@ava/chat-domain", "@ava/ui", "@ava/widget"],
+  transpilePackages: ["@ava/auth", "@ava/chat-domain", "@ava/ui", "@ava/widget"],
   devIndicators: false
 };
 

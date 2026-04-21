@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 export type StateIncentive = {
   tag: string;
   title: string;
@@ -31,6 +29,15 @@ export type AerialViewContent = {
   cards: AerialViewCard[];
 };
 
+/** Media + copy for the Spend Less carousel on marketing pages. */
+export type SpendLessSlide = {
+  type: "image" | "video";
+  src: string;
+  poster?: string;
+  title: string;
+  description: string;
+};
+
 export type StatePageData = {
   slug: string;
   name: string;
@@ -60,7 +67,31 @@ export type StatePageData = {
   plansDescription: string;
   metaTitle: string;
   metaDescription: string;
+  spendLessSlides: SpendLessSlide[];
 };
+
+/** Default Spend Less carousel (homepage and any page without overrides). */
+export const defaultSpendLessSlides: SpendLessSlide[] = [
+  {
+    type: "video",
+    src: "/images/web_photos/spendlessHome.mp4",
+    poster: "/images/b5026257c6fa0a3b4b068cefc432973fe3966e19.png",
+    title: "Your home, powered smarter.",
+    description: "Solar energy that works around the clock, keeping your family comfortable and connected."
+  },
+  {
+    type: "video",
+    src: "/images/web_photos/spendlessSmartIs.mp4",
+    title: "Home is where the smart is.",
+    description: "Generating pure, sustainable energy means you can power more of what matters most:"
+  },
+  {
+    type: "image",
+    src: "/images/45963692b81b39be37da6b988910cdf8f25e2996.png",
+    title: "Power up. Bill Down.",
+    description: "Power more of what you love doing at-home without worrying about your monthly bill."
+  }
+];
 
 export const statePages: Record<string, StatePageData> = {
   illinois: {
@@ -132,6 +163,30 @@ export const statePages: Record<string, StatePageData> = {
     ],
     plansHeading: "Find a plan that works for you",
     plansDescription: "Choose from our most popular options for Illinois homeowners:",
+    spendLessSlides: [
+      {
+        type: "video",
+        src: "/images/web_photos/IL/heroIL.mp4",
+        poster: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone3.jpg",
+        title: "Your home, powered smarter.",
+        description:
+          "Solar energy that works around the clock, keeping your Illinois home comfortable through every season."
+      },
+      {
+        type: "image",
+        src: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone.jpg",
+        title: "Home is where the smart is.",
+        description:
+          "Generate clean energy at home and take charge of how much you buy from the grid — from ComEd to Ameren."
+      },
+      {
+        type: "image",
+        src: "/images/web_photos/WhySolar_02_System-Design-CloseUp.jpg",
+        title: "Power up. Bill down.",
+        description:
+          "Pair Illinois incentives with predictable payments so you can spend more on life, not kilowatt-hours."
+      }
+    ],
     metaTitle: "Illinois Solar | Aveyo",
     metaDescription:
       "Take control of your energy future in Illinois. Explore state incentives, flexible plans, and get a free personalized quote from Aveyo."
@@ -206,6 +261,30 @@ export const statePages: Record<string, StatePageData> = {
     ],
     plansHeading: "Find a plan that works for you",
     plansDescription: "Choose from our most popular options for Pennsylvania homeowners:",
+    spendLessSlides: [
+      {
+        type: "video",
+        src: "/images/web_photos/PA/slidePA.mp4",
+        poster: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior.jpg",
+        title: "Your home, powered smarter.",
+        description:
+          "Solar energy that works around the clock, keeping your Pennsylvania home comfortable and connected."
+      },
+      {
+        type: "image",
+        src: "/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT4.jpg",
+        title: "Home is where the smart is.",
+        description:
+          "Generating sustainable energy means you can power more of what matters most across the Keystone State."
+      },
+      {
+        type: "image",
+        src: "/images/web_photos/PA/footerPA1.png",
+        title: "Power up. Bill down.",
+        description:
+          "Power more of what you love at home without worrying about rising utility bills."
+      }
+    ],
     metaTitle: "Pennsylvania Solar | Aveyo",
     metaDescription:
       "Pennsylvania homeowners can save with solar. Explore state incentives, flexible plans, and get a free personalized quote from Aveyo."
@@ -220,9 +299,10 @@ export const statePages: Record<string, StatePageData> = {
     heroDescription:
       "Utah\u2019s abundant sunshine makes it one of the best states in the country for residential solar. Aveyo was built right here in Utah, so we know the local market, the incentives, and the communities we serve better than anyone.",
     heroBackgroundImage: "/images/web_photos/Contact_01_Office-Location-Utah-Mountains.jpg",
+    heroVideoUrl: "/images/web_photos/UT/heroUT-roofvid.mp4",
     aerialImage: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone2.jpg",
     aerial: {
-      videoUrl: "https://wg22fhqtugwjii3h.public.blob.vercel-storage.com/video/aerial-vid.mp4",
+      videoUrl: "/images/web_photos/UT/maskedUT.mp4",
       headingLine1: "Bringing the energy",
       headingLine2: "to Utah",
       subtitle: "Redefining What Home Solar Should Feel Like",
@@ -278,6 +358,30 @@ export const statePages: Record<string, StatePageData> = {
     ],
     plansHeading: "Find a plan that works for you",
     plansDescription: "Choose from our most popular options for Utah homeowners:",
+    spendLessSlides: [
+      {
+        type: "video",
+        src: "/images/web_photos/UT/UT-drone1.mp4",
+        poster: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone2.jpg",
+        title: "Your home, powered smarter.",
+        description:
+          "Utah sunshine and smart design help your system produce when it counts — so your home stays comfortable year-round."
+      },
+      {
+        type: "image",
+        src: "/images/web_photos/Contact_01_Office-Location-Utah-Mountains.jpg",
+        title: "Home is where the smart is.",
+        description:
+          "We are headquartered in American Fork and built for Utah neighborhoods — local expertise on every project."
+      },
+      {
+        type: "image",
+        src: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone2.jpg",
+        title: "Power up. Bill down.",
+        description:
+          "Turn abundant sunlight into predictable energy costs and more room in your monthly budget."
+      }
+    ],
     metaTitle: "Utah Solar | Aveyo",
     metaDescription:
       "Utah\u2019s sunshine and Aveyo\u2019s local expertise make going solar simple. Explore incentives, flexible plans, and get a free personalized quote."
@@ -292,9 +396,10 @@ export const statePages: Record<string, StatePageData> = {
     heroDescription:
       "California residents face some of the highest electricity rates in the nation. With NEM 3.0, pairing solar with battery storage is more valuable than ever, letting you store the energy you generate and use it when rates are highest.",
     heroBackgroundImage: "/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT3.jpg",
+    heroVideoUrl: "/images/web_photos/CA/heroCA.mp4",
     aerialImage: "/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT2.jpg",
     aerial: {
-      videoUrl: "https://wg22fhqtugwjii3h.public.blob.vercel-storage.com/video/aerial-vid.mp4",
+      videoUrl: "/images/web_photos/CA/maskedCA.mp4",
       headingLine1: "Bringing the energy",
       headingLine2: "to California",
       subtitle: "Redefining What Home Solar Should Feel Like",
@@ -350,8 +455,37 @@ export const statePages: Record<string, StatePageData> = {
     ],
     plansHeading: "Find a plan that works for you",
     plansDescription: "Choose from our most popular options for California homeowners:",
+    spendLessSlides: [
+      {
+        type: "video",
+        src: "/images/web_photos/CA/slideCA.mp4",
+        poster: "/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT3.jpg",
+        title: "Your home, powered smarter.",
+        description:
+          "Solar plus storage helps California homeowners shift energy use away from peak rates and stay powered when it matters."
+      },
+      {
+        type: "image",
+        src: "/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT2.jpg",
+        title: "Home is where the smart is.",
+        description:
+          "Generate clean power at home and lean on battery backup when the grid is stressed or time-of-use rates spike."
+      },
+      {
+        type: "image",
+        src: "/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT3.jpg",
+        title: "Power up. Bill down.",
+        description:
+          "Make NEM 3.0 work for you with a system designed around real usage, incentives, and long-term savings."
+      }
+    ],
     metaTitle: "California Solar | Aveyo",
     metaDescription:
       "California homeowners can maximize savings with solar + battery under NEM 3.0. Explore incentives, flexible plans, and get a free quote from Aveyo."
   }
 };
+
+/** Top-nav links for state landing pages; kept in sync with `statePages`. */
+export const stateNavLinks = Object.values(statePages)
+  .map((state) => ({ name: state.name, href: `/${state.slug}` }))
+  .sort((a, b) => a.name.localeCompare(b.name));

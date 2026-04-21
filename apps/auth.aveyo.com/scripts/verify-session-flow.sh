@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API_BASE_URL="${API_BASE_URL:-http://localhost:3002}"
+API_BASE_URL="${API_BASE_URL:-http://localhost:4002}"
 TEST_ORIGIN="${TEST_ORIGIN:-https://ava-dev.aveyo.com}"
 SESSION_URL="${API_BASE_URL%/}/api/auth/session"
 
@@ -10,7 +10,7 @@ response_header_file="$(mktemp)"
 trap 'rm -f "$response_body_file" "$response_header_file"' EXIT
 
 echo "Checking unauthenticated session response: $SESSION_URL"
-status_code="$(curl -sS -o "$response_body_file" -w "%{http_code}" "$SESSION_URL")"
+status_code="$(curl -sS -D "$response_header_file" -o "$response_body_file" -w "%{http_code}" "$SESSION_URL")"
 if [[ "$status_code" != "401" ]]; then
   echo "Expected /api/auth/session to return 401 when unauthenticated, got $status_code"
   cat "$response_body_file"
@@ -25,6 +25,16 @@ if (body.authenticated !== false) {
 }
 if (body.user !== null) {
   throw new Error("Expected user=null in unauthenticated session response.");
+}
+NODE
+
+node - <<'NODE' "$response_header_file"
+const fs = require("node:fs");
+const headersRaw = fs.readFileSync(process.argv[2], "utf8");
+if (/^set-cookie:/im.test(headersRaw)) {
+  throw new Error(
+    "Anonymous unauthenticated session reads must not emit Set-Cookie headers or clear a valid browser session."
+  );
 }
 NODE
 

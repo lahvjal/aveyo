@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Testimonials from "@/components/Testimonials";
 import {
   SiteCard,
-  SiteCardGrid,
   SiteHero,
   SiteImageBreak,
   SiteImagePlaceholder,
@@ -13,44 +12,90 @@ import {
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
 import { getCustomerPortalUrl } from "@/lib/site-config";
 
-const steps = [
+type PortalMilestone = { title: string; description: string };
+
+type PortalStage = {
+  eyebrow: string;
+  title: string;
+  summary: string;
+  milestones: PortalMilestone[];
+};
+
+/** Stage names and milestone order match the customer portal (`sectionDisplayNames` + `milestoneUtils`). */
+const portalStages: PortalStage[] = [
   {
-    label: "01",
-    title: "Site Survey",
-    description:
-      "We inspect the roof, attic, electrical infrastructure, and shading to confirm your home is ready for solar."
+    eyebrow: "01",
+    title: "Pre-Approvals",
+    summary:
+      "We validate your home, secure financing clearance, and finish engineering before permits and construction ramp up.",
+    milestones: [
+      {
+        title: "Site Survey",
+        description:
+          "We inspect the roof, attic, electrical infrastructure, and shading so your home is confirmed ready for solar."
+      },
+      {
+        title: "Notice to Proceed approved by financing",
+        description:
+          "Financing clears the project to proceed so engineering, permitting, and scheduling can move forward on time."
+      },
+      {
+        title: "Engineering",
+        description:
+          "CAD, structural and electrical engineering, and your planset are completed and aligned with your signed agreement."
+      }
+    ]
   },
   {
-    label: "02",
-    title: "CAD / Engineering",
-    description:
-      "The system is designed for strong yield, cleaner aesthetics, and the right balance of offset and cost."
+    eyebrow: "02",
+    title: "Approvals",
+    summary: "We shepherd city and utility paperwork so interconnection and program requirements are satisfied before install.",
+    milestones: [
+      {
+        title: "All city and utility approvals submitted",
+        description:
+          "Permit packages and utility paperwork are submitted and tracked until program and jurisdiction requirements are met."
+      }
+    ]
   },
   {
-    label: "03",
-    title: "Permits Sent / Approved",
-    description: "We manage the city paperwork and keep the approval process moving."
+    eyebrow: "03",
+    title: "Construction",
+    summary: "Scheduling, installation, and inspections so your system is built correctly and cleared for energization.",
+    milestones: [
+      {
+        title: "Confirmed Install Appointment Date",
+        description:
+          "Your installation date is set and communicated so you know when the crew will be on site."
+      },
+      {
+        title: "Install Substantial Completion",
+        description:
+          "The installation crew finishes the work and equipment is in place on your home, ready for inspections."
+      },
+      {
+        title: "City and/or Utility Inspections",
+        description:
+          "Jurisdiction and/or utility inspections verify the system meets code and interconnection rules before energization."
+      }
+    ]
   },
   {
-    label: "04",
-    title: "The Install",
-    description: "Most installs take one to two days depending on system size and site conditions."
-  },
-  {
-    label: "05",
-    title: "The Inspection",
-    description: "An inspector confirms the system is installed correctly and ready for the next step."
-  },
-  {
-    label: "06",
-    title: "Net Meter Installation",
-    description:
-      "Your meter setup is finalized so production and home energy usage can be measured correctly."
-  },
-  {
-    label: "07",
+    eyebrow: "04",
     title: "Activation",
-    description: "Once everything clears, it is time to turn the system on and start the offset."
+    summary: "Final utility permission and turn-on—the same finish line you see in your portal when the system is live.",
+    milestones: [
+      {
+        title: "Permission To Operate Received from Utility Company",
+        description:
+          "The utility issues PTO so your system can be energized and export to the grid safely and compliantly."
+      },
+      {
+        title: "System Active and Producing",
+        description:
+          "Your system is turned on and producing so you can start using clean power at home with ongoing support."
+      }
+    ]
   }
 ];
 
@@ -64,7 +109,7 @@ const supportFeatures = [
 export const metadata: Metadata = {
   title: "Our Process | Aveyo",
   description:
-    "See the seven-step Aveyo solar process, from site survey through activation, with transparent communication throughout."
+    "Four project stages—Pre-Approvals, Approvals, Construction, and Activation—with the same milestones you track in the customer portal."
 };
 
 export default function ProcessPage() {
@@ -93,7 +138,7 @@ export default function ProcessPage() {
           { href: getCustomerPortalUrl(), label: "Portal Login", variant: "outline" }
         ]}
         stats={[
-          { value: "07", label: "Steps To Solar Savings" },
+          { value: "04", label: "Portal Stages" },
           { value: "1-2", label: "Typical Install Days" },
           { value: "Always", label: "Transparent Communication" }
         ]}
@@ -102,7 +147,7 @@ export default function ProcessPage() {
       />
 
       <SiteSection
-        eyebrow="07 Steps"
+        eyebrow="Four Stages"
         title={
           <>
             Here Is What
@@ -110,15 +155,34 @@ export default function ProcessPage() {
             The Process Looks Like
           </>
         }
-        description="The point of a better process is not just speed. It is reducing confusion, surfacing progress clearly, and making the handoff from one stage to the next feel seamless."
+        description="Each stage groups the milestones you see in the Aveyo customer portal, in the same order—from Pre-Approvals through Activation."
       >
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {steps.map((step) => (
+        <div className="grid gap-5 md:grid-cols-2">
+          {portalStages.map((stage) => (
             <SiteCard
-              key={step.label}
-              eyebrow={step.label}
-              title={step.title}
-              description={step.description}
+              key={stage.title}
+              eyebrow={stage.eyebrow}
+              title={stage.title}
+              description={
+                <>
+                  <p className="mb-6">{stage.summary}</p>
+                  <ul className="m-0 list-none space-y-5 p-0" aria-label={`${stage.title} milestones`}>
+                    {stage.milestones.map((milestone) => (
+                      <li
+                        key={milestone.title}
+                        className="border-t border-[#dbe2e8] border-[color:var(--site-border-soft)] pt-5 first:border-t-0 first:pt-0"
+                      >
+                        <p className="text-[length:var(--site-h7)] font-extrabold leading-snug text-[color:var(--site-black)]">
+                          {milestone.title}
+                        </p>
+                        <p className="mt-2 text-[length:var(--site-body)] leading-[1.7] text-[color:var(--site-text-muted)]">
+                          {milestone.description}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              }
             />
           ))}
         </div>

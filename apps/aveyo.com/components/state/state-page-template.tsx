@@ -184,7 +184,7 @@ export default function StatePageTemplate({ data }: { data: StatePageData }) {
       <StateHero data={data} />
       <StateTrustBar data={data} />
       <Testimonials />
-      <SpendLess />
+      <SpendLess slides={data.spendLessSlides} />
       <StateIncentives data={data} />
       <AerialView content={data.aerial} />
       <Misconceptions myths={data.misconceptions} />

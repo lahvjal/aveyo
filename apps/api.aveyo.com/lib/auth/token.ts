@@ -1,4 +1,5 @@
 import { type NextRequest } from "next/server";
+import type { AuthSessionFailureReason } from "./types";
 
 export const ACCESS_TOKEN_COOKIE_NAME = "ava-access-token";
 export const REFRESH_TOKEN_COOKIE_NAME = "ava-refresh-token";
@@ -9,6 +10,9 @@ const SUPABASE_ISSUER_REGEX = /^https?:\/\/([a-z0-9-]+)\.supabase\.co\/auth\/v1\
 export interface RequestAuthTokens {
   accessToken?: string;
   refreshToken?: string;
+  failureReason?: AuthSessionFailureReason;
+  expectedProjectRef?: string | null;
+  actualProjectRef?: string | null;
 }
 
 function resolveCurrentSupabaseProjectRef() {
@@ -153,31 +157,22 @@ function tokensFromStructuredCookie(rawValue: string): RequestAuthTokens {
 
 function getTokensFromCookieRecord(cookies: Record<string, string>): RequestAuthTokens {
   const expectedProjectRef = resolveCurrentSupabaseProjectRef();
+  let retainedRefreshToken = firstCookieValue(cookies, directRefreshTokenCookieNames);
+  let mismatchedProjectRef: string | null = null;
 
   for (const cookieName of directAccessTokenCookieNames) {
     const direct = cookies[cookieName];
     if (direct) {
       const decodedAccessToken = decodeSupabaseCookieValue(direct);
       if (!isExpectedProjectAccessToken(decodedAccessToken, expectedProjectRef)) {
+        mismatchedProjectRef ||= resolveProjectRefFromAccessToken(decodedAccessToken);
         continue;
       }
 
-      const rawRefreshToken = firstCookieValue(cookies, directRefreshTokenCookieNames);
       return {
         accessToken: decodedAccessToken,
-        refreshToken: rawRefreshToken ? decodeSupabaseCookieValue(rawRefreshToken) : undefined
+        refreshToken: retainedRefreshToken ? decodeSupabaseCookieValue(retainedRefreshToken) : undefined
       };
-    }
-  }
-
-  if (!expectedProjectRef) {
-    for (const cookieName of directRefreshTokenCookieNames) {
-      const refreshToken = cookies[cookieName];
-      if (refreshToken) {
-        return {
-          refreshToken: decodeSupabaseCookieValue(refreshToken)
-        };
-      }
     }
   }
 
@@ -191,24 +186,39 @@ function getTokensFromCookieRecord(cookies: Record<string, string>): RequestAuth
 
   for (const [, value] of orderedStructuredCandidates) {
     const fromStructured = tokensFromStructuredCookie(value);
+    if (!retainedRefreshToken && fromStructured.refreshToken) {
+      retainedRefreshToken = fromStructured.refreshToken;
+    }
     if (!fromStructured.accessToken) {
       continue;
     }
 
     if (!isExpectedProjectAccessToken(fromStructured.accessToken, expectedProjectRef)) {
+      mismatchedProjectRef ||= resolveProjectRefFromAccessToken(fromStructured.accessToken);
       continue;
     }
 
-    return fromStructured;
+    return {
+      accessToken: fromStructured.accessToken,
+      refreshToken: fromStructured.refreshToken ?? retainedRefreshToken
+    };
   }
 
-  if (!expectedProjectRef) {
-    for (const [, value] of orderedStructuredCandidates) {
-      const fromStructured = tokensFromStructuredCookie(value);
-      if (!fromStructured.accessToken && fromStructured.refreshToken) {
-        return fromStructured;
-      }
-    }
+  if (retainedRefreshToken) {
+    return {
+      refreshToken: decodeSupabaseCookieValue(retainedRefreshToken),
+      failureReason: mismatchedProjectRef ? "project_ref_mismatch" : "missing_access_token",
+      expectedProjectRef,
+      actualProjectRef: mismatchedProjectRef
+    };
+  }
+
+  if (mismatchedProjectRef) {
+    return {
+      failureReason: "project_ref_mismatch",
+      expectedProjectRef,
+      actualProjectRef: mismatchedProjectRef
+    };
   }
 
   return {};

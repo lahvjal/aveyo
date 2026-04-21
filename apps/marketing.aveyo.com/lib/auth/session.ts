@@ -1,103 +1,45 @@
+import {
+  fetchPlatformSession,
+  logoutPlatformSession,
+  platformAuthApiRequest,
+  type PlatformDepartmentNode,
+  type PlatformSessionAccess,
+  type PlatformSessionPayload,
+  type PlatformSessionUser,
+  type PlatformUserType
+} from "@ava/auth";
 import { getApiBaseUrl } from "./config";
 
-export interface PlatformSessionUser {
-  id: string;
-  email: string | null;
-  name: string;
-  avatarUrl: string | null;
+export type {
+  PlatformDepartmentNode,
+  PlatformSessionAccess,
+  PlatformSessionPayload,
+  PlatformSessionUser,
+  PlatformUserType
+};
+
+function resolveApiBaseUrl() {
+  return getApiBaseUrl();
 }
-
-export interface PlatformDepartmentNode {
-  id: string;
-  name: string;
-  parentId: string | null;
-}
-
-export type PlatformUserType = "employee" | "customer" | "unknown";
-
-export interface PlatformSessionAccess {
-  userType: PlatformUserType;
-  departmentId: string | null;
-  departmentName: string | null;
-  departmentPath: PlatformDepartmentNode[];
-  subDepartments: PlatformDepartmentNode[];
-  subDepartmentIds: string[];
-  isManager: boolean;
-  isAdmin: boolean;
-  isExecutive: boolean;
-  isSuperAdmin: boolean;
-}
-
-export interface PlatformSessionPayload {
-  authenticated: boolean;
-  role?: string;
-  userType?: PlatformUserType;
-  access?: PlatformSessionAccess;
-  user?: PlatformSessionUser | null;
-}
-
-const apiBaseUrl = getApiBaseUrl();
 
 export async function fetchAuthSession() {
-  const response = await fetch(`${apiBaseUrl}/api/auth/session`, {
-    method: "GET",
-    credentials: "include",
-    cache: "no-store"
+  return fetchPlatformSession({
+    apiBaseUrl: resolveApiBaseUrl()
   });
-
-  const payload = (await response.json().catch(() => null)) as PlatformSessionPayload | null;
-  return {
-    ok: response.ok,
-    status: response.status,
-    payload
-  };
 }
 
 export async function logoutAuthSession() {
-  await fetch(`${apiBaseUrl}/api/auth/session/logout`, {
-    method: "POST",
-    credentials: "include"
-  }).catch(() => null);
-}
-
-function readErrorMessage(payload: unknown) {
-  if (payload && typeof payload === "object" && "error" in payload) {
-    const value = (payload as Record<string, unknown>).error;
-    if (typeof value === "string" && value.trim()) {
-      return value;
-    }
-  }
-  return undefined;
+  return logoutPlatformSession({
+    apiBaseUrl: resolveApiBaseUrl()
+  });
 }
 
 export async function authApiRequest<T>(path: string, init: RequestInit = {}) {
-  const headers = new Headers(init.headers);
-  if (!headers.has("Content-Type") && init.method && init.method !== "GET") {
-    headers.set("Content-Type", "application/json");
-  }
-
-  let response = await fetch(`${apiBaseUrl}${path}`, {
-    ...init,
-    headers,
-    credentials: "include"
+  return platformAuthApiRequest<T>(path, init, {
+    apiBaseUrl: resolveApiBaseUrl(),
+    refreshSession: () =>
+      fetchPlatformSession({
+        apiBaseUrl: resolveApiBaseUrl()
+      })
   });
-
-  if (response.status === 401) {
-    await fetchAuthSession().catch(() => null);
-    response = await fetch(`${apiBaseUrl}${path}`, {
-      ...init,
-      headers,
-      credentials: "include"
-    });
-  }
-
-  const payload = (await response.json().catch(() => null)) as unknown;
-  if (!response.ok) {
-    throw new Error(
-      readErrorMessage(payload) ??
-        `API request failed (${response.status}) for ${init.method ?? "GET"} ${path}.`
-    );
-  }
-
-  return payload as T;
 }

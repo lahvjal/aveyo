@@ -18,7 +18,10 @@ export async function POST(request: Request) {
 
   if (!accessToken || !refreshToken) {
     const response = NextResponse.json(
-      { error: "Both accessToken and refreshToken are required." },
+      {
+        error: "Both accessToken and refreshToken are required.",
+        code: "MISSING_BOOTSTRAP_TOKENS"
+      },
       { status: 400 }
     );
     clearAuthSessionCookies(response, request);
@@ -29,7 +32,10 @@ export async function POST(request: Request) {
   const { data, error } = await supabaseServerClient.auth.getUser(accessToken);
   if (error || !data.user) {
     const response = NextResponse.json(
-      { error: "Invalid session token payload." },
+      {
+        error: "Invalid session token payload.",
+        code: "INVALID_SESSION_TOKEN_PAYLOAD"
+      },
       { status: 401 }
     );
     clearAuthSessionCookies(response, request);

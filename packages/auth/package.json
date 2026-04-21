@@ -1,0 +1,35 @@
+{
+  "name": "@ava/auth",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Shared first-party auth helpers and session store",
+  "type": "module",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.d.ts",
+      "default": "./src/index.js"
+    },
+    "./react": {
+      "types": "./src/react.d.ts",
+      "default": "./src/react.js"
+    }
+  },
+  "scripts": {
+    "typecheck": "echo \"Handwritten JS + d.ts package\""
+  },
+  "keywords": [
+    "ava",
+    "auth"
+  ],
+  "author": "",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@ava/config": "workspace:*",
+    "react": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14"
+  }
+}

@@ -280,7 +280,8 @@ export function SiteSplitSection({
   body,
   tone = "light",
   reverse = false,
-  visual
+  visual,
+  footer
 }: {
   eyebrow?: string;
   title: ReactNode;
@@ -289,45 +290,49 @@ export function SiteSplitSection({
   tone?: SiteSectionTone;
   reverse?: boolean;
   visual: ReactNode;
+  footer?: ReactNode;
 }) {
   const toneClasses = getToneClasses(tone);
   const mutedCopyClasses = getMutedCopyClasses(tone);
 
   return (
     <section className={toneClasses}>
-      <div
-        className={`mx-auto grid max-w-[1240px] gap-10 px-5 py-20 sm:px-6 lg:grid-cols-2 lg:items-center lg:px-8 lg:py-24 ${
-          reverse ? "lg:[&>*:first-child]:order-2 lg:[&>*:last-child]:order-1" : ""
-        }`}
-      >
-        <div>
-          {eyebrow ? (
-            <p
-              className={`mb-4 text-sm text-[length:var(--site-paragraph)] font-bold uppercase tracking-[0.32em] ${getEyebrowClasses(
-                tone
-              )}`}
+      <div className="mx-auto max-w-[1240px] px-5 py-20 sm:px-6 lg:px-8 lg:py-24">
+        <div
+          className={`grid gap-10 lg:grid-cols-2 lg:items-center ${
+            reverse ? "lg:[&>*:first-child]:order-2 lg:[&>*:last-child]:order-1" : ""
+          }`}
+        >
+          <div>
+            {eyebrow ? (
+              <p
+                className={`mb-4 text-sm text-[length:var(--site-paragraph)] font-bold uppercase tracking-[0.32em] ${getEyebrowClasses(
+                  tone
+                )}`}
+              >
+                {eyebrow}
+              </p>
+            ) : null}
+            <h2
+              className="text-[clamp(2.4rem,5vw,4.3rem)] leading-[0.96] tracking-[-0.03em]"
+              style={{ fontSize: "clamp(2.4rem, 5vw, var(--site-h2))" }}
             >
-              {eyebrow}
-            </p>
-          ) : null}
-          <h2
-            className="text-[clamp(2.4rem,5vw,4.3rem)] leading-[0.96] tracking-[-0.03em]"
-            style={{ fontSize: "clamp(2.4rem, 5vw, var(--site-h2))" }}
-          >
-            {title}
-          </h2>
-          {description ? (
-            <div className={`mt-5 text-base text-[length:var(--site-body)] leading-[1.65] sm:text-lg sm:text-[length:var(--site-body-large)] ${mutedCopyClasses}`}>
-              {description}
-            </div>
-          ) : null}
-          {body ? (
-            <div className={`mt-8 space-y-4 text-base text-[length:var(--site-body)] leading-[1.8] ${mutedCopyClasses}`}>
-              {body}
-            </div>
-          ) : null}
+              {title}
+            </h2>
+            {description ? (
+              <div className={`mt-5 text-base text-[length:var(--site-body)] leading-[1.65] sm:text-lg sm:text-[length:var(--site-body-large)] ${mutedCopyClasses}`}>
+                {description}
+              </div>
+            ) : null}
+            {body ? (
+              <div className={`mt-8 space-y-4 text-base text-[length:var(--site-body)] leading-[1.8] ${mutedCopyClasses}`}>
+                {body}
+              </div>
+            ) : null}
+          </div>
+          <div>{visual}</div>
         </div>
-        <div>{visual}</div>
+        {footer ? <div className="mt-12 lg:mt-16">{footer}</div> : null}
       </div>
     </section>
   );
@@ -461,36 +466,48 @@ export function SiteImagePlaceholder({
   );
 }
 
+export function SiteImageRow({
+  images,
+  className = ""
+}: {
+  images: Array<{ src?: string; alt: string }>;
+  className?: string;
+}) {
+  const isSplit = images.length >= 2;
+
+  return (
+    <div className={`grid gap-5 ${isSplit ? "lg:grid-cols-2" : ""}${className ? ` ${className}` : ""}`}>
+      {images.map((image) => (
+        <div
+          key={image.alt}
+          className="relative h-[400px] overflow-hidden rounded-[var(--site-radius-corner)] lg:h-[545px]"
+        >
+          {image.src ? (
+            <Image
+              src={image.src}
+              alt={image.alt}
+              fill
+              className="object-cover"
+              sizes={isSplit ? "(min-width: 1024px) 50vw, 100vw" : "100vw"}
+            />
+          ) : (
+            <SiteImagePlaceholder alt={image.alt} className="h-full w-full" />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function SiteImageBreak({
   images
 }: {
   images: Array<{ src?: string; alt: string }>;
 }) {
-  const isSplit = images.length >= 2;
-
   return (
-    <section className="bg-white bg-[color:var(--site-white)]">
+    <section className="bg-white bg-[color:var(--site-white)] pb-[100px]">
       <div className="mx-auto max-w-[1240px] px-5 sm:px-6 lg:px-8">
-        <div className={`grid gap-5 ${isSplit ? "lg:grid-cols-2" : ""}`}>
-          {images.map((image) => (
-            <div
-              key={image.alt}
-              className="relative h-[400px] overflow-hidden rounded-[var(--site-radius-corner)] lg:h-[545px]"
-            >
-              {image.src ? (
-                <Image
-                  src={image.src}
-                  alt={image.alt}
-                  fill
-                  className="object-cover"
-                  sizes={isSplit ? "(min-width: 1024px) 50vw, 100vw" : "100vw"}
-                />
-              ) : (
-                <SiteImagePlaceholder alt={image.alt} className="h-full w-full" />
-              )}
-            </div>
-          ))}
-        </div>
+        <SiteImageRow images={images} />
       </div>
     </section>
   );

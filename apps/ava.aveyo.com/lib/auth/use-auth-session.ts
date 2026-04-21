@@ -1,13 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   fetchAuthSession,
   type PlatformAccessContext,
-  type PlatformUserType,
-  type PlatformSessionPayload,
   type PlatformSessionUser
 } from "./session";
+import {
+  createPlatformSessionStore,
+  normalizePlatformSessionPayload,
+  type PlatformSessionPayload,
+  type PlatformUserType
+} from "@ava/auth";
+import { usePlatformSessionStore } from "@ava/auth/react";
 
 export interface PlatformAuthSession {
   loading: boolean;
@@ -28,24 +33,9 @@ const defaultSession: PlatformAuthSession = {
 };
 
 const sessionPollIntervalMs = 30000;
-const EMPLOYEE_EMAIL_DOMAIN = "@aveyo.com";
-const EMPLOYEE_ROLES = new Set([
-  "support_agent",
-  "support-agent",
-  "support",
-  "agent",
-  "rep",
-  "representative",
-  "admin",
-  "super_admin",
-  "super-admin",
-  "superadmin",
-  "employee",
-  "staff",
-  "internal"
-]);
 const LOCAL_HOST_PATTERN =
   /^(localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|::1|.+\.local)$/i;
+let parentSnapshotBridgeUsers = 0;
 
 interface AuthSessionSnapshotMessageData {
   source?: string;
@@ -53,203 +43,29 @@ interface AuthSessionSnapshotMessageData {
   payload?: unknown;
 }
 
-function normalizeEmail(value: unknown): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const trimmed = value.trim().toLowerCase();
-  return trimmed || null;
-}
-
-function getNameFromEmail(email: string | null): string | null {
-  if (!email) {
-    return null;
-  }
-
-  const localPart = email.split("@")[0]?.trim();
-  return localPart || null;
-}
-
-function normalizeSessionUser(value: unknown): PlatformSessionUser | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const record = value as Record<string, unknown>;
-  const id = typeof record.id === "string" ? record.id.trim() : "";
-  if (!id) {
-    return null;
-  }
-
-  const email = normalizeEmail(record.email);
-  const preferredName = typeof record.name === "string" ? record.name.trim() : "";
-  const normalizedPreferredName = preferredName.toLowerCase();
-  const name =
-    preferredName &&
-    normalizedPreferredName !== "account" &&
-    normalizedPreferredName !== "customer" &&
-    normalizedPreferredName !== "user"
-      ? preferredName
-      : getNameFromEmail(email) || "Customer";
-  const avatarUrl =
-    typeof record.avatarUrl === "string"
-      ? record.avatarUrl
-      : record.avatarUrl === null
-        ? null
-        : null;
-
-  return {
-    id,
-    email,
-    name,
-    avatarUrl
-  };
-}
-
-function normalizeUserType(value: unknown): PlatformUserType | undefined {
-  if (typeof value !== "string") {
-    return undefined;
-  }
-
-  const normalized = value.trim().toLowerCase();
-  if (!normalized) {
-    return undefined;
-  }
-  if (normalized === "employee") {
-    return "employee";
-  }
-  if (normalized === "customer") {
-    return "customer";
-  }
-  if (normalized === "unknown") {
-    return "unknown";
-  }
-  return undefined;
-}
-
-function toNormalizedRole(role: string | null | undefined) {
-  return typeof role === "string" ? role.trim().toLowerCase() : "";
-}
-
-function deriveUserType(params: {
-  authenticated: boolean;
-  role: string | null | undefined;
-  explicitUserType?: PlatformUserType;
-  user: PlatformSessionUser | null;
-}): PlatformUserType {
-  if (!params.authenticated) {
-    return "unknown";
-  }
-
-  if (params.explicitUserType && params.explicitUserType !== "unknown") {
-    return params.explicitUserType;
-  }
-
-  const normalizedRole = toNormalizedRole(params.role);
-  if (normalizedRole === "customer") {
-    return "customer";
-  }
-  if (EMPLOYEE_ROLES.has(normalizedRole)) {
-    return "employee";
-  }
-
-  const normalizedEmail = normalizeEmail(params.user?.email);
-  if (normalizedEmail && normalizedEmail.endsWith(EMPLOYEE_EMAIL_DOMAIN)) {
-    return "employee";
-  }
-
-  return "customer";
-}
-
-function normalizeAccessContext(value: unknown): PlatformAccessContext | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const record = value as Record<string, unknown>;
-  const departmentName =
-    typeof record.departmentName === "string" ? record.departmentName.trim() || null : null;
-  const rawPath = Array.isArray(record.departmentPath) ? record.departmentPath : [];
-  const departmentPath = rawPath
-    .filter(
-      (node): node is Record<string, unknown> =>
-        node !== null && typeof node === "object" && typeof (node as Record<string, unknown>).id === "string"
-    )
-    .map((node) => ({
-      id: String(node.id),
-      name: typeof node.name === "string" ? node.name : ""
-    }));
-
-  return {
-    isManager: Boolean(record.isManager),
-    isAdmin: Boolean(record.isAdmin),
-    isSuperAdmin: Boolean(record.isSuperAdmin),
-    departmentName,
-    departmentPath
-  };
-}
-
-function normalizeSessionPayload(value: unknown): PlatformSessionPayload | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const record = value as Record<string, unknown>;
-  if (record.authenticated !== true && record.authenticated !== false) {
-    return null;
-  }
-
-  const role = typeof record.role === "string" ? record.role : undefined;
-  const userType = normalizeUserType(record.userType);
-  const user =
-    record.user === undefined
-      ? null
-      : record.user === null
-        ? null
-        : normalizeSessionUser(record.user);
-  const access = normalizeAccessContext(record.access);
-
-  return {
-    authenticated: record.authenticated,
-    role,
-    userType,
-    user,
-    access
-  };
-}
-
 function toSessionState(
   payload: PlatformSessionPayload | null | undefined,
   requestOk: boolean
 ): PlatformAuthSession {
-  const role = payload?.role ?? "unknown";
-  const user = payload?.user ?? null;
-  const access = payload?.access ?? null;
-
-  if (!requestOk || !payload?.authenticated) {
+  const normalizedPayload = payload ? normalizePlatformSessionPayload(payload) : null;
+  if (!requestOk || !normalizedPayload?.authenticated) {
     return {
       loading: false,
       authenticated: false,
-      role,
-      userType: "unknown",
-      user,
-      access
+      role: normalizedPayload?.role ?? "unknown",
+      userType: normalizedPayload?.userType ?? "unknown",
+      user: normalizedPayload?.user ?? null,
+      access: normalizedPayload?.access ?? null
     };
   }
 
   return {
     loading: false,
     authenticated: true,
-    role,
-    userType: deriveUserType({
-      authenticated: true,
-      role,
-      explicitUserType: normalizeUserType(payload.userType),
-      user
-    }),
-    user,
-    access
+    role: normalizedPayload.role,
+    userType: normalizedPayload.userType,
+    user: normalizedPayload.user,
+    access: normalizedPayload.access
   };
 }
 
@@ -272,82 +88,91 @@ function isTrustedParentOrigin(origin: string) {
   }
 }
 
+function requestParentSessionSnapshot() {
+  if (typeof window === "undefined" || window.parent === window) {
+    return;
+  }
+
+  window.parent.postMessage(
+    {
+      source: "ava-widget",
+      type: "request-auth-session"
+    },
+    "*"
+  );
+}
+
+const sessionStore = createPlatformSessionStore({
+  initialSnapshot: defaultSession,
+  pollIntervalMs: sessionPollIntervalMs,
+  async loadSnapshot() {
+    try {
+      const result = await fetchAuthSession();
+      return toSessionState(result.payload, result.ok);
+    } catch {
+      return toSessionState(null, false);
+    }
+  }
+});
+
+function onParentSessionMessage(event: MessageEvent) {
+  if (!isTrustedParentOrigin(event.origin)) {
+    return;
+  }
+
+  if (!event.data || typeof event.data !== "object") {
+    return;
+  }
+
+  const data = event.data as AuthSessionSnapshotMessageData;
+  if (data.source !== "aveyo-host" || data.type !== "auth-session-snapshot") {
+    return;
+  }
+
+  const payload = normalizePlatformSessionPayload(data.payload);
+  if (!payload) {
+    return;
+  }
+
+  sessionStore.setSnapshot(toSessionState(payload, payload.authenticated));
+}
+
+function startParentSnapshotBridge() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  parentSnapshotBridgeUsers += 1;
+  if (parentSnapshotBridgeUsers !== 1) {
+    return;
+  }
+
+  window.addEventListener("message", onParentSessionMessage);
+  window.addEventListener("focus", requestParentSessionSnapshot);
+  requestParentSessionSnapshot();
+}
+
+function stopParentSnapshotBridge() {
+  if (typeof window === "undefined" || parentSnapshotBridgeUsers === 0) {
+    return;
+  }
+
+  parentSnapshotBridgeUsers -= 1;
+  if (parentSnapshotBridgeUsers > 0) {
+    return;
+  }
+
+  window.removeEventListener("message", onParentSessionMessage);
+  window.removeEventListener("focus", requestParentSessionSnapshot);
+}
+
 export function useAuthSession() {
-  const [session, setSession] = useState<PlatformAuthSession>(defaultSession);
+  const session = usePlatformSessionStore(sessionStore);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadSession() {
-      try {
-        const result = await fetchAuthSession();
-        if (cancelled) {
-          return;
-        }
-
-        setSession(toSessionState(normalizeSessionPayload(result.payload), result.ok));
-      } catch {
-        if (cancelled) {
-          return;
-        }
-        setSession(toSessionState(null, false));
-      }
-    }
-
-    const onMessage = (event: MessageEvent) => {
-      if (!isTrustedParentOrigin(event.origin)) {
-        return;
-      }
-
-      if (!event.data || typeof event.data !== "object") {
-        return;
-      }
-
-      const data = event.data as AuthSessionSnapshotMessageData;
-      if (data.source !== "aveyo-host" || data.type !== "auth-session-snapshot") {
-        return;
-      }
-
-      const payload = normalizeSessionPayload(data.payload);
-      if (!payload) {
-        return;
-      }
-
-      setSession(toSessionState(payload, payload.authenticated));
-    };
-
-    const requestParentSessionSnapshot = () => {
-      if (window.parent === window) {
-        return;
-      }
-      window.parent.postMessage(
-        {
-          source: "ava-widget",
-          type: "request-auth-session"
-        },
-        "*"
-      );
-    };
-
-    window.addEventListener("message", onMessage);
-    requestParentSessionSnapshot();
-
-    void loadSession();
-    const interval = window.setInterval(() => {
-      void loadSession();
-    }, sessionPollIntervalMs);
-
-    const onFocus = () => {
-      requestParentSessionSnapshot();
-      void loadSession();
-    };
-    window.addEventListener("focus", onFocus);
-
+    startParentSnapshotBridge();
     return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("message", onMessage);
+      stopParentSnapshotBridge();
     };
   }, []);
 

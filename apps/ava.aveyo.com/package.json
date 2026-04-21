@@ -48,6 +48,7 @@
   "type": "module",
   "dependencies": {
     "@ava/chat-domain": "workspace:*",
+    "@ava/auth": "workspace:*",
     "@ava/config": "workspace:*",
     "@ava/ui": "workspace:*",
     "@ava/widget": "workspace:*",

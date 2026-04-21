@@ -12,6 +12,7 @@
     "check:auth-template": "node ./scripts/auth/check-template-conformance.mjs"
   },
   "dependencies": {
+    "@ava/auth": "workspace:*",
     "@ava/config": "workspace:*",
     "@ava/ui": "workspace:*",
     "@ava/widget": "workspace:*",

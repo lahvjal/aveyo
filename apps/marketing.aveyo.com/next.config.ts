@@ -3,6 +3,8 @@ import { loadCentralEnv } from "@ava/config/runtime/load-central-env";
 
 loadCentralEnv();
 
-const nextConfig: NextConfig = {};
+const nextConfig: NextConfig = {
+  transpilePackages: ["@ava/auth"]
+};
 
 export default nextConfig;

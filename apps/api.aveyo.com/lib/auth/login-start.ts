@@ -10,7 +10,7 @@ const DEFAULT_AUTH_FROM_EMAIL = "Aveyo Support <support@send.goaveyo.com>";
 const DEFAULT_CUSTOMER_SUPPORT_EMAIL = "customercare@aveyo.com";
 const DEFAULT_LOOKUP_CACHE_TTL_MS = 5 * 60 * 1000;
 
-export type LoginStartNextStep = "password" | "emailLinkNotice";
+export type LoginStartNextStep = "password" | "emailLinkNotice" | "noAccount";
 
 interface BeginHostedLoginInput {
   email?: unknown;
@@ -355,7 +355,7 @@ export async function beginHostedLogin(request: Request, input: BeginHostedLogin
   if (!customerMatch) {
     return {
       email,
-      nextStep: "emailLinkNotice" as const
+      nextStep: "noAccount" as const
     };
   }
 

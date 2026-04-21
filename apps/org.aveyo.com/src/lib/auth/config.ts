@@ -3,11 +3,11 @@ interface BuildAuthLoginUrlOptions {
 }
 
 import {
-  buildAuthLoginUrl as buildSharedAuthLoginUrl,
-  resolveApiBaseUrl,
-  resolveAuthAppUrl,
-  resolvePlatformAppUrl
-} from "@ava/config/runtime/auth-urls";
+  buildPlatformAuthLoginUrl,
+  resolvePlatformApiBaseUrl,
+  resolvePlatformAuthAppBaseUrl,
+  resolvePlatformAppBaseUrl
+} from "@ava/auth";
 import { getLocalAppUrl, trimTrailingSlash } from "@ava/config/runtime/app-urls";
 
 function normalizeUrl(url: string) {
@@ -28,7 +28,7 @@ function getLocalOrgChartDashboardUrl() {
 }
 
 export function getPlatformAppUrl() {
-  return resolvePlatformAppUrl({
+  return resolvePlatformAppBaseUrl({
     configuredPlatformAppUrl: process.env.NEXT_PUBLIC_PLATFORM_APP_URL
   });
 }
@@ -48,21 +48,22 @@ export function getPostLoginRedirectUrl() {
 }
 
 export function getAuthAppUrl() {
-  return resolveAuthAppUrl({
+  return resolvePlatformAuthAppBaseUrl({
     configuredAuthAppUrl: process.env.NEXT_PUBLIC_AUTH_APP_URL
   });
 }
 
 export function getApiBaseUrl() {
-  return resolveApiBaseUrl({
+  return resolvePlatformApiBaseUrl({
     configuredPlatformApiBaseUrl: process.env.NEXT_PUBLIC_PLATFORM_API_BASE_URL,
     configuredAvaApiBaseUrl: process.env.NEXT_PUBLIC_AVA_API_BASE_URL
   });
 }
 
 export function buildAuthLoginUrl(returnTo: string, options: BuildAuthLoginUrlOptions = {}) {
-  return buildSharedAuthLoginUrl(returnTo, {
+  return buildPlatformAuthLoginUrl(returnTo, {
     configuredAuthAppUrl: process.env.NEXT_PUBLIC_AUTH_APP_URL,
+    authAppUrl: getAuthAppUrl(),
     logout: options.logout
   });
 }

@@ -7,10 +7,12 @@ import ReactFlow, {
   useEdgesState,
   addEdge,
   useReactFlow,
+  useStoreApi,
+  getNodesBounds,
   ReactFlowProvider,
   Panel,
 } from 'reactflow'
-import type { NodeTypes, Connection } from 'reactflow'
+import type { NodeTypes, Connection, Node as RFNode, Edge as RFEdge } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { EmployeeNode } from './EmployeeNode'
 import type { OrgChartProfile, Department, OrgChartPosition } from '../../types'
@@ -34,6 +36,85 @@ interface OrgChartCanvasProps {
 
 const nodeTypes: NodeTypes = {
   employee: EmployeeNode,
+}
+
+const FIT_PADDING = 0.3
+/** If fitting everyone would need zoom below this, frame the top of the hierarchy instead. */
+const MIN_READABLE_FULL_FIT_ZOOM = 0.26
+const MAX_FOCUS_NODES = 18
+const FOCUS_FIT_PADDING = 0.38
+/** Keep large-department / all-org previews readable (avoid ultra-tight zoom on a tiny subgraph). */
+const FOCUS_MIN_ZOOM = 0.22
+const FOCUS_MAX_ZOOM = 0.62
+
+function idealFitZoomForBounds(
+  bounds: { width: number; height: number },
+  width: number,
+  height: number,
+  padding: number,
+): number {
+  if (!width || !height || !bounds.width || !bounds.height) return 0
+  const xZoom = width / (bounds.width * (1 + padding))
+  const yZoom = height / (bounds.height * (1 + padding))
+  return Math.min(xZoom, yZoom)
+}
+
+/**
+ * When the full selection is too large to fit at a readable zoom, keep the camera on the
+ * top of the induced org subtree: roots (no in-selection manager), then BFS down manager→report edges.
+ */
+function pickTopClusterForViewport(flowNodes: RFNode[], edges: RFEdge[], maxNodes: number): RFNode[] {
+  const byId = new Map(flowNodes.map((n) => [n.id, n]))
+  const candidateIds = new Set(byId.keys())
+
+  const reports = new Map<string, string[]>()
+  for (const e of edges) {
+    if (!e.source || !e.target) continue
+    if (!candidateIds.has(e.source) || !candidateIds.has(e.target)) continue
+    const list = reports.get(e.source)
+    if (list) list.push(e.target)
+    else reports.set(e.source, [e.target])
+  }
+
+  const roots = flowNodes
+    .filter((n) => {
+      const p = n.data?.profile as OrgChartProfile | undefined
+      if (!p) return true
+      return !p.manager_id || !candidateIds.has(p.manager_id)
+    })
+    .sort((a, b) => a.position.y - b.position.y || a.position.x - b.position.x)
+
+  const seedIds =
+    roots.length > 0
+      ? roots.map((r) => r.id)
+      : [...flowNodes]
+          .sort((a, b) => a.position.y - b.position.y || a.position.x - b.position.x)
+          .slice(0, 1)
+          .map((n) => n.id)
+
+  const visited = new Set<string>()
+  const out: RFNode[] = []
+  const queue = [...seedIds]
+
+  while (queue.length > 0 && out.length < maxNodes) {
+    const id = queue.shift()!
+    if (visited.has(id)) continue
+    visited.add(id)
+    const node = byId.get(id)
+    if (!node) continue
+    out.push(node)
+
+    const children = reports.get(id)
+    if (!children?.length) continue
+    const sortedChildren = children
+      .map((cid) => byId.get(cid))
+      .filter(Boolean)
+      .sort((a, b) => a!.position.y - b!.position.y || a!.position.x - b!.position.x) as RFNode[]
+
+    for (const c of sortedChildren) queue.push(c.id)
+  }
+
+  return out
 }
 
 function OrgChartCanvasInner({ 
@@ -67,7 +148,8 @@ function OrgChartCanvasInner({
   const updatePosition = useUpdatePosition()
   const clearAllPositions = useClearAllPositions()
   const batchSavePositions = useBatchSavePositions()
-  const { fitView } = useReactFlow()
+  const { fitView, getNodes, getEdges } = useReactFlow()
+  const storeApi = useStoreApi()
 
   // Keep a ref to current nodes so fitView effects don't need nodes in their dep arrays
   const nodesRef = useRef(nodes)
@@ -137,29 +219,65 @@ function OrgChartCanvasInner({
     )
   }, [searchQuery, selectedDepartment, allDepartments, setNodes])
 
-  // Pan/zoom to the selected department's nodes whenever the filter changes
+  // Auto-focus the org for the active department filter (or all employees).
+  // React Flow clamps `fitView` to `minZoom`; for huge selections the "ideal" zoom is below
+  // that floor, which centers on a huge bounding box and looks broken. When that happens,
+  // frame only the top of the hierarchy (roots + shallow BFS) at a comfortable zoom so users
+  // can pan to find the rest.
   useEffect(() => {
-    const deptMatchIds = selectedDepartment && allDepartments
-      ? new Set(getDepartmentDescendantIds(selectedDepartment, allDepartments))
-      : null
+    if (selectedDepartment && !(allDepartments?.length)) return
 
-    const targetNodes = deptMatchIds
-      ? nodesRef.current.filter((n) => {
-          const profile = n.data?.profile as OrgChartProfile
-          return profile?.department_id && deptMatchIds.has(profile.department_id)
+    const deptMatchIds =
+      selectedDepartment && allDepartments?.length
+        ? new Set(getDepartmentDescendantIds(selectedDepartment, allDepartments))
+        : null
+
+    const candidateIds = new Set(
+      nodesRef.current
+        .filter((n) => {
+          const profile = n.data?.profile as OrgChartProfile | undefined
+          if (!profile) return false
+          if (deptMatchIds) return !!(profile.department_id && deptMatchIds.has(profile.department_id))
+          return true
         })
-      : nodesRef.current
+        .map((n) => n.id),
+    )
 
-    if (targetNodes.length === 0) return
+    if (candidateIds.size === 0) return
 
-    setTimeout(() => {
+    const timeoutId = window.setTimeout(() => {
+      const flowNodes = getNodes().filter((n) => candidateIds.has(n.id) && n.width && n.height)
+      if (flowNodes.length === 0) return
+
+      const { width, height } = storeApi.getState()
+      if (!width || !height) return
+
+      const bounds = getNodesBounds(flowNodes)
+      const idealZoom = idealFitZoomForBounds(bounds, width, height, FIT_PADDING)
+
+      if (idealZoom >= MIN_READABLE_FULL_FIT_ZOOM) {
+        fitView({
+          nodes: flowNodes.map((n) => ({ id: n.id })),
+          padding: FIT_PADDING,
+          duration: 700,
+        })
+        return
+      }
+
+      const focusNodes = pickTopClusterForViewport(flowNodes, getEdges(), MAX_FOCUS_NODES)
+      if (focusNodes.length === 0) return
+
       fitView({
-        nodes: targetNodes.map((n) => ({ id: n.id })),
-        padding: 0.3,
+        nodes: focusNodes.map((n) => ({ id: n.id })),
+        padding: FOCUS_FIT_PADDING,
         duration: 700,
+        minZoom: FOCUS_MIN_ZOOM,
+        maxZoom: FOCUS_MAX_ZOOM,
       })
     }, 80)
-  }, [selectedDepartment, allDepartments, fitView])
+
+    return () => window.clearTimeout(timeoutId)
+  }, [selectedDepartment, allDepartments, fitView, getEdges, getNodes, storeApi])
 
   const onConnect = useCallback(
     (connection: Connection) => {

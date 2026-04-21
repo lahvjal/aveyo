@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
 import Image from "next/image";
-import SolarSavingsEstimator from "@/components/site/solar-savings-estimator";
 import {
   SiteCard,
   SiteCardGrid,
   SiteHero,
-  SiteImageBreak,
+  SiteImageRow,
   SitePageShell,
   SiteSection,
   SiteSplitSection
@@ -75,28 +74,8 @@ export default function WhySolarPage() {
           { href: "/process", label: "How It Works", variant: "outline" }
         ]}
         spotlight="radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 45%)"
-        stats={[
-          { value: "50", label: "States Covered By Calculator" },
-          { value: "3", label: "Core Solar Benefits" },
-          { value: "1", label: "Customized System Per Home" }
-        ]}
         backgroundSrc="/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior.jpg"
         backgroundAlt="Modern home with dark solar panels on roof, golden hour, lush landscaping"
-      />
-
-      <SiteSection
-        eyebrow="Savings Calculator"
-        title="A Realistic Look At What Solar Can Change"
-        description="Use the example calculator to see how state-level energy pricing and your current bill can change the size and value of a system."
-      >
-        <SolarSavingsEstimator />
-      </SiteSection>
-
-      <SiteImageBreak
-        images={[
-          { src: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone.jpg", alt: "Aerial view of suburban home with solar panels on roof, bright sunny day" },
-          { alt: "Family in bright modern kitchen, morning light, casual and relaxed" }
-        ]}
       />
 
       <SiteSplitSection
@@ -133,6 +112,17 @@ export default function WhySolarPage() {
               description="System architecture is chosen to help the home capture more usable value from the sunlight available."
             />
           </SiteCardGrid>
+        }
+        footer={
+          <SiteImageRow
+            images={[
+              {
+                src: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone.jpg",
+                alt: "Aerial view of suburban home with solar panels on roof, bright sunny day"
+              },
+              { alt: "Family in bright modern kitchen, morning light, casual and relaxed" }
+            ]}
+          />
         }
       />
 

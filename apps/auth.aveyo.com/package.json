@@ -9,7 +9,9 @@
     "start": "next start -p 4003",
     "lint": "eslint . --max-warnings=0",
     "typecheck": "echo \"No TypeScript sources in auth-aveyo-com\"",
-    "test": "echo \"No tests configured for auth-aveyo-com\"",
+    "test": "pnpm run test:session-contract",
+    "test:session-contract": "bash scripts/verify-session-flow.sh",
+    "test:e2e:auth": "playwright test",
     "supabase:auth:callbacks:dev": "node scripts/configure-auth-callbacks.mjs dev --apply",
     "supabase:auth:callbacks:staging": "node scripts/configure-auth-callbacks.mjs staging --apply",
     "supabase:auth:callbacks:prod": "node scripts/configure-auth-callbacks.mjs prod --apply",
@@ -19,7 +21,7 @@
     "supabase:auth:verify:dev": "node scripts/configure-auth-callbacks.mjs dev --verify",
     "supabase:auth:verify:staging": "node scripts/configure-auth-callbacks.mjs staging --verify",
     "supabase:auth:verify:prod": "node scripts/configure-auth-callbacks.mjs prod --verify",
-    "supabase:session:verify": "bash scripts/verify-session-flow.sh"
+    "supabase:session:verify": "pnpm run test:session-contract"
   },
   "dependencies": {
     "@ava/config": "workspace:*",
@@ -30,6 +32,7 @@
     "react-dom": "^19.2.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.1.6"
   }

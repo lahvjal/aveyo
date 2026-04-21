@@ -4,7 +4,7 @@ loadCentralEnv();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: ["@ava/ui"],
+  transpilePackages: ["@ava/auth", "@ava/ui"],
   images: {
     remotePatterns: [
       {

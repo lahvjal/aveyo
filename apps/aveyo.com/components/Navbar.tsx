@@ -6,89 +6,18 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { resolveAppUrl, resolveEnvironment } from "@ava/config/runtime/app-urls";
 import {
-  buildAuthLoginUrl as buildSharedAuthLoginUrl,
-  resolveApiBaseUrl,
-  resolveAuthAppUrl,
-  resolvePlatformAppUrl
-} from "@ava/config/runtime/auth-urls";
+  buildAuthLoginUrl,
+  getEmployeeAppUrl,
+  useMarketingSiteAuthSession
+} from "@/lib/auth/session";
+import { stateNavLinks } from "@/lib/state-page-data";
 
 const SCROLL_THRESHOLD = 48;
-const AUTH_SESSION_POLL_INTERVAL_MS = 30000;
 const FLOATING_PILL_BACKGROUND =
   "linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.08) 100%), linear-gradient(90deg, rgba(76, 76, 76, 0.18) 0%, rgba(115, 115, 115, 0.18) 49.519%, rgba(78, 78, 78, 0.18) 100%)";
 const NAV_MENU_BACKGROUND =
   "linear-gradient(180deg, rgba(76, 78, 78, 0.98) 0%, rgba(33, 33, 32, 0.98) 100%)";
-
-type AuthSessionUser = {
-  name: string | null;
-  avatarUrl: string | null;
-};
-
-type AuthSessionState = {
-  loading: boolean;
-  authenticated: boolean;
-  user: AuthSessionUser | null;
-};
-
-function getApiBaseUrl() {
-  const environment =
-    typeof window === "undefined" ? "local" : resolveEnvironment(window.location.hostname);
-  const resolved = resolveAppUrl("api", environment);
-  return resolveApiBaseUrl({
-    configuredPlatformApiBaseUrl: process.env.NEXT_PUBLIC_PLATFORM_API_BASE_URL,
-    configuredAvaApiBaseUrl: process.env.NEXT_PUBLIC_AVA_API_BASE_URL,
-    fallbackApiBaseUrl: resolved || "https://api.aveyo.com"
-  });
-}
-
-function getAuthAppUrl() {
-  const environment =
-    typeof window === "undefined" ? "local" : resolveEnvironment(window.location.hostname);
-  const resolved = resolveAppUrl("auth", environment);
-  return resolveAuthAppUrl({
-    configuredAuthAppUrl: process.env.NEXT_PUBLIC_AUTH_APP_URL,
-    fallbackAuthAppUrl: resolved || "https://auth.aveyo.com"
-  });
-}
-
-function getEmployeeAppUrl() {
-  const environment =
-    typeof window === "undefined" ? "local" : resolveEnvironment(window.location.hostname);
-  const resolved = resolveAppUrl("dashboard", environment);
-  return resolvePlatformAppUrl({
-    configuredPlatformAppUrl: process.env.NEXT_PUBLIC_PLATFORM_APP_URL,
-    fallbackPlatformAppUrl: resolved || "https://app-staging.aveyo.com"
-  });
-}
-
-function buildAuthLoginUrl(returnTo: string) {
-  return buildSharedAuthLoginUrl(returnTo, {
-    configuredAuthAppUrl: process.env.NEXT_PUBLIC_AUTH_APP_URL,
-    authAppUrl: getAuthAppUrl()
-  });
-}
-
-function normalizeSessionUser(payload: unknown): AuthSessionUser | null {
-  if (!payload || typeof payload !== "object" || !("user" in payload)) {
-    return null;
-  }
-
-  const user = payload.user;
-  if (!user || typeof user !== "object") {
-    return null;
-  }
-
-  const userRecord = user as Record<string, unknown>;
-  const rawName = userRecord.name;
-  const rawAvatarUrl = userRecord.avatarUrl;
-  const name = typeof rawName === "string" && rawName.trim() ? rawName : null;
-  const avatarUrl =
-    typeof rawAvatarUrl === "string" && rawAvatarUrl.trim() ? rawAvatarUrl : null;
-
-  return { name, avatarUrl };
-}
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -96,11 +25,7 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openDesktopGroup, setOpenDesktopGroup] = useState<string | null>(null);
   const [openMobileGroup, setOpenMobileGroup] = useState<string | null>(null);
-  const [authSession, setAuthSession] = useState<AuthSessionState>({
-    loading: true,
-    authenticated: false,
-    user: null,
-  });
+  const authSession = useMarketingSiteAuthSession();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -123,60 +48,6 @@ export default function Navbar() {
     setOpenMobileGroup(null);
   }, [pathname]);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadSession() {
-      try {
-        const response = await fetch(`${getApiBaseUrl()}/api/auth/session`, {
-          method: "GET",
-          credentials: "include",
-          cache: "no-store",
-        });
-        const payload = await response.json().catch(() => null);
-        if (cancelled) return;
-
-        if (!response.ok || !payload?.authenticated) {
-          setAuthSession({
-            loading: false,
-            authenticated: false,
-            user: normalizeSessionUser(payload),
-          });
-          return;
-        }
-
-        setAuthSession({
-          loading: false,
-          authenticated: true,
-          user: normalizeSessionUser(payload),
-        });
-      } catch {
-        if (cancelled) return;
-        setAuthSession({
-          loading: false,
-          authenticated: false,
-          user: null,
-        });
-      }
-    }
-
-    void loadSession();
-    const interval = window.setInterval(() => {
-      void loadSession();
-    }, AUTH_SESSION_POLL_INTERVAL_MS);
-
-    const onFocus = () => {
-      void loadSession();
-    };
-    window.addEventListener("focus", onFocus);
-
-    return () => {
-      cancelled = true;
-      window.clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, []);
-
   const avatarInitial =
     (authSession.user?.name?.trim()?.charAt(0).toUpperCase() || "A");
 
@@ -198,15 +69,15 @@ export default function Navbar() {
       ]
     },
     {
+      name: "Locations",
+      links: stateNavLinks
+    },
+    {
       name: "Company",
       links: [
         { name: "About", href: "/about" },
         { name: "Newsfeed", href: "/newsfeed" },
-        { name: "Contact", href: "/contact" },
-        { name: "Illinois", href: "/illinois" },
-        { name: "Pennsylvania", href: "/pennsylvania" },
-        { name: "Utah", href: "/utah" },
-        { name: "California", href: "/california" }
+        { name: "Contact", href: "/contact" }
       ]
     }
   ];

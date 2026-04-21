@@ -301,7 +301,11 @@ async function startHostedLogin(email, requestedReturnTo) {
     throw new Error(readApiErrorMessage(payload, "Unable to continue sign in."));
   }
 
-  if (payload?.nextStep !== "password" && payload?.nextStep !== "emailLinkNotice") {
+  if (
+    payload?.nextStep !== "password" &&
+    payload?.nextStep !== "emailLinkNotice" &&
+    payload?.nextStep !== "noAccount"
+  ) {
     throw new Error("Login service returned an unknown step.");
   }
 
@@ -350,6 +354,12 @@ function getPanelCopy(loginStep) {
         title: "Check your email",
         subtitle:
           "If this email is associated with an active Aveyo project, we sent a secure sign-in link. Open it on this device to continue."
+      };
+    case "noAccount":
+      return {
+        title: "No matching account",
+        subtitle:
+          "We could not find an active employee profile or customer project for that email. Try another address, or contact your Aveyo representative if you believe this is a mistake."
       };
     case "resetPassword":
       return {
@@ -613,6 +623,12 @@ export default function LoginPage() {
         return;
       }
 
+      if (nextStep === "noAccount") {
+        setLoginStep("noAccount");
+        setStatus("");
+        return;
+      }
+
       setLoginStep("notice");
       setStatus("");
     } catch (error) {
@@ -861,6 +877,24 @@ export default function LoginPage() {
                 disabled={isSubmitting}
               >
                 Use a different email
+              </button>
+            </div>
+          ) : null}
+
+          {loginStep === "noAccount" ? (
+            <div className="login-form">
+              <div className="login-chip" aria-label="Email address">
+                {email}
+              </div>
+              <button
+                type="button"
+                className="login-primary-button"
+                onClick={() => {
+                  void handleUseDifferentEmail();
+                }}
+                disabled={isSubmitting}
+              >
+                Try a different email
               </button>
             </div>
           ) : null}

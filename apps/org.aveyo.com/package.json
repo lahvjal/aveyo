@@ -17,6 +17,7 @@
     "test:sql-authz": "sh ./scripts/run-sql-authz-check.sh"
   },
   "dependencies": {
+    "@ava/auth": "workspace:*",
     "@ava/config": "workspace:*",
     "@ava/ui": "workspace:*",
     "@ava/widget": "workspace:*",

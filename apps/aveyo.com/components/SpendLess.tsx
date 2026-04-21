@@ -3,42 +3,17 @@
 import { CarouselIndicators } from "@/components/ui/carousel-indicators";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { defaultSpendLessSlides, type SpendLessSlide } from "@/lib/state-page-data";
 
-type SlideType = {
-  type: "image" | "video";
-  src: string;
-  poster?: string;
-  title: string;
-  description: string;
+type SpendLessProps = {
+  slides?: SpendLessSlide[];
 };
 
-const slides: SlideType[] = [
-  {
-    type: "video",
-    src: "/video/solarsJustSmarter.mp4",
-    poster: "/images/b5026257c6fa0a3b4b068cefc432973fe3966e19.png",
-    title: "Your home, powered smarter.",
-    description: "Solar energy that works around the clock, keeping your family comfortable and connected.",
-  },
-  {
-    type: "image",
-    src: "/images/family-karaoke.png",
-    title: "Home is where the smart is.",
-    description: "Generating pure, sustainable energy means you can power more of what matters most:",
-  },
-  {
-    type: "image",
-    src: "/images/45963692b81b39be37da6b988910cdf8f25e2996.png",
-    title: "Power up. Bill Down.",
-    description: "Power more of what you love doing at-home without worrying about your monthly bill.",
-  },
-];
+export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
+  const slides = slidesProp ?? defaultSpendLessSlides;
+  const extendedSlides = useMemo(() => [...slides, ...slides, ...slides], [slides]);
 
-// Create extended slides array for infinite loop effect
-const extendedSlides = [...slides, ...slides, ...slides];
-
-export default function SpendLess() {
   const [currentIndex, setCurrentIndex] = useState(slides.length); // Start at first "real" slide in middle set
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [slideWidth, setSlideWidth] = useState(1200);
@@ -76,7 +51,7 @@ export default function SpendLess() {
     }, 700);
 
     return () => clearTimeout(timer);
-  }, [isTransitioning, currentIndex]);
+  }, [isTransitioning, currentIndex, slides.length]);
 
   const goToSlide = useCallback((index: number) => {
     if (isTransitioning) return;
@@ -105,7 +80,7 @@ export default function SpendLess() {
   };
 
   // Video slide component to handle play/pause
-  const VideoSlide = ({ slide, isCenter }: { slide: SlideType; isCenter: boolean }) => {
+  const VideoSlide = ({ slide, isCenter }: { slide: SpendLessSlide; isCenter: boolean }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
 
     useEffect(() => {
@@ -132,7 +107,7 @@ export default function SpendLess() {
     );
   };
 
-  const renderSlide = (slide: SlideType, index: number) => {
+  const renderSlide = (slide: SpendLessSlide, index: number) => {
     const isCenter = index === currentIndex;
 
     return (

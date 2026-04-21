@@ -180,7 +180,7 @@ export function AvaWidgetEmbedBridge({
   }, [desiredOpenState, iframeLoaded, postOpenStateCommand]);
 
   useEffect(() => {
-    if (hostSessionSnapshot) {
+    if (hostSessionSnapshot !== undefined) {
       return;
     }
 
