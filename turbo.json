@@ -10,6 +10,17 @@
       "dependsOn": [
         "^build"
       ],
+      "env": [
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "OPENAI_API_KEY",
+        "DATABASE_URL",
+        "DB_*",
+        "AVA_MYSQL_*",
+        "AVA_PROJECT_SELECTION_TELEMETRY",
+        "AVA_ALLOWED_ORIGINS",
+        "AVA_SESSION_COOKIE_*",
+        "RESEND_API_KEY"
+      ],
       "outputs": [
         ".next/**",
         "dist/**",
