@@ -1,5 +1,6 @@
 "use client";
 
+import { CarouselIndicators } from "@/components/ui/carousel-indicators";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
@@ -238,48 +239,12 @@ export default function Testimonials() {
         </div>
 
         <div className="mt-8 flex justify-center">
-          <div
-            className="relative flex items-center gap-[25px] overflow-hidden rounded-full px-[30px] py-7 backdrop-blur-[17px]"
-            style={{
-              background:
-                "linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.08) 100%), linear-gradient(90deg, rgba(76, 76, 76, 0.18) 0%, rgba(115, 115, 115, 0.18) 49.519%, rgba(78, 78, 78, 0.18) 100%)",
-            }}
-          >
-            <div
-              className="pointer-events-none absolute inset-0 z-0 rounded-full opacity-[0.06] mix-blend-overlay"
-              style={{
-                backgroundImage: `url('/images/04ace053e2cc3324a9bd79a136ce79eb15125e2d.png')`,
-                backgroundSize: "424px 424px",
-              }}
-            />
-            <div
-              className="pointer-events-none absolute inset-0 z-[1] rounded-full p-[0.9px]"
-              aria-hidden
-              style={{
-                background:
-                  "linear-gradient(90deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.72) 50%, rgba(255,255,255,0.34) 100%)",
-                WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                WebkitMaskComposite: "xor",
-                maskComposite: "exclude",
-              }}
-            />
-
-            {testimonials.map((_, index) => (
-              <button
-                key={index}
-                type="button"
-                onClick={() => handleNavClick(index)}
-                className="relative z-10 flex items-center justify-center"
-                aria-label={`Go to testimonial ${index + 1}`}
-                aria-current={index === realIndex ? "true" : undefined}
-              >
-                <div
-                  className="h-2.5 rounded-full bg-white transition-all duration-300"
-                  style={{ width: index === realIndex ? 34 : 10 }}
-                />
-              </button>
-            ))}
-          </div>
+          <CarouselIndicators
+            count={testimonials.length}
+            activeIndex={realIndex}
+            onSelect={handleNavClick}
+            getAriaLabel={(index) => `Go to testimonial ${index + 1}`}
+          />
         </div>
       </div>
     </section>

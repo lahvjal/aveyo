@@ -1,5 +1,6 @@
 "use client";
 
+import { CarouselIndicators } from "@/components/ui/carousel-indicators";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -224,47 +225,11 @@ export default function SpendLess() {
 
         {/* Navigation */}
         <div className="flex justify-center mt-8">
-          <div 
-            className="relative flex items-center gap-[25px] px-[30px] py-7 rounded-full overflow-hidden backdrop-blur-[17px]"
-            style={{
-              background: "linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.08) 100%), linear-gradient(90deg, rgba(76, 76, 76, 0.18) 0%, rgba(115, 115, 115, 0.18) 49.519%, rgba(78, 78, 78, 0.18) 100%)"
-            }}
-          >
-            {/* Noise texture overlay */}
-            <div 
-              className="pointer-events-none absolute inset-0 z-0 rounded-full opacity-[0.06] mix-blend-overlay"
-              style={{
-                backgroundImage: `url('/images/04ace053e2cc3324a9bd79a136ce79eb15125e2d.png')`,
-                backgroundSize: "424px 424px"
-              }}
-            />
-            <div
-              className="pointer-events-none absolute inset-0 z-[1] rounded-full p-[0.9px]"
-              aria-hidden="true"
-              style={{
-                background:
-                  "linear-gradient(90deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.72) 50%, rgba(255,255,255,0.34) 100%)",
-                WebkitMask:
-                  "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                WebkitMaskComposite: "xor",
-                maskComposite: "exclude",
-              }}
-            />
-            
-            {slides.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => handleNavClick(index)}
-                className="relative z-10 flex items-center justify-center"
-                aria-label={`Go to slide ${index + 1}`}
-              >
-                <div 
-                  className="h-2.5 bg-white rounded-full transition-all duration-300"
-                  style={{ width: index === realIndex ? 34 : 10 }}
-                />
-              </button>
-            ))}
-          </div>
+          <CarouselIndicators
+            count={slides.length}
+            activeIndex={realIndex}
+            onSelect={handleNavClick}
+          />
         </div>
       </div>
     </section>

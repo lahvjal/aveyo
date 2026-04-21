@@ -1,53 +1,51 @@
 /* eslint-disable jsx-a11y/media-has-caption */
 "use client";
 
+import {
+  BenefitSlideCard,
+  type BenefitSlideCardData,
+} from "@/components/ui/benefit-slide-card";
+import { CarouselIndicators } from "@/components/ui/carousel-indicators";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type BenefitSlide = {
-  title: string;
-  description: string;
-  image: string;
-  alt: string;
-  overlayGradient?: string;
-  overlayImage?: string;
-  textMaxWidth: number;
-};
-
-const benefitSlides: BenefitSlide[] = [
+const benefitSlides: BenefitSlideCardData[] = [
   {
-    title: "Receive great\ntax breaks\n& incentives",
+    title: "Enjoy energy independence",
     description:
-      "Every state has its own set of tax breaks and incentives for those who go solar.",
-    image: "/images/c0d1abba2b2c1ac1593864f21643530eac213fcd.png",
-    alt: "Handshake representing tax incentives",
-    overlayGradient:
-      "linear-gradient(-90deg, rgba(233, 245, 254, 0) 22.703%, rgba(233, 245, 254, 0.96) 54.328%)",
-    textMaxWidth: 403,
+      "With solar energy, you can generate your own electricity, reducing your dependence on utility companies and protecting against rising energy costs.",
+    image: "/images/acee720d028f8c4b741423529df186e9a70cf7d1.png",
+    alt: "Aerial view of a solar-powered home on a hillside",
+    hasDarkOverlay: true,
   },
   {
-    title: "Increase your\nhome's value",
-    description:
-      "Installing solar panels can significantly enhance your property's value, making it more attractive to potential buyers.",
-    image: "/images/85dd509c9b739e584415a89e5c88ae1d363dfc7f.png",
-    alt: "Modern home with solar panels",
-    textMaxWidth: 369,
-  },
-  {
-    title: "Reduce your\ncarbon footprint",
+    title: "Reduce your carbon footprint",
     description:
       "Going solar is not only good for your wallet but also for the planet. Reduce your reliance on fossil fuels and help combat climate change.",
-    image: "/images/dc2367f6d24cea3f9eddecd34270fa88db67d99f.png",
-    alt: "Person at home representing sustainability",
-    overlayImage: "/images/f53250c103bdb100179a190a6ac36da264063058.png",
-    overlayGradient:
-      "linear-gradient(-41deg, rgba(255, 255, 255, 0) 42.8%, rgba(255, 255, 255, 0.82) 94.5%)",
-    textMaxWidth: 341,
+    image: "/images/40f27c8586df6b6a5f2dc93ca6989928eaff7a6d.png",
+    alt: "A parent and child beside an electric vehicle outdoors",
+    hasDarkOverlay: true,
+  },
+  {
+    title: "Receive great tax breaks & incentives",
+    description:
+      "Every state has its own set of tax breaks and incentives for those who go solar. Check your state's specifics (and what you could earn) here:",
+    image: "/images/ea97db20ed6cd0d4806a5afd7890d36c3d89842d.png",
+    alt: "A person typing on a laptop at a wooden desk",
+    hasDarkOverlay: true,
+  },
+  {
+    title: "Increase your home's value",
+    description:
+      "Installing solar panels can significantly enhance your property's value, making it more attractive to potential buyers.",
+    image: "/images/8e4311cef2aa5e0e923e53d10a172ca3e5cd3989.png",
+    alt: "Close view of rooftop solar panels on a home",
   },
 ];
 
 const extendedBenefitSlides = [...benefitSlides, ...benefitSlides, ...benefitSlides];
+const INITIAL_CENTER_SLIDE = 2;
 const SAVINGS_VIDEO_SRC = "/images/web_photos/benefits.mp4";
 const SAVINGS_VIDEO_LAST_FRAME_EPSILON = 0.05;
 const SAVINGS_COUNTER_START = 150;
@@ -57,7 +55,9 @@ const easeOutExpo = (progress: number) =>
   progress === 1 ? 1 : 1 - Math.pow(2, -80 * progress);
 
 export default function Benefits() {
-  const [currentIndex, setCurrentIndex] = useState(benefitSlides.length);
+  const [currentIndex, setCurrentIndex] = useState(
+    benefitSlides.length + INITIAL_CENTER_SLIDE
+  );
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [slideWidth, setSlideWidth] = useState(885);
   const [gap] = useState(20);
@@ -166,9 +166,9 @@ export default function Benefits() {
   useEffect(() => {
     const updateWidth = () => {
       if (window.innerWidth < 640) {
-        setSlideWidth(Math.max(300, window.innerWidth * 0.82));
+        setSlideWidth(Math.max(300, window.innerWidth * 0.84));
       } else if (window.innerWidth < 1024) {
-        setSlideWidth(window.innerWidth * 0.7);
+        setSlideWidth(Math.min(760, window.innerWidth * 0.74));
       } else {
         setSlideWidth(885);
       }
@@ -205,14 +205,6 @@ export default function Benefits() {
     [isTransitioning]
   );
 
-  const goToNext = useCallback(() => {
-    goToSlide(currentIndex + 1);
-  }, [currentIndex, goToSlide]);
-
-  const goToPrev = useCallback(() => {
-    goToSlide(currentIndex - 1);
-  }, [currentIndex, goToSlide]);
-
   const handleNavClick = (index: number) => {
     goToSlide(benefitSlides.length + index);
   };
@@ -226,63 +218,6 @@ export default function Benefits() {
   const realIndex =
     ((currentIndex % benefitSlides.length) + benefitSlides.length) %
     benefitSlides.length;
-
-  const renderSlide = (slide: BenefitSlide, index: number) => {
-    const isCenter = index === currentIndex;
-
-    return (
-      <article
-        key={`${slide.title}-${index}`}
-        onClick={() => {
-          if (index < currentIndex) goToPrev();
-          if (index > currentIndex) goToNext();
-        }}
-        className={`relative flex-shrink-0 overflow-hidden rounded-[var(--home-card-radius)] ${
-          !isCenter ? "cursor-pointer" : ""
-        }`}
-        style={{ width: slideWidth, height: slideHeight }}
-      >
-        <Image
-          src={slide.image}
-          alt={slide.alt}
-          fill
-          className="object-cover"
-          sizes="(max-width: 640px) 82vw, (max-width: 1024px) 70vw, 885px"
-          priority={isCenter}
-        />
-        {slide.overlayImage ? (
-          <Image
-            src={slide.overlayImage}
-            alt=""
-            fill
-            className="object-cover opacity-35"
-            sizes="(max-width: 640px) 82vw, (max-width: 1024px) 70vw, 885px"
-          />
-        ) : null}
-        {slide.overlayGradient ? (
-          <div className="absolute inset-0" style={{ background: slide.overlayGradient }} />
-        ) : null}
-
-        <div
-          className="absolute inset-0 flex items-center px-7 py-8 sm:px-10 lg:px-[70px] lg:py-[50px] transition-all duration-700"
-          style={{
-            transform: isCenter ? "translateX(0)" : "translateX(220px)",
-            opacity: isCenter ? 1 : 0,
-            transitionTimingFunction: "cubic-bezier(0.33, 1, 0.68, 1)",
-          }}
-        >
-          <div className="flex flex-col gap-3 text-[color:var(--home-black)] sm:gap-5" style={{ maxWidth: `${slide.textMaxWidth}px` }}>
-            <h3 className="whitespace-pre-line text-[26px] leading-[1.2] sm:text-[34px] lg:text-[44px]">
-              {slide.title}
-            </h3>
-            <p className="text-sm leading-[1.45] lg:text-base lg:leading-[1.5]">
-              {slide.description}
-            </p>
-          </div>
-        </div>
-      </article>
-    );
-  };
 
   return (
     <section
@@ -373,53 +308,31 @@ export default function Benefits() {
                 : "none",
             }}
           >
-            {extendedBenefitSlides.map((slide, index) => renderSlide(slide, index))}
+            {extendedBenefitSlides.map((slide, index) => (
+              <BenefitSlideCard
+                key={`${slide.title}-${index}`}
+                slide={slide}
+                width={slideWidth}
+                height={slideHeight}
+                isActive={index === currentIndex}
+                onSelect={() => {
+                  if (index !== currentIndex) {
+                    goToSlide(index);
+                  }
+                }}
+              />
+            ))}
           </div>
 
           {/* Navigation overlays the bottom of the slides */}
           <div className="pointer-events-none absolute inset-x-0 bottom-[10px] z-20 flex justify-center">
-            <div
-              className="pointer-events-auto relative flex items-center gap-[25px] overflow-hidden rounded-full px-[30px] py-7 backdrop-blur-[17px]"
-              style={{
-                background:
-                  "linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0%, rgba(0, 0, 0, 0.08) 100%), linear-gradient(90deg, rgba(76, 76, 76, 0.18) 0%, rgba(115, 115, 115, 0.18) 49.519%, rgba(78, 78, 78, 0.18) 100%)",
-              }}
-            >
-              <div
-                className="pointer-events-none absolute inset-0 z-0 rounded-full opacity-[0.06] mix-blend-overlay"
-                style={{
-                  backgroundImage:
-                    "url('/images/04ace053e2cc3324a9bd79a136ce79eb15125e2d.png')",
-                  backgroundSize: "424px 424px",
-                }}
-              />
-              <div
-                className="pointer-events-none absolute inset-0 z-[1] rounded-full p-[0.9px]"
-                aria-hidden="true"
-                style={{
-                  background:
-                    "linear-gradient(90deg, rgba(255,255,255,0.34) 0%, rgba(255,255,255,0.72) 50%, rgba(255,255,255,0.34) 100%)",
-                  WebkitMask:
-                    "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)",
-                  WebkitMaskComposite: "xor",
-                  maskComposite: "exclude",
-                }}
-              />
-
-              {benefitSlides.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleNavClick(index)}
-                  className="relative z-10 flex items-center justify-center"
-                  aria-label={`Go to benefit slide ${index + 1}`}
-                >
-                  <div
-                    className="h-2.5 rounded-full bg-white transition-all duration-300"
-                    style={{ width: index === realIndex ? 34 : 10 }}
-                  />
-                </button>
-              ))}
-            </div>
+            <CarouselIndicators
+              count={benefitSlides.length}
+              activeIndex={realIndex}
+              onSelect={handleNavClick}
+              getAriaLabel={(index) => `Go to benefit slide ${index + 1}`}
+              className="pointer-events-auto"
+            />
           </div>
         </div>
         
