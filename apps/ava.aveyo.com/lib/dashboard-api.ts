@@ -4,10 +4,17 @@ import {
   type ConversationCustomerDetails,
   type QueueRecord,
   type RealtimeEvent,
-  type SupportAgentNote
+  type SupportAgentNote,
+  type TransferCandidate
 } from "@/lib/ava-api-types";
 
-export type { ConversationCustomerDetails, QueueRecord, RealtimeEvent, SupportAgentNote };
+export type {
+  ConversationCustomerDetails,
+  QueueRecord,
+  RealtimeEvent,
+  SupportAgentNote,
+  TransferCandidate
+};
 
 async function apiRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
   return authApiRequest<T>(path, init);
@@ -58,6 +65,74 @@ export function claimHandoffApi(body: {
 
 export function resolveHandoffApi(body: { conversationId: string; resolutionNote?: string }) {
   return apiRequest<{ thread: ConversationThread }>("/api/handoff/resolve", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export interface TransferActionResult {
+  transferRequestId: string;
+  requestId: string;
+  conversationId: string;
+}
+
+export interface TransferRequestResult extends TransferActionResult {
+  requestedAt: string;
+  note?: string;
+  requestedBy: {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+  };
+  targetAgent: {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+  };
+}
+
+export interface TransferAcceptResult extends TransferActionResult {
+  previousAgentId: string;
+  targetAgent: {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+  };
+}
+
+export function getTransferTargetsApi() {
+  return apiRequest<{ agents: TransferCandidate[] }>("/api/handoff/transfer/targets", {
+    method: "GET"
+  });
+}
+
+export function requestHandoffTransferApi(body: {
+  requestId: string;
+  targetAgentId: string;
+  note?: string;
+}) {
+  return apiRequest<TransferRequestResult>("/api/handoff/transfer/request", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export function acceptHandoffTransferApi(body: { transferRequestId: string }) {
+  return apiRequest<TransferAcceptResult>("/api/handoff/transfer/accept", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export function declineHandoffTransferApi(body: { transferRequestId: string }) {
+  return apiRequest<TransferActionResult>("/api/handoff/transfer/decline", {
+    method: "POST",
+    body: JSON.stringify(body)
+  });
+}
+
+export function cancelHandoffTransferApi(body: { transferRequestId: string }) {
+  return apiRequest<TransferActionResult>("/api/handoff/transfer/cancel", {
     method: "POST",
     body: JSON.stringify(body)
   });

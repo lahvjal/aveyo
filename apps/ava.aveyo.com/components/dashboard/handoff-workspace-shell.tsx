@@ -34,6 +34,8 @@ import { AppSideRail } from "@/components/app-side-rail";
 import { AvaSecondaryNav } from "@/components/ava-secondary-nav";
 import { ChatColumn } from "./chat-column";
 import { DetailColumn } from "./detail-column";
+import { HandoffTransferControls } from "./handoff-transfer-controls";
+import { InitialChip } from "./initial-chip";
 
 interface HandoffWorkspaceShellProps {
   requestId: string;
@@ -104,8 +106,9 @@ export function HandoffWorkspaceShell({
 
   const [queueRecord, setQueueRecord] = useState<QueueRecord | null>(null);
   const [conversation, setConversation] = useState<ConversationThread>(seededConversation);
-  const [composeNote, setComposeNote] = useState("");
-  const [sidebarNote, setSidebarNote] = useState("");
+  const [composeMode, setComposeMode] = useState<"reply" | "note">("reply");
+  const [replyDraft, setReplyDraft] = useState("");
+  const [noteDraft, setNoteDraft] = useState("");
   const [historyNotes, setHistoryNotes] = useState<HistoryNote[]>([]);
   const [customerDetails, setCustomerDetails] = useState<CustomerPanelDetails | null>(null);
   const [customerDetailsLoading, setCustomerDetailsLoading] = useState(false);
@@ -128,9 +131,12 @@ export function HandoffWorkspaceShell({
   const isAssignedToCurrentAgent =
     !queueRecord?.claimedByAuthUserId || queueRecord.claimedByAuthUserId === authSession.user?.id;
   const requestResolved = queueRecord?.status === "resolved";
+  const isTransferTarget = queueRecord?.transferRequest?.target.id === authSession.user?.id;
   const canInteract = Boolean(workspaceConversationId) && (isAssignedToCurrentAgent || isAdminLike) && !requestResolved;
   const interactionLockReason = !isAssignedToCurrentAgent
-    ? "This handoff is assigned to another representative."
+    ? isTransferTarget
+      ? "This handoff stays with the current representative until you accept the transfer."
+      : "This handoff is assigned to another representative."
     : requestResolved
       ? "This handoff has already been resolved."
       : undefined;
@@ -150,7 +156,15 @@ export function HandoffWorkspaceShell({
     }
     return createTicketFromQueueRecord(queueRecord, conversation);
   }, [conversation, queueRecord]);
+  const pendingTransfer = queueRecord?.transferRequest ?? activeTicket?.transferRequest;
+  const canRequestTransfer =
+    Boolean(queueRecord) &&
+    queueRecord?.claimedByAuthUserId === authSession.user?.id &&
+    queueRecord?.status !== "resolved" &&
+    !pendingTransfer;
   const agentAvatarUrl = authSession.user?.avatarUrl ?? null;
+  const composeValue = composeMode === "reply" ? replyDraft : noteDraft;
+  const composerSubmitPending = composeMode === "reply" ? sendPending : notePending;
 
   const publishRepresentativeTyping = useCallback(
     (conversationId: string, isTyping: boolean, force = false) => {
@@ -325,6 +339,12 @@ export function HandoffWorkspaceShell({
   }, [authSession.authenticated, isConversationLoaded, workspaceConversationId]);
 
   useEffect(() => {
+    setComposeMode("reply");
+    setReplyDraft("");
+    setNoteDraft("");
+  }, [workspaceConversationId]);
+
+  useEffect(() => {
     return () => {
       const conversationId = representativeTypingConversationRef.current;
       if (!conversationId || !representativeTypingSentRef.current) {
@@ -351,13 +371,14 @@ export function HandoffWorkspaceShell({
       return;
     }
 
-    const hasDraft = Boolean(normalizeDraft(composeNote));
+    const hasDraft = composeMode === "reply" && Boolean(normalizeDraft(replyDraft));
     publishRepresentativeTyping(workspaceConversationId, hasDraft);
   }, [
     authSession.authenticated,
     canInteract,
-    composeNote,
+    composeMode,
     publishRepresentativeTyping,
+    replyDraft,
     workspaceConversationId
   ]);
 
@@ -405,7 +426,7 @@ export function HandoffWorkspaceShell({
       return;
     }
 
-    const messageText = normalizeDraft(composeNote);
+    const messageText = normalizeDraft(replyDraft);
     if (!messageText) {
       return;
     }
@@ -421,7 +442,7 @@ export function HandoffWorkspaceShell({
         clientMessageId: generateClientMessageId()
       });
       setConversation((current) => appendTimelineMessage(current, result.message));
-      setComposeNote("");
+      setReplyDraft("");
       setOperationError(null);
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Unable to send message.");
@@ -430,12 +451,12 @@ export function HandoffWorkspaceShell({
     }
   };
 
-  const addSidebarNote = async () => {
+  const addComposerNote = useCallback(async () => {
     if (!authSession.authenticated || !workspaceConversationId || !canInteract || notePending) {
       return;
     }
 
-    const noteBody = normalizeDraft(sidebarNote);
+    const noteBody = normalizeDraft(noteDraft);
     if (!noteBody) {
       return;
     }
@@ -444,14 +465,14 @@ export function HandoffWorkspaceShell({
       setNotePending(true);
       const result = await createSupportNoteApi(workspaceConversationId, { body: noteBody });
       setHistoryNotes((current) => [mapSupportAgentNoteToHistoryNote(result.note), ...current]);
-      setSidebarNote("");
+      setNoteDraft("");
       setOperationError(null);
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Unable to save support note.");
     } finally {
       setNotePending(false);
     }
-  };
+  }, [authSession.authenticated, canInteract, noteDraft, notePending, workspaceConversationId]);
 
   const resolveChat = async () => {
     if (!authSession.authenticated || !workspaceConversationId || !canInteract || resolvePending) {
@@ -486,6 +507,33 @@ export function HandoffWorkspaceShell({
     } finally {
       setResolvePending(false);
     }
+  };
+
+  const handleComposeValueChange = useCallback(
+    (value: string) => {
+      if (composeMode === "reply") {
+        setReplyDraft(value);
+        return;
+      }
+      setNoteDraft(value);
+    },
+    [composeMode]
+  );
+
+  const handleUseAvaSuggestion = useCallback(() => {
+    if (!avaSuggestion.suggestionText) {
+      return;
+    }
+    setComposeMode("reply");
+    setReplyDraft(avaSuggestion.suggestionText);
+  }, [avaSuggestion.suggestionText]);
+
+  const handleSubmitCompose = () => {
+    if (composeMode === "reply") {
+      void sendRepMessage();
+      return;
+    }
+    void addComposerNote();
   };
 
   const signOutAgent = async () => {
@@ -544,8 +592,30 @@ export function HandoffWorkspaceShell({
 
         <div className="workspace-status-bar">
           <div className="workspace-status-copy">
-            <strong>Request {requestId}</strong>
-            <small>Status: {formatStatusLabel(queueRecord?.status)}</small>
+            {queueRecord ? (
+              <div className="workspace-status-identity">
+                <InitialChip initials={activeTicket?.initials ?? "CU"} tone="sand" size={46} />
+                <div>
+                  <strong>{activeTicket?.fullName ?? "No active chat selected"}</strong>
+                  <small>
+                    {pendingTransfer
+                      ? `Request ${requestId} · ${formatStatusLabel(
+                          queueRecord?.status
+                        )} · Transfer requested ${
+                          pendingTransfer.target.id === authSession.user?.id
+                            ? "to you"
+                            : `to ${pendingTransfer.target.name}`
+                        }`
+                      : `Request ${requestId} · ${formatStatusLabel(queueRecord?.status)}`}
+                  </small>
+                </div>
+              </div>
+            ) : (
+              <>
+                <strong>Request {requestId}</strong>
+                <small>Status unavailable</small>
+              </>
+            )}
           </div>
           <div className="workspace-status-actions">
             <button
@@ -555,6 +625,18 @@ export function HandoffWorkspaceShell({
             >
               Back to Dashboard
             </button>
+            {queueRecord ? (
+              <HandoffTransferControls
+                requestId={queueRecord.requestId}
+                currentAgentId={authSession.user?.id ?? null}
+                pendingTransfer={pendingTransfer}
+                canRequestTransfer={canRequestTransfer}
+                onAfterMutation={async (message) => {
+                  await refreshWorkspaceDataSafely();
+                  setCloseHint(message);
+                }}
+              />
+            ) : null}
             <button
               type="button"
               className="workspace-resolve-button"
@@ -589,24 +671,20 @@ export function HandoffWorkspaceShell({
               isEmptyState={!isConversationLoaded}
               composerLocked={!canInteract}
               composerLockedReason={interactionLockReason}
-              composeNote={composeNote}
+              composeMode={composeMode}
+              composeValue={composeValue}
               showAvaSuggestion={avaSuggestion.hasPendingCustomerQuestion}
               avaSuggestionText={avaSuggestion.suggestionText}
               avaSuggestionLoading={avaSuggestion.isLoading}
               avaSuggestionError={avaSuggestion.error}
+              showHeader={false}
               agentInitials={agentInitials}
               agentAvatarUrl={agentAvatarUrl}
-              sendPending={sendPending}
-              onComposeNoteChange={setComposeNote}
-              onSendMessage={() => {
-                void sendRepMessage();
-              }}
-              onUseAvaSuggestion={() => {
-                if (!avaSuggestion.suggestionText) {
-                  return;
-                }
-                setComposeNote(avaSuggestion.suggestionText);
-              }}
+              submitPending={composerSubmitPending}
+              onComposeModeChange={setComposeMode}
+              onComposeValueChange={handleComposeValueChange}
+              onSubmitCompose={handleSubmitCompose}
+              onUseAvaSuggestion={handleUseAvaSuggestion}
               onRefreshAvaSuggestion={avaSuggestion.refreshSuggestion}
             />
 
@@ -614,15 +692,7 @@ export function HandoffWorkspaceShell({
               activeTicket={activeTicket}
               customerDetails={customerDetails}
               customerDetailsLoading={customerDetailsLoading}
-              sidebarNote={sidebarNote}
               historyNotes={historyNotes}
-              notesDisabled={!canInteract}
-              notesDisabledReason={interactionLockReason}
-              savePending={notePending}
-              onSidebarNoteChange={setSidebarNote}
-              onAddSidebarNote={() => {
-                void addSidebarNote();
-              }}
             />
           </div>
         )}

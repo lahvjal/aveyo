@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, useEffect, useRef } from "react";
 import { type ConversationThread } from "@ava/chat-domain";
 import { AvaOrb } from "@ava/ui";
 import {
@@ -7,6 +7,24 @@ import {
 } from "@/lib/customer-sentiment-ui";
 import { type Ticket } from "@/lib/dashboard-types";
 import { InitialChip } from "./initial-chip";
+
+function getNameInitials(name: string | null | undefined, fallback: string) {
+  const trimmed = typeof name === "string" ? name.trim() : "";
+  if (!trimmed) {
+    return fallback;
+  }
+
+  const parts = trimmed
+    .split(" ")
+    .map((part) => part.trim())
+    .filter(Boolean)
+    .slice(0, 2);
+  if (parts.length === 0) {
+    return fallback;
+  }
+
+  return parts.map((part) => part[0]?.toUpperCase() ?? "").join("");
+}
 
 interface ChatColumnProps {
   conversation: ConversationThread;
@@ -17,16 +35,19 @@ interface ChatColumnProps {
   isEmptyState: boolean;
   composerLocked?: boolean;
   composerLockedReason?: string;
-  composeNote: string;
+  composeMode: "reply" | "note";
+  composeValue: string;
   showAvaSuggestion?: boolean;
   avaSuggestionText?: string | null;
   avaSuggestionLoading?: boolean;
   avaSuggestionError?: string | null;
+  showHeader?: boolean;
   agentInitials: string;
   agentAvatarUrl?: string | null;
-  sendPending?: boolean;
-  onComposeNoteChange: (value: string) => void;
-  onSendMessage: () => void;
+  submitPending?: boolean;
+  onComposeModeChange: (mode: "reply" | "note") => void;
+  onComposeValueChange: (value: string) => void;
+  onSubmitCompose: () => void;
   onUseAvaSuggestion?: () => void;
   onRefreshAvaSuggestion?: () => void;
 }
@@ -40,22 +61,27 @@ export const ChatColumn = memo(function ChatColumn({
   isEmptyState,
   composerLocked = false,
   composerLockedReason,
-  composeNote,
+  composeMode,
+  composeValue,
   showAvaSuggestion = false,
   avaSuggestionText,
   avaSuggestionLoading = false,
   avaSuggestionError,
+  showHeader = true,
   agentInitials,
   agentAvatarUrl,
-  sendPending = false,
-  onComposeNoteChange,
-  onSendMessage,
+  submitPending = false,
+  onComposeModeChange,
+  onComposeValueChange,
+  onSubmitCompose,
   onUseAvaSuggestion,
   onRefreshAvaSuggestion
 }: ChatColumnProps) {
+  const timelineRef = useRef<HTMLDivElement | null>(null);
+  const isNoteMode = composeMode === "note";
   const composerDisabled = isEmptyState || composerLocked;
-  const hasComposeText = composeNote.trim().length > 0;
-  const sendDisabled = composerDisabled || sendPending || !hasComposeText;
+  const hasComposeText = composeValue.trim().length > 0;
+  const submitDisabled = composerDisabled || submitPending || !hasComposeText;
   const emptyStateEyebrow = !isOnline
     ? "Offline mode"
     : hasPendingChats
@@ -75,26 +101,76 @@ export const ChatColumn = memo(function ChatColumn({
     ? composerLocked && composerLockedReason
       ? composerLockedReason
       : !isOnline
-      ? "You're offline. Go online to start new conversations."
-      : hasPendingChats
-        ? "Claim a chat from the queue to unlock messaging."
-        : "Messaging unlocks when a conversation becomes active."
-    : hasActiveChat
-      ? sendPending
-        ? "Sending message..."
-        : "Press Enter to send. Shift+Enter for a new line."
-      : "Select a conversation to send messages.";
-  const showSuggestionCard = !composerDisabled && showAvaSuggestion;
+        ? "You're offline. Go online to start new conversations."
+        : hasActiveChat
+          ? isNoteMode
+            ? "Loading note composer..."
+            : "Loading conversation..."
+          : isNoteMode
+            ? "Select a chat to add internal notes."
+            : hasPendingChats
+              ? "Claim a chat from the queue to unlock messaging."
+              : "Messaging unlocks when a conversation becomes active."
+    : isNoteMode
+      ? submitPending
+        ? "Saving note..."
+        : "Press Enter to save note. Shift+Enter for a new line."
+      : hasActiveChat
+        ? submitPending
+          ? "Sending message..."
+          : "Press Enter to send. Shift+Enter for a new line."
+        : "Select a conversation to send messages.";
+  const showSuggestionCard = !composerDisabled && !isNoteMode && showAvaSuggestion;
+  const composePlaceholder = composerDisabled
+    ? composerLocked
+      ? isNoteMode
+        ? "Note-taking is unavailable for this handoff."
+        : "Messaging is unavailable for this handoff."
+      : hasActiveChat
+        ? isNoteMode
+          ? "Loading notes..."
+          : "Loading conversation..."
+        : isNoteMode
+          ? "Select a chat to add internal notes."
+          : "Claim a chat to send messages."
+    : isNoteMode
+      ? "Write a note..."
+      : "Write your message here...";
+  const submitAriaLabel = submitPending
+    ? isNoteMode
+      ? "Saving note"
+      : "Sending message"
+    : isNoteMode
+      ? "Save note"
+      : "Send message";
+
+  useEffect(() => {
+    if (isEmptyState || conversation.messages.length === 0) {
+      return;
+    }
+    const timeline = timelineRef.current;
+    if (!timeline) {
+      return;
+    }
+    const frameId = window.requestAnimationFrame(() => {
+      timeline.scrollTop = timeline.scrollHeight;
+    });
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [conversation.id, conversation.messages.length, isEmptyState]);
 
   return (
     <section className="chat-column">
-      <header className="chat-topbar">
-        <div className="chat-top-identity">
-          <InitialChip initials={activeTicket?.initials ?? "CU"} tone="sand" size={40} />
-          <strong>{activeTicket?.fullName ?? "No active chat"}</strong>
-        </div>
-        <strong>{isEmptyState ? "--:--" : "0:02"}</strong>
-      </header>
+      {showHeader ? (
+        <header className="chat-topbar">
+          <div className="chat-top-identity">
+            <InitialChip initials={activeTicket?.initials ?? "CU"} tone="sand" size={40} />
+            <strong>{activeTicket?.fullName ?? "No active chat"}</strong>
+          </div>
+          <strong>{isEmptyState ? "--:--" : "0:02"}</strong>
+        </header>
+      ) : null}
 
       {isEmptyState ? (
         <div className="chat-empty-state">
@@ -114,7 +190,7 @@ export const ChatColumn = memo(function ChatColumn({
           </div>
         </div>
       ) : (
-        <div className="chat-timeline">
+        <div className="chat-timeline" ref={timelineRef}>
           {conversation.messages.map((message) => {
             if (message.kind === "system") {
               return (
@@ -126,12 +202,18 @@ export const ChatColumn = memo(function ChatColumn({
             }
 
             if (message.kind === "representative") {
+              const representativeAvatarUrl =
+                message.representative?.avatarUrl?.trim() || agentAvatarUrl || undefined;
+              const representativeInitials = getNameInitials(
+                message.representative?.name,
+                agentInitials
+              );
               return (
                 <div className="timeline-row right" key={message.id}>
                   <p className="msg-bubble rep">{message.text}</p>
                   <InitialChip
-                    initials={agentInitials}
-                    avatarUrl={agentAvatarUrl}
+                    initials={representativeInitials}
+                    avatarUrl={representativeAvatarUrl}
                     tone="sand"
                     size={25}
                   />
@@ -143,7 +225,11 @@ export const ChatColumn = memo(function ChatColumn({
             const customerSentimentLevel = getCustomerMessageSentimentLevel(message);
             return (
               <div className="timeline-row left" key={message.id}>
-                {isCustomer ? <InitialChip initials="JD" tone="sand" size={25} /> : <AvaOrb size={25} />}
+                {isCustomer ? (
+                  <InitialChip initials={activeTicket?.initials ?? "CU"} tone="sand" size={25} />
+                ) : (
+                  <AvaOrb size={25} />
+                )}
                 <p className={`msg-bubble ${isCustomer ? "customer" : "ava"}`}>{message.text}</p>
                 {isCustomer && customerSentimentLevel ? (
                   <span
@@ -197,35 +283,53 @@ export const ChatColumn = memo(function ChatColumn({
           </div>
         ) : null}
 
+        <div className="chat-compose-tabs" role="group" aria-label="Composer mode">
+          <button
+            type="button"
+            className={composeMode === "reply" ? "is-active" : ""}
+            aria-pressed={composeMode === "reply"}
+            onClick={() => onComposeModeChange("reply")}
+          >
+            Reply
+          </button>
+          <button
+            type="button"
+            className={composeMode === "note" ? "is-active" : ""}
+            aria-pressed={composeMode === "note"}
+            onClick={() => onComposeModeChange("note")}
+          >
+            Note
+          </button>
+        </div>
+
         <textarea
-          value={composeNote}
+          value={composeValue}
           disabled={composerDisabled}
-          onChange={(event) => onComposeNoteChange(event.target.value)}
+          onChange={(event) => onComposeValueChange(event.target.value)}
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.shiftKey) {
               event.preventDefault();
-              if (!sendDisabled) {
-                onSendMessage();
+              if (!submitDisabled) {
+                onSubmitCompose();
               }
             }
           }}
-          placeholder={
-            composerDisabled
-              ? composerLocked
-                ? "Messaging is unavailable for this handoff."
-                : "Claim a chat to send messages."
-              : "Message"
-          }
+          placeholder={composePlaceholder}
         />
-        <button
-          type="button"
-          className={`chat-send-button${sendPending ? " is-loading" : ""}`}
-          onClick={onSendMessage}
-          aria-label={sendPending ? "Sending message" : "Send message"}
-          disabled={sendDisabled}
-        >
-          {sendPending ? <span className="inline-button-spinner" aria-hidden="true" /> : "↑"}
-        </button>
+        <div className="chat-compose-footer">
+          <span className="chat-compose-attachment" aria-hidden="true">
+            +
+          </span>
+          <button
+            type="button"
+            className={`chat-send-button${submitPending ? " is-loading" : ""}`}
+            onClick={onSubmitCompose}
+            aria-label={submitAriaLabel}
+            disabled={submitDisabled}
+          >
+            {submitPending ? <span className="inline-button-spinner" aria-hidden="true" /> : "↑"}
+          </button>
+        </div>
         <p className="compose-helper">{composeHelper}</p>
       </div>
     </section>

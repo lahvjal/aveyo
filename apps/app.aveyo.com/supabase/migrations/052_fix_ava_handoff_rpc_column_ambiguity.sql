@@ -1,40 +1,4 @@
--- Shared typing transport and atomic handoff claim/resolve transitions.
-
-CREATE TABLE IF NOT EXISTS ava.typing_events (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  conversation_id UUID NOT NULL REFERENCES ava.conversations(id) ON DELETE CASCADE,
-  actor_kind TEXT NOT NULL CHECK (actor_kind IN ('customer', 'representative', 'ava')),
-  actor_auth_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
-  is_typing BOOLEAN NOT NULL,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_ava_typing_events_conversation_created_at
-  ON ava.typing_events (conversation_id, created_at DESC);
-
-REVOKE ALL ON ava.typing_events FROM anon, authenticated;
-GRANT ALL ON ava.typing_events TO service_role;
-
-ALTER TABLE ava.typing_events DISABLE ROW LEVEL SECURITY;
-
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1
-    FROM pg_publication
-    WHERE pubname = 'supabase_realtime'
-  ) THEN
-    IF NOT EXISTS (
-      SELECT 1
-      FROM pg_publication_tables
-      WHERE pubname = 'supabase_realtime'
-        AND schemaname = 'ava'
-        AND tablename = 'typing_events'
-    ) THEN
-      ALTER PUBLICATION supabase_realtime ADD TABLE ava.typing_events;
-    END IF;
-  END IF;
-END $$;
+-- Fix PL/pgSQL output-column name collisions inside Ava handoff RPCs.
 
 CREATE OR REPLACE FUNCTION public.claim_ava_handoff_request(
   p_request_id UUID,

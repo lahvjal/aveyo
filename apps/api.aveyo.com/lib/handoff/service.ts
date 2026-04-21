@@ -1,11 +1,17 @@
 import {
+  acceptHandoffTransfer,
+  cancelHandoffTransfer,
   claimHandoff,
+  declineHandoffTransfer,
   listQueue,
+  requestHandoffTransfer,
   requestHandoff,
   resolveHandoff,
   submitHandoffRating,
   StoreError
 } from "@/lib/store/mock-store";
+import { type AppRole } from "@/lib/auth/types";
+import { listSupportAgentDirectory } from "@/lib/support-agent-directory";
 import { ServiceError } from "@/lib/service-error";
 
 export interface HandoffRequestBody {
@@ -31,6 +37,23 @@ export interface ResolveBody {
 export interface RatingBody {
   conversationId?: string;
   rating?: "thumbs_up" | "thumbs_down";
+}
+
+export interface TransferRequestBody {
+  requestId?: string;
+  targetAgentId?: string;
+  note?: string;
+}
+
+export interface TransferDecisionBody {
+  transferRequestId?: string;
+}
+
+function assertSupportAgentAccess(role: AppRole) {
+  if (role === "support_agent" || role === "super_admin") {
+    return;
+  }
+  throw new ServiceError(403, "Support agent dashboard access required.");
 }
 
 export async function getQueueResult(
@@ -149,6 +172,120 @@ export async function createHandoffRatingResult(body: RatingBody, actorUserId: s
     throw new ServiceError(
       500,
       error instanceof Error ? error.message : "Unable to submit handoff rating."
+    );
+  }
+}
+
+export async function getTransferCandidatesResult(actorUserId: string, actorRole: AppRole) {
+  assertSupportAgentAccess(actorRole);
+
+  try {
+    return {
+      agents: await listSupportAgentDirectory({
+        excludeUserId: actorUserId
+      })
+    };
+  } catch (error) {
+    if (error instanceof ServiceError) {
+      throw error;
+    }
+    throw new ServiceError(
+      500,
+      error instanceof Error ? error.message : "Unable to load transfer candidates."
+    );
+  }
+}
+
+export async function createTransferRequestResult(body: TransferRequestBody, actorUserId: string) {
+  if (!body.requestId || !body.targetAgentId) {
+    throw new ServiceError(400, "requestId and targetAgentId are required.");
+  }
+
+  try {
+    return await requestHandoffTransfer(
+      {
+        requestId: body.requestId,
+        targetAgentId: body.targetAgentId,
+        note: body.note
+      },
+      actorUserId
+    );
+  } catch (error) {
+    if (error instanceof StoreError) {
+      throw new ServiceError(error.status, error.message);
+    }
+    throw new ServiceError(
+      500,
+      error instanceof Error ? error.message : "Unable to request transfer."
+    );
+  }
+}
+
+export async function createTransferAcceptResult(body: TransferDecisionBody, actorUserId: string) {
+  if (!body.transferRequestId) {
+    throw new ServiceError(400, "transferRequestId is required.");
+  }
+
+  try {
+    return await acceptHandoffTransfer(
+      {
+        transferRequestId: body.transferRequestId
+      },
+      actorUserId
+    );
+  } catch (error) {
+    if (error instanceof StoreError) {
+      throw new ServiceError(error.status, error.message);
+    }
+    throw new ServiceError(
+      500,
+      error instanceof Error ? error.message : "Unable to accept transfer."
+    );
+  }
+}
+
+export async function createTransferDeclineResult(body: TransferDecisionBody, actorUserId: string) {
+  if (!body.transferRequestId) {
+    throw new ServiceError(400, "transferRequestId is required.");
+  }
+
+  try {
+    return await declineHandoffTransfer(
+      {
+        transferRequestId: body.transferRequestId
+      },
+      actorUserId
+    );
+  } catch (error) {
+    if (error instanceof StoreError) {
+      throw new ServiceError(error.status, error.message);
+    }
+    throw new ServiceError(
+      500,
+      error instanceof Error ? error.message : "Unable to decline transfer."
+    );
+  }
+}
+
+export async function createTransferCancelResult(body: TransferDecisionBody, actorUserId: string) {
+  if (!body.transferRequestId) {
+    throw new ServiceError(400, "transferRequestId is required.");
+  }
+
+  try {
+    return await cancelHandoffTransfer(
+      {
+        transferRequestId: body.transferRequestId
+      },
+      actorUserId
+    );
+  } catch (error) {
+    if (error instanceof StoreError) {
+      throw new ServiceError(error.status, error.message);
+    }
+    throw new ServiceError(
+      500,
+      error instanceof Error ? error.message : "Unable to cancel transfer."
     );
   }
 }

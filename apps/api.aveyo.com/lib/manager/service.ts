@@ -309,6 +309,30 @@ function parseCustomerName(subject: string | null | undefined, fallback: string)
   return fallback;
 }
 
+function isAgentTransferRequestsUnavailableError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = "code" in error ? (error as { code?: string }).code : undefined;
+  if (code === "42P01") {
+    return true;
+  }
+
+  const message = "message" in error ? (error as { message?: string }).message : undefined;
+  if (typeof message !== "string") {
+    return false;
+  }
+
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("agent_transfer_requests") &&
+    (normalized.includes("schema cache") ||
+      normalized.includes("could not find the table") ||
+      normalized.includes("does not exist"))
+  );
+}
+
 function isEmployeeConversation(
   row: ConversationRow | undefined,
   profileById: Map<string, ProfileRow>
@@ -1604,6 +1628,26 @@ export async function reassignManagerHandoffResult(
     .eq("id", handoffRequest.conversation_id);
   if (updateConversationError) {
     throw new ServiceError(500, `Unable to update handoff conversation assignment: ${updateConversationError.message}`);
+  }
+
+  const { error: transferCancelError } = await supabase
+    .schema("ava")
+    .from("agent_transfer_requests")
+    .update({
+      status: "cancelled",
+      cancelled_at: reassignedAt,
+      updated_at: reassignedAt
+    })
+    .eq("handoff_request_id", handoffRequest.id)
+    .eq("status", "pending");
+
+  if (transferCancelError) {
+    if (!isAgentTransferRequestsUnavailableError(transferCancelError)) {
+      throw new ServiceError(
+        500,
+        `Unable to clear pending transfer requests: ${transferCancelError.message}`
+      );
+    }
   }
 
   const targetProfileMap = await fetchProfilesByIds([targetAgentId]);

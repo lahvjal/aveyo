@@ -56,7 +56,7 @@ export default function Misconceptions({ myths: mythsProp }: { myths?: Misconcep
       >
         <div className="flex flex-col items-center text-center">
           <p
-            className="mb-[-14px] bg-clip-text text-[96px] font-light leading-none text-transparent sm:text-[130px] lg:mb-[-40px] lg:text-[170px]"
+            className="mb-[-14px] bg-clip-text text-[96px] font-light leading-none text-transparent sm:text-[130px] lg:mb-[-40px] lg:text-[270px]"
             style={{ backgroundImage: "linear-gradient(rgb(255, 255, 255) 0%, rgb(153 153 153 / 10%) 70%)" }}
           >
             3

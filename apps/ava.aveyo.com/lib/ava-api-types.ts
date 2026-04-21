@@ -1,3 +1,19 @@
+export interface QueueTransferRequest {
+  id: string;
+  requestedAt: string;
+  note?: string;
+  requestedBy: {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+  };
+  target: {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+  };
+}
+
 export interface QueueRecord {
   requestId: string;
   conversationId: string;
@@ -19,6 +35,7 @@ export interface QueueRecord {
   resolvedAt: string | null;
   resolvedByAuthUserId: string | null;
   customerRating: "thumbs_up" | "thumbs_down" | null;
+  transferRequest?: QueueTransferRequest;
 }
 
 export interface RealtimeEvent {
@@ -69,5 +86,12 @@ export interface ImpersonationCustomer {
   address: string | null;
   projectStatus: string | null;
   projectTitle: string | null;
+}
+
+export interface TransferCandidate {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  status: "online" | "offline";
 }
 

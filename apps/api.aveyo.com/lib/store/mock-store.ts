@@ -53,6 +53,13 @@ export interface QueueRecord {
   resolvedAt: string | null;
   resolvedByAuthUserId: string | null;
   customerRating: HandoffRating | null;
+  transferRequest?: {
+    id: string;
+    requestedAt: string;
+    note?: string;
+    requestedBy: RepresentativeProfile;
+    target: RepresentativeProfile;
+  };
 }
 
 export interface RealtimeEvent {
@@ -178,6 +185,21 @@ interface HandoffEventRow {
   actor_auth_user_id: string | null;
   payload: Record<string, unknown> | null;
   created_at: string;
+}
+
+interface AgentTransferRequestRow {
+  id: string;
+  handoff_request_id: string;
+  conversation_id: string;
+  requested_by_auth_user_id: string;
+  target_auth_user_id: string;
+  status: "pending" | "accepted" | "declined" | "cancelled";
+  note: string | null;
+  requested_at: string;
+  accepted_at: string | null;
+  declined_at: string | null;
+  cancelled_at: string | null;
+  updated_at: string;
 }
 
 interface TypingEventRow {
@@ -309,6 +331,37 @@ function isUniqueViolationError(error: unknown) {
     error !== null &&
     "code" in error &&
     (error as { code?: string }).code === "23505"
+  );
+}
+
+function isAgentTransferRequestsUnavailableError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const code = "code" in error ? (error as { code?: string }).code : undefined;
+  if (code === "42P01") {
+    return true;
+  }
+
+  const message = "message" in error ? (error as { message?: string }).message : undefined;
+  if (typeof message !== "string") {
+    return false;
+  }
+
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes("agent_transfer_requests") &&
+    (normalized.includes("schema cache") ||
+      normalized.includes("could not find the table") ||
+      normalized.includes("does not exist"))
+  );
+}
+
+function createAgentTransferUnavailableError() {
+  return new StoreError(
+    503,
+    "Chat transfer is unavailable until the agent transfer migration is applied."
   );
 }
 
@@ -1624,12 +1677,139 @@ async function getLatestCustomerRatingByRequestIds(
   return ratingByRequestId;
 }
 
+async function getPendingTransferRequestsByHandoffRequestIds(requestIds: string[]) {
+  const uniqueRequestIds = Array.from(new Set(requestIds.filter(Boolean)));
+  if (uniqueRequestIds.length === 0) {
+    return new Map<string, AgentTransferRequestRow>();
+  }
+
+  const supabase = getSupabaseServiceRoleClient();
+  const { data, error } = await supabase
+    .schema("ava")
+    .from("agent_transfer_requests")
+    .select(
+      [
+        "id",
+        "handoff_request_id",
+        "conversation_id",
+        "requested_by_auth_user_id",
+        "target_auth_user_id",
+        "status",
+        "note",
+        "requested_at",
+        "accepted_at",
+        "declined_at",
+        "cancelled_at",
+        "updated_at"
+      ].join(", ")
+    )
+    .in("handoff_request_id", uniqueRequestIds)
+    .eq("status", "pending")
+    .order("requested_at", { ascending: false });
+
+  if (error) {
+    if (isAgentTransferRequestsUnavailableError(error)) {
+      return new Map<string, AgentTransferRequestRow>();
+    }
+    throw new StoreError(500, `Unable to load pending transfer requests: ${error.message}`);
+  }
+
+  const transferByRequestId = new Map<string, AgentTransferRequestRow>();
+  for (const row of (data ?? []) as unknown as AgentTransferRequestRow[]) {
+    if (!row.handoff_request_id || transferByRequestId.has(row.handoff_request_id)) {
+      continue;
+    }
+    transferByRequestId.set(row.handoff_request_id, row);
+  }
+
+  return transferByRequestId;
+}
+
+function toRepresentativeFromMap(
+  userId: string | null | undefined,
+  supportAgentMap: Map<string, RepresentativeProfile>,
+  fallbackName = "Support Agent"
+) {
+  if (!userId) {
+    return undefined;
+  }
+
+  return supportAgentMap.get(userId) ?? { id: userId, name: fallbackName };
+}
+
+function toPendingTransferSummary(
+  transferRequest: AgentTransferRequestRow | undefined,
+  supportAgentMap: Map<string, RepresentativeProfile>
+) {
+  if (!transferRequest) {
+    return undefined;
+  }
+
+  const requestedBy = toRepresentativeFromMap(
+    transferRequest.requested_by_auth_user_id,
+    supportAgentMap
+  );
+  const target = toRepresentativeFromMap(transferRequest.target_auth_user_id, supportAgentMap);
+  if (!requestedBy || !target) {
+    return undefined;
+  }
+
+  return {
+    id: transferRequest.id,
+    requestedAt: transferRequest.requested_at,
+    note: asTrimmedString(transferRequest.note),
+    requestedBy,
+    target
+  };
+}
+
+async function getTransferRequestById(transferRequestId: string) {
+  const supabase = getSupabaseServiceRoleClient();
+  const { data, error } = await supabase
+    .schema("ava")
+    .from("agent_transfer_requests")
+    .select(
+      [
+        "id",
+        "handoff_request_id",
+        "conversation_id",
+        "requested_by_auth_user_id",
+        "target_auth_user_id",
+        "status",
+        "note",
+        "requested_at",
+        "accepted_at",
+        "declined_at",
+        "cancelled_at",
+        "updated_at"
+      ].join(", ")
+    )
+    .eq("id", transferRequestId)
+    .maybeSingle();
+
+  if (error && !isNoRowsError(error)) {
+    if (isAgentTransferRequestsUnavailableError(error)) {
+      throw createAgentTransferUnavailableError();
+    }
+    throw new StoreError(500, `Unable to load transfer request: ${error.message}`);
+  }
+
+  return (data ?? undefined) as AgentTransferRequestRow | undefined;
+}
+
+async function getRepresentativeProfileById(userId: string) {
+  const profileMap = await getSupportAgentMap([userId]);
+  return profileMap.get(userId) ?? { id: userId, name: "Support Agent" };
+}
+
 function toQueueRecordFromRequest(params: {
   request: HandoffRequestRow;
   conversationId: string;
   customerName: string;
   impersonationByName?: string | null;
   representative?: RepresentativeProfile;
+  transferRequest?: AgentTransferRequestRow;
+  supportAgentMap?: Map<string, RepresentativeProfile>;
   pendingPosition?: number;
   resolvedByAuthUserId?: string | null;
   customerRating?: HandoffRating | null;
@@ -1640,6 +1820,8 @@ function toQueueRecordFromRequest(params: {
     customerName,
     impersonationByName,
     representative,
+    transferRequest,
+    supportAgentMap,
     pendingPosition,
     resolvedByAuthUserId,
     customerRating
@@ -1663,7 +1845,11 @@ function toQueueRecordFromRequest(params: {
     claimedByAuthUserId: request.claimed_by_auth_user_id,
     resolvedAt: request.resolved_at,
     resolvedByAuthUserId: resolvedByAuthUserId ?? null,
-    customerRating: customerRating ?? null
+    customerRating: customerRating ?? null,
+    transferRequest: toPendingTransferSummary(
+      transferRequest,
+      supportAgentMap ?? new Map<string, RepresentativeProfile>()
+    )
   };
 }
 
@@ -2219,13 +2405,25 @@ export async function listQueue(
     .map((row) => row.customer_auth_user_id)
     .filter((value): value is string => Boolean(value));
   const requestIds = dedupedQueueRows.map((row) => row.id);
-  const [customerNameMap, profileMap, resolvedByRequestId, customerRatingByRequestId] =
+  const [customerNameMap, resolvedByRequestId, customerRatingByRequestId, pendingTransferByRequestId] =
     await Promise.all([
       getCustomerNameMapByAuthUserId(customerAuthIds),
-      getSupportAgentMap([...representativeIds, ...impersonatorIds]),
       getResolvedActorByRequestIds(requestIds),
-      getLatestCustomerRatingByRequestIds(requestIds)
+      getLatestCustomerRatingByRequestIds(requestIds),
+      getPendingTransferRequestsByHandoffRequestIds(requestIds)
     ]);
+
+  const transferAgentIds = Array.from(
+    pendingTransferByRequestId.values()
+  ).flatMap((transferRequest) => [
+    transferRequest.requested_by_auth_user_id,
+    transferRequest.target_auth_user_id
+  ]);
+  const profileMap = await getSupportAgentMap([
+    ...representativeIds,
+    ...impersonatorIds,
+    ...transferAgentIds
+  ]);
 
   const records = dedupedQueueRows.map((row) => {
     const conversation = conversationById.get(row.conversation_id);
@@ -2253,6 +2451,14 @@ export async function listQueue(
     const resolvedByAuthUserId =
       resolvedByRequestId.get(row.id) ?? row.claimed_by_auth_user_id ?? null;
     const customerRating = customerRatingByRequestId.get(row.id) ?? null;
+    const pendingTransferRequest = pendingTransferByRequestId.get(row.id);
+    const activePendingTransfer =
+      pendingTransferRequest &&
+      row.status !== "pending" &&
+      row.status !== "resolved" &&
+      pendingTransferRequest.requested_by_auth_user_id === row.claimed_by_auth_user_id
+        ? pendingTransferRequest
+        : undefined;
 
     return {
       requestId: row.id,
@@ -2273,7 +2479,8 @@ export async function listQueue(
       claimedByAuthUserId: row.claimed_by_auth_user_id,
       resolvedAt: row.resolved_at,
       resolvedByAuthUserId,
-      customerRating
+      customerRating,
+      transferRequest: toPendingTransferSummary(activePendingTransfer, profileMap)
     };
   });
 
@@ -3274,6 +3481,497 @@ export async function claimHandoff(
   };
 }
 
+export async function requestHandoffTransfer(
+  params: { requestId: string; targetAgentId: string; note?: string },
+  actorUserId: string
+) {
+  const supportAgent = await isAvaSupportAgent(actorUserId);
+  if (!supportAgent) {
+    throw new StoreError(403, "Support-agent role required.");
+  }
+  if (!params.targetAgentId) {
+    throw new StoreError(400, "targetAgentId is required.");
+  }
+  if (params.targetAgentId === actorUserId) {
+    throw new StoreError(400, "Transfer target must be another support agent.");
+  }
+  if (!(await isAvaSupportAgent(params.targetAgentId))) {
+    throw new StoreError(400, "Transfer target must belong to a support agent.");
+  }
+
+  const supabase = getSupabaseServiceRoleClient();
+  const { data: requestData, error: requestError } = await supabase
+    .schema("ava")
+    .from("handoff_requests")
+    .select(
+      "id, conversation_id, status, reason, requested_at, claimed_at, claimed_by_auth_user_id, resolved_at"
+    )
+    .eq("id", params.requestId)
+    .maybeSingle();
+
+  if (requestError) {
+    throw new StoreError(500, `Unable to load handoff request: ${requestError.message}`);
+  }
+
+  const requestRow = requestData as HandoffRequestRow | null;
+  if (!requestRow) {
+    throw new StoreError(404, "Handoff request not found.");
+  }
+  if (requestRow.status === "pending") {
+    throw new StoreError(409, "Claim the handoff before requesting a transfer.");
+  }
+  if (requestRow.status === "resolved" || requestRow.status === "cancelled") {
+    throw new StoreError(409, "This handoff is already closed.");
+  }
+  if (requestRow.claimed_by_auth_user_id !== actorUserId) {
+    throw new StoreError(409, "Only the assigned representative can request a transfer.");
+  }
+
+  const existingPendingTransfer = (await getPendingTransferRequestsByHandoffRequestIds([
+    requestRow.id
+  ])).get(requestRow.id);
+  if (existingPendingTransfer) {
+    if (existingPendingTransfer.requested_by_auth_user_id !== actorUserId) {
+      const staleCancelledAt = nowIso();
+      const { error: staleCancelError } = await supabase
+        .schema("ava")
+        .from("agent_transfer_requests")
+        .update({
+          status: "cancelled",
+          cancelled_at: staleCancelledAt,
+          updated_at: staleCancelledAt
+        })
+        .eq("id", existingPendingTransfer.id)
+        .eq("status", "pending");
+
+      if (staleCancelError) {
+        if (isAgentTransferRequestsUnavailableError(staleCancelError)) {
+          throw createAgentTransferUnavailableError();
+        }
+        throw new StoreError(
+          500,
+          `Unable to clear stale transfer request: ${staleCancelError.message}`
+        );
+      }
+    } else if (
+      existingPendingTransfer.requested_by_auth_user_id === actorUserId &&
+      existingPendingTransfer.target_auth_user_id === params.targetAgentId
+    ) {
+      const [requestedBy, targetAgent] = await Promise.all([
+        getRepresentativeProfileById(actorUserId),
+        getRepresentativeProfileById(params.targetAgentId)
+      ]);
+      return {
+        transferRequestId: existingPendingTransfer.id,
+        requestId: requestRow.id,
+        conversationId: requestRow.conversation_id,
+        requestedAt: existingPendingTransfer.requested_at,
+        note: asTrimmedString(existingPendingTransfer.note),
+        requestedBy,
+        targetAgent
+      };
+    } else {
+      throw new StoreError(409, "A transfer is already pending for this handoff.");
+    }
+  }
+
+  const note = asTrimmedString(params.note);
+  const { data: insertedTransfer, error: insertError } = await supabase
+    .schema("ava")
+    .from("agent_transfer_requests")
+    .insert({
+      handoff_request_id: requestRow.id,
+      conversation_id: requestRow.conversation_id,
+      requested_by_auth_user_id: actorUserId,
+      target_auth_user_id: params.targetAgentId,
+      status: "pending",
+      note: note ?? null,
+      updated_at: nowIso()
+    })
+    .select(
+      [
+        "id",
+        "handoff_request_id",
+        "conversation_id",
+        "requested_by_auth_user_id",
+        "target_auth_user_id",
+        "status",
+        "note",
+        "requested_at",
+        "accepted_at",
+        "declined_at",
+        "cancelled_at",
+        "updated_at"
+      ].join(", ")
+    )
+    .single();
+
+  if (insertError) {
+    if (isAgentTransferRequestsUnavailableError(insertError)) {
+      throw createAgentTransferUnavailableError();
+    }
+    if (isUniqueViolationError(insertError)) {
+      throw new StoreError(409, "A transfer is already pending for this handoff.");
+    }
+    throw new StoreError(500, `Unable to create transfer request: ${insertError.message}`);
+  }
+
+  const insertedTransferRow = insertedTransfer as unknown as AgentTransferRequestRow | null;
+  if (!insertedTransferRow) {
+    throw new StoreError(500, "Unable to create transfer request.");
+  }
+
+  const [requestedBy, targetAgent] = await Promise.all([
+    getRepresentativeProfileById(actorUserId),
+    getRepresentativeProfileById(params.targetAgentId)
+  ]);
+
+  const { error: eventError } = await supabase.schema("ava").from("handoff_events").insert({
+    handoff_request_id: requestRow.id,
+    conversation_id: requestRow.conversation_id,
+    event_type: "queue_update",
+    actor_auth_user_id: actorUserId,
+    payload: {
+      kind: "transfer_requested",
+      transferRequestId: insertedTransferRow.id,
+      requestedByAgentId: actorUserId,
+      targetAgentId: params.targetAgentId,
+      note: note ?? null
+    }
+  });
+
+  if (eventError) {
+    throw new StoreError(500, `Unable to publish transfer request event: ${eventError.message}`);
+  }
+
+  return {
+    transferRequestId: insertedTransferRow.id,
+    requestId: requestRow.id,
+    conversationId: requestRow.conversation_id,
+    requestedAt: insertedTransferRow.requested_at,
+    note,
+    requestedBy,
+    targetAgent
+  };
+}
+
+export async function acceptHandoffTransfer(
+  params: { transferRequestId: string },
+  actorUserId: string
+) {
+  const supportAgent = await isAvaSupportAgent(actorUserId);
+  if (!supportAgent) {
+    throw new StoreError(403, "Support-agent role required.");
+  }
+
+  const transferRequest = await getTransferRequestById(params.transferRequestId);
+  if (!transferRequest) {
+    throw new StoreError(404, "Transfer request not found.");
+  }
+  if (transferRequest.status !== "pending") {
+    throw new StoreError(409, "Transfer request is no longer pending.");
+  }
+  if (transferRequest.target_auth_user_id !== actorUserId) {
+    throw new StoreError(403, "Only the requested representative can accept this transfer.");
+  }
+
+  const supabase = getSupabaseServiceRoleClient();
+  const { data: requestData, error: requestError } = await supabase
+    .schema("ava")
+    .from("handoff_requests")
+    .select(
+      "id, conversation_id, status, reason, requested_at, claimed_at, claimed_by_auth_user_id, resolved_at"
+    )
+    .eq("id", transferRequest.handoff_request_id)
+    .maybeSingle();
+
+  if (requestError) {
+    throw new StoreError(500, `Unable to load handoff request: ${requestError.message}`);
+  }
+
+  const requestRow = requestData as HandoffRequestRow | null;
+  if (!requestRow) {
+    throw new StoreError(404, "Handoff request not found.");
+  }
+  if (
+    requestRow.status === "resolved" ||
+    requestRow.status === "cancelled" ||
+    requestRow.status === "pending" ||
+    requestRow.claimed_by_auth_user_id !== transferRequest.requested_by_auth_user_id
+  ) {
+    throw new StoreError(409, "Transfer request is no longer valid.");
+  }
+
+  const now = nowIso();
+  const { data: acceptedTransfer, error: acceptTransferError } = await supabase
+    .schema("ava")
+    .from("agent_transfer_requests")
+    .update({
+      status: "accepted",
+      accepted_at: now,
+      updated_at: now
+    })
+    .eq("id", transferRequest.id)
+    .eq("status", "pending")
+    .select(
+      [
+        "id",
+        "handoff_request_id",
+        "conversation_id",
+        "requested_by_auth_user_id",
+        "target_auth_user_id",
+        "status",
+        "note",
+        "requested_at",
+        "accepted_at",
+        "declined_at",
+        "cancelled_at",
+        "updated_at"
+      ].join(", ")
+    )
+    .maybeSingle();
+
+  if (acceptTransferError) {
+    if (isAgentTransferRequestsUnavailableError(acceptTransferError)) {
+      throw createAgentTransferUnavailableError();
+    }
+    throw new StoreError(500, `Unable to accept transfer request: ${acceptTransferError.message}`);
+  }
+  if (!acceptedTransfer) {
+    throw new StoreError(409, "Transfer request is no longer pending.");
+  }
+
+  const { data: reassignedRequest, error: requestUpdateError } = await supabase
+    .schema("ava")
+    .from("handoff_requests")
+    .update({
+      status: "active",
+      claimed_by_auth_user_id: actorUserId,
+      claimed_at: now
+    })
+    .eq("id", requestRow.id)
+    .eq("claimed_by_auth_user_id", transferRequest.requested_by_auth_user_id)
+    .in("status", ["claimed", "active"])
+    .select("id")
+    .maybeSingle();
+
+  if (requestUpdateError) {
+    throw new StoreError(500, `Unable to reassign handoff request: ${requestUpdateError.message}`);
+  }
+  if (!reassignedRequest) {
+    throw new StoreError(409, "Transfer request is no longer valid.");
+  }
+
+  const targetAgent = await getRepresentativeProfileById(actorUserId);
+
+  const { error: conversationUpdateError } = await supabase
+    .schema("ava")
+    .from("conversations")
+    .update({
+      status: "active_handoff",
+      handoff_state: "active",
+      active_support_agent_auth_user_id: actorUserId,
+      updated_at: now,
+      last_message_at: now
+    })
+    .eq("id", requestRow.conversation_id);
+
+  if (conversationUpdateError) {
+    throw new StoreError(
+      500,
+      `Unable to update conversation assignment for transfer: ${conversationUpdateError.message}`
+    );
+  }
+
+  const { data: messageRow, error: messageError } = await supabase
+    .schema("ava")
+    .from("messages")
+    .insert({
+      conversation_id: requestRow.conversation_id,
+      sender_kind: "system",
+      sender_auth_user_id: actorUserId,
+      body: `Connected with ${targetAgent.name}!`,
+      payload: {
+        systemEvent: "connected"
+      }
+    })
+    .select("id")
+    .single();
+
+  if (messageError) {
+    throw new StoreError(500, `Unable to create transfer system message: ${messageError.message}`);
+  }
+
+  const { error: eventError } = await supabase.schema("ava").from("handoff_events").insert({
+    handoff_request_id: requestRow.id,
+    conversation_id: requestRow.conversation_id,
+    event_type: "claimed",
+    actor_auth_user_id: actorUserId,
+    payload: {
+      kind: "transfer_accepted",
+      transferRequestId: transferRequest.id,
+      previousAgentId: transferRequest.requested_by_auth_user_id,
+      targetAgentId: actorUserId,
+      representative: {
+        id: targetAgent.id,
+        name: targetAgent.name,
+        avatarUrl: targetAgent.avatarUrl ?? null
+      },
+      systemMessageId: messageRow.id
+    }
+  });
+
+  if (eventError) {
+    throw new StoreError(500, `Unable to publish transfer acceptance event: ${eventError.message}`);
+  }
+
+  return {
+    transferRequestId: transferRequest.id,
+    requestId: requestRow.id,
+    conversationId: requestRow.conversation_id,
+    previousAgentId: transferRequest.requested_by_auth_user_id,
+    targetAgent
+  };
+}
+
+export async function declineHandoffTransfer(
+  params: { transferRequestId: string },
+  actorUserId: string
+) {
+  const supportAgent = await isAvaSupportAgent(actorUserId);
+  if (!supportAgent) {
+    throw new StoreError(403, "Support-agent role required.");
+  }
+
+  const transferRequest = await getTransferRequestById(params.transferRequestId);
+  if (!transferRequest) {
+    throw new StoreError(404, "Transfer request not found.");
+  }
+  if (transferRequest.status !== "pending") {
+    throw new StoreError(409, "Transfer request is no longer pending.");
+  }
+  if (transferRequest.target_auth_user_id !== actorUserId) {
+    throw new StoreError(403, "Only the requested representative can decline this transfer.");
+  }
+
+  const now = nowIso();
+  const supabase = getSupabaseServiceRoleClient();
+  const { data: declinedTransfer, error: declineError } = await supabase
+    .schema("ava")
+    .from("agent_transfer_requests")
+    .update({
+      status: "declined",
+      declined_at: now,
+      updated_at: now
+    })
+    .eq("id", transferRequest.id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+
+  if (declineError) {
+    if (isAgentTransferRequestsUnavailableError(declineError)) {
+      throw createAgentTransferUnavailableError();
+    }
+    throw new StoreError(500, `Unable to decline transfer request: ${declineError.message}`);
+  }
+  if (!declinedTransfer) {
+    throw new StoreError(409, "Transfer request is no longer pending.");
+  }
+
+  const { error: eventError } = await supabase.schema("ava").from("handoff_events").insert({
+    handoff_request_id: transferRequest.handoff_request_id,
+    conversation_id: transferRequest.conversation_id,
+    event_type: "queue_update",
+    actor_auth_user_id: actorUserId,
+    payload: {
+      kind: "transfer_declined",
+      transferRequestId: transferRequest.id,
+      requestedByAgentId: transferRequest.requested_by_auth_user_id,
+      targetAgentId: transferRequest.target_auth_user_id
+    }
+  });
+
+  if (eventError) {
+    throw new StoreError(500, `Unable to publish transfer decline event: ${eventError.message}`);
+  }
+
+  return {
+    transferRequestId: transferRequest.id,
+    requestId: transferRequest.handoff_request_id,
+    conversationId: transferRequest.conversation_id
+  };
+}
+
+export async function cancelHandoffTransfer(
+  params: { transferRequestId: string },
+  actorUserId: string
+) {
+  const supportAgent = await isAvaSupportAgent(actorUserId);
+  if (!supportAgent) {
+    throw new StoreError(403, "Support-agent role required.");
+  }
+
+  const transferRequest = await getTransferRequestById(params.transferRequestId);
+  if (!transferRequest) {
+    throw new StoreError(404, "Transfer request not found.");
+  }
+  if (transferRequest.status !== "pending") {
+    throw new StoreError(409, "Transfer request is no longer pending.");
+  }
+  if (transferRequest.requested_by_auth_user_id !== actorUserId) {
+    throw new StoreError(403, "Only the requesting representative can cancel this transfer.");
+  }
+
+  const now = nowIso();
+  const supabase = getSupabaseServiceRoleClient();
+  const { data: cancelledTransfer, error: cancelError } = await supabase
+    .schema("ava")
+    .from("agent_transfer_requests")
+    .update({
+      status: "cancelled",
+      cancelled_at: now,
+      updated_at: now
+    })
+    .eq("id", transferRequest.id)
+    .eq("status", "pending")
+    .select("id")
+    .maybeSingle();
+
+  if (cancelError) {
+    if (isAgentTransferRequestsUnavailableError(cancelError)) {
+      throw createAgentTransferUnavailableError();
+    }
+    throw new StoreError(500, `Unable to cancel transfer request: ${cancelError.message}`);
+  }
+  if (!cancelledTransfer) {
+    throw new StoreError(409, "Transfer request is no longer pending.");
+  }
+
+  const { error: eventError } = await supabase.schema("ava").from("handoff_events").insert({
+    handoff_request_id: transferRequest.handoff_request_id,
+    conversation_id: transferRequest.conversation_id,
+    event_type: "queue_update",
+    actor_auth_user_id: actorUserId,
+    payload: {
+      kind: "transfer_cancelled",
+      transferRequestId: transferRequest.id,
+      requestedByAgentId: transferRequest.requested_by_auth_user_id,
+      targetAgentId: transferRequest.target_auth_user_id
+    }
+  });
+
+  if (eventError) {
+    throw new StoreError(500, `Unable to publish transfer cancellation event: ${eventError.message}`);
+  }
+
+  return {
+    transferRequestId: transferRequest.id,
+    requestId: transferRequest.handoff_request_id,
+    conversationId: transferRequest.conversation_id
+  };
+}
+
 export async function resolveHandoff(
   params: { conversationId: string; resolutionNote?: string },
   actorUserId: string
@@ -3306,6 +4004,30 @@ export async function resolveHandoff(
         | { request_id: string | null }
         | null;
     if (resolvedRow) {
+      if (resolvedRow.request_id) {
+        const { error: transferCancelError } = await supabase
+          .schema("ava")
+          .from("agent_transfer_requests")
+          .update({
+            status: "cancelled",
+            cancelled_at: nowIso(),
+            updated_at: nowIso()
+          })
+          .eq("handoff_request_id", resolvedRow.request_id)
+          .eq("status", "pending");
+
+        if (transferCancelError) {
+          if (isAgentTransferRequestsUnavailableError(transferCancelError)) {
+            // Older environments can resolve handoffs before the transfer migration is applied.
+          } else {
+            throw new StoreError(
+              500,
+              `Unable to clear pending transfer requests: ${transferCancelError.message}`
+            );
+          }
+        }
+      }
+
       const thread = await getConversation(params.conversationId, actorUserId);
       if (!thread) {
         throw new StoreError(404, "Conversation not found.");
@@ -3387,6 +4109,26 @@ export async function resolveHandoff(
     }
     if (!resolvedRequest) {
       throw new StoreError(409, "Handoff request is already resolved.");
+    }
+
+    const { error: transferCancelError } = await supabase
+      .schema("ava")
+      .from("agent_transfer_requests")
+      .update({
+        status: "cancelled",
+        cancelled_at: now,
+        updated_at: now
+      })
+      .eq("handoff_request_id", latestRequest.id)
+      .eq("status", "pending");
+
+    if (transferCancelError) {
+      if (!isAgentTransferRequestsUnavailableError(transferCancelError)) {
+        throw new StoreError(
+          500,
+          `Unable to clear pending transfer requests: ${transferCancelError.message}`
+        );
+      }
     }
   }
 

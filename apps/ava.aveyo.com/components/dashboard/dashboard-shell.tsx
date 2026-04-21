@@ -121,8 +121,9 @@ export function DashboardShell() {
   const [conversationMap, setConversationMap] = useState<Record<string, ConversationThread>>({});
   const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
   const [conversation, setConversation] = useState<ConversationThread>(seededConversation);
-  const [composeNote, setComposeNote] = useState("");
-  const [sidebarNote, setSidebarNote] = useState("");
+  const [composeMode, setComposeMode] = useState<"reply" | "note">("reply");
+  const [replyDraft, setReplyDraft] = useState("");
+  const [noteDraft, setNoteDraft] = useState("");
   const [historyNotes, setHistoryNotes] = useState<HistoryNote[]>([]);
   const [customerDetails, setCustomerDetails] = useState<CustomerPanelDetails | null>(null);
   const [customerDetailsLoading, setCustomerDetailsLoading] = useState(false);
@@ -176,6 +177,7 @@ export function DashboardShell() {
     (conversation.id !== seededConversation.id ? conversation.id : null);
   const agentInitials = getInitials(authSession.user?.name);
   const agentAvatarUrl = authSession.user?.avatarUrl ?? null;
+  const composeValue = composeMode === "reply" ? replyDraft : noteDraft;
   const shellHintMessage = useMemo(() => {
     if (operationError || hasActiveChat) {
       return null;
@@ -376,9 +378,15 @@ export function DashboardShell() {
       return;
     }
 
-    const hasDraft = Boolean(normalizeDraft(composeNote));
+    const hasDraft = composeMode === "reply" && Boolean(normalizeDraft(replyDraft));
     publishRepresentativeTyping(composerConversationId, hasDraft);
-  }, [authSession.authenticated, composerConversationId, composeNote, publishRepresentativeTyping]);
+  }, [authSession.authenticated, composeMode, composerConversationId, publishRepresentativeTyping, replyDraft]);
+
+  useEffect(() => {
+    setComposeMode("reply");
+    setReplyDraft("");
+    setNoteDraft("");
+  }, [conversation.id]);
 
   const handleRealtimeInvalidation = useCallback(async () => {
     if (realtimeBusyRef.current) {
@@ -534,7 +542,7 @@ export function DashboardShell() {
       return;
     }
 
-    const messageText = normalizeDraft(composeNote);
+    const messageText = normalizeDraft(replyDraft);
     if (!messageText) {
       return;
     }
@@ -550,19 +558,19 @@ export function DashboardShell() {
       });
 
       setConversation((current) => appendTimelineMessage(current, result.message));
-      setComposeNote("");
+      setReplyDraft("");
       setOperationError(null);
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Unable to send message.");
     }
   };
 
-  const addSidebarNote = async () => {
+  const addComposerNote = async () => {
     if (!authSession.authenticated || conversation.id === seededConversation.id) {
       return;
     }
 
-    const noteBody = normalizeDraft(sidebarNote);
+    const noteBody = normalizeDraft(noteDraft);
     if (!noteBody) {
       return;
     }
@@ -570,11 +578,38 @@ export function DashboardShell() {
     try {
       const result = await createSupportNoteApi(conversation.id, { body: noteBody });
       setHistoryNotes((current) => [mapSupportAgentNoteToHistoryNote(result.note), ...current]);
-      setSidebarNote("");
+      setNoteDraft("");
       setOperationError(null);
     } catch (error) {
       setOperationError(error instanceof Error ? error.message : "Unable to save support note.");
     }
+  };
+
+  const handleComposeValueChange = useCallback(
+    (value: string) => {
+      if (composeMode === "reply") {
+        setReplyDraft(value);
+        return;
+      }
+      setNoteDraft(value);
+    },
+    [composeMode]
+  );
+
+  const handleUseAvaSuggestion = useCallback(() => {
+    if (!avaSuggestion.suggestionText) {
+      return;
+    }
+    setComposeMode("reply");
+    setReplyDraft(avaSuggestion.suggestionText);
+  }, [avaSuggestion.suggestionText]);
+
+  const handleSubmitCompose = () => {
+    if (composeMode === "reply") {
+      void sendRepMessage();
+      return;
+    }
+    void addComposerNote();
   };
 
   const signOutAgent = async () => {
@@ -663,21 +698,18 @@ export function DashboardShell() {
             hasPendingChats={hasPendingChats}
             isOnline={isOnline}
             isEmptyState={isChatEmptyState}
-            composeNote={composeNote}
+            composeMode={composeMode}
+            composeValue={composeValue}
             showAvaSuggestion={avaSuggestion.hasPendingCustomerQuestion}
             avaSuggestionText={avaSuggestion.suggestionText}
             avaSuggestionLoading={avaSuggestion.isLoading}
             avaSuggestionError={avaSuggestion.error}
             agentInitials={agentInitials}
             agentAvatarUrl={agentAvatarUrl}
-            onComposeNoteChange={setComposeNote}
-            onSendMessage={sendRepMessage}
-            onUseAvaSuggestion={() => {
-              if (!avaSuggestion.suggestionText) {
-                return;
-              }
-              setComposeNote(avaSuggestion.suggestionText);
-            }}
+            onComposeModeChange={setComposeMode}
+            onComposeValueChange={handleComposeValueChange}
+            onSubmitCompose={handleSubmitCompose}
+            onUseAvaSuggestion={handleUseAvaSuggestion}
             onRefreshAvaSuggestion={avaSuggestion.refreshSuggestion}
           />
 
@@ -685,12 +717,7 @@ export function DashboardShell() {
             activeTicket={activeTicket}
             customerDetails={customerDetails}
             customerDetailsLoading={customerDetailsLoading}
-            sidebarNote={sidebarNote}
             historyNotes={historyNotes}
-            onSidebarNoteChange={setSidebarNote}
-            onAddSidebarNote={() => {
-              void addSidebarNote();
-            }}
           />
         </div>
         </div>

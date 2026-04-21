@@ -156,7 +156,23 @@ export function createTicketFromQueueRecord(
     claimedByAuthUserId: record.claimedByAuthUserId,
     resolvedAt: record.resolvedAt,
     resolvedByAuthUserId: record.resolvedByAuthUserId,
-    customerRating: record.customerRating
+    representative: record.representative
+      ? {
+          id: record.representative.id,
+          name: record.representative.name,
+          avatarUrl: record.representative.avatarUrl
+        }
+      : undefined,
+    customerRating: record.customerRating,
+    transferRequest: record.transferRequest
+      ? {
+          id: record.transferRequest.id,
+          requestedAt: record.transferRequest.requestedAt,
+          note: record.transferRequest.note,
+          requestedBy: record.transferRequest.requestedBy,
+          target: record.transferRequest.target
+        }
+      : undefined
   };
 }
 

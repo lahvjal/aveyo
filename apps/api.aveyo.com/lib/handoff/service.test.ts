@@ -3,9 +3,24 @@ import { ServiceError } from "@/lib/service-error";
 import {
   createHandoffClaimResult,
   createHandoffRatingResult,
+  createTransferAcceptResult,
+  createTransferCancelResult,
+  createTransferDeclineResult,
+  createTransferRequestResult,
+  getTransferCandidatesResult,
   getQueueResult
 } from "@/lib/handoff/service";
-import { claimHandoff, listQueue, StoreError, submitHandoffRating } from "@/lib/store/mock-store";
+import {
+  acceptHandoffTransfer,
+  cancelHandoffTransfer,
+  claimHandoff,
+  declineHandoffTransfer,
+  listQueue,
+  requestHandoffTransfer,
+  StoreError,
+  submitHandoffRating
+} from "@/lib/store/mock-store";
+import { listSupportAgentDirectory } from "@/lib/support-agent-directory";
 
 vi.mock("@/lib/store/mock-store", () => {
   class MockStoreError extends Error {
@@ -22,14 +37,27 @@ vi.mock("@/lib/store/mock-store", () => {
     requestHandoff: vi.fn(),
     claimHandoff: vi.fn(),
     resolveHandoff: vi.fn(),
+    requestHandoffTransfer: vi.fn(),
+    acceptHandoffTransfer: vi.fn(),
+    declineHandoffTransfer: vi.fn(),
+    cancelHandoffTransfer: vi.fn(),
     submitHandoffRating: vi.fn(),
     StoreError: MockStoreError
   };
 });
 
+vi.mock("@/lib/support-agent-directory", () => ({
+  listSupportAgentDirectory: vi.fn()
+}));
+
 const mockedClaimHandoff = vi.mocked(claimHandoff);
 const mockedListQueue = vi.mocked(listQueue);
+const mockedRequestHandoffTransfer = vi.mocked(requestHandoffTransfer);
+const mockedAcceptHandoffTransfer = vi.mocked(acceptHandoffTransfer);
+const mockedDeclineHandoffTransfer = vi.mocked(declineHandoffTransfer);
+const mockedCancelHandoffTransfer = vi.mocked(cancelHandoffTransfer);
 const mockedSubmitHandoffRating = vi.mocked(submitHandoffRating);
+const mockedListSupportAgentDirectory = vi.mocked(listSupportAgentDirectory);
 
 describe("createHandoffClaimResult", () => {
   beforeEach(() => {
@@ -176,6 +204,154 @@ describe("createHandoffRatingResult", () => {
     ).rejects.toMatchObject({
       status: 409,
       message: "No resolved handoff"
+    } as Partial<ServiceError>);
+  });
+});
+
+describe("getTransferCandidatesResult", () => {
+  beforeEach(() => {
+    mockedListSupportAgentDirectory.mockReset();
+  });
+
+  it("returns support agent targets for support users", async () => {
+    mockedListSupportAgentDirectory.mockResolvedValue([
+      {
+        id: "rep-2",
+        name: "Rep Two",
+        avatarUrl: null,
+        status: "online"
+      }
+    ]);
+
+    const result = await getTransferCandidatesResult("rep-1", "support_agent");
+
+    expect(mockedListSupportAgentDirectory).toHaveBeenCalledWith({
+      excludeUserId: "rep-1"
+    });
+    expect(result.agents).toHaveLength(1);
+  });
+
+  it("rejects non-support roles", async () => {
+    await expect(getTransferCandidatesResult("customer-1", "customer")).rejects.toMatchObject({
+      status: 403,
+      message: "Support agent dashboard access required."
+    } as Partial<ServiceError>);
+  });
+});
+
+describe("createTransferRequestResult", () => {
+  beforeEach(() => {
+    mockedRequestHandoffTransfer.mockReset();
+  });
+
+  it("returns 400 when required transfer payload is missing", async () => {
+    await expect(createTransferRequestResult({ requestId: "req-1" }, "rep-1")).rejects.toMatchObject({
+      status: 400,
+      message: "requestId and targetAgentId are required."
+    } as Partial<ServiceError>);
+  });
+
+  it("maps store errors into service errors", async () => {
+    mockedRequestHandoffTransfer.mockRejectedValue(new StoreError(409, "transfer already pending"));
+
+    await expect(
+      createTransferRequestResult(
+        {
+          requestId: "req-1",
+          targetAgentId: "rep-2"
+        },
+        "rep-1"
+      )
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "transfer already pending"
+    } as Partial<ServiceError>);
+  });
+});
+
+describe("createTransferAcceptResult", () => {
+  beforeEach(() => {
+    mockedAcceptHandoffTransfer.mockReset();
+  });
+
+  it("returns 400 when transferRequestId is missing", async () => {
+    await expect(createTransferAcceptResult({}, "rep-2")).rejects.toMatchObject({
+      status: 400,
+      message: "transferRequestId is required."
+    } as Partial<ServiceError>);
+  });
+
+  it("maps store errors into service errors", async () => {
+    mockedAcceptHandoffTransfer.mockRejectedValue(new StoreError(403, "not allowed"));
+
+    await expect(
+      createTransferAcceptResult(
+        {
+          transferRequestId: "transfer-1"
+        },
+        "rep-2"
+      )
+    ).rejects.toMatchObject({
+      status: 403,
+      message: "not allowed"
+    } as Partial<ServiceError>);
+  });
+});
+
+describe("createTransferDeclineResult", () => {
+  beforeEach(() => {
+    mockedDeclineHandoffTransfer.mockReset();
+  });
+
+  it("returns 400 when transferRequestId is missing", async () => {
+    await expect(createTransferDeclineResult({}, "rep-2")).rejects.toMatchObject({
+      status: 400,
+      message: "transferRequestId is required."
+    } as Partial<ServiceError>);
+  });
+
+  it("maps store errors into service errors", async () => {
+    mockedDeclineHandoffTransfer.mockRejectedValue(new StoreError(409, "transfer already closed"));
+
+    await expect(
+      createTransferDeclineResult(
+        {
+          transferRequestId: "transfer-1"
+        },
+        "rep-2"
+      )
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "transfer already closed"
+    } as Partial<ServiceError>);
+  });
+});
+
+describe("createTransferCancelResult", () => {
+  beforeEach(() => {
+    mockedCancelHandoffTransfer.mockReset();
+  });
+
+  it("returns 400 when transferRequestId is missing", async () => {
+    await expect(createTransferCancelResult({}, "rep-1")).rejects.toMatchObject({
+      status: 400,
+      message: "transferRequestId is required."
+    } as Partial<ServiceError>);
+  });
+
+  it("maps store errors into service errors", async () => {
+    mockedCancelHandoffTransfer.mockRejectedValue(new StoreError(409, "transfer already cancelled"));
+
+    await expect(
+      createTransferCancelResult(
+        {
+          transferRequestId: "transfer-1"
+        },
+        "rep-1"
+      )
+    ).rejects.toMatchObject({
+      status: 409,
+      message: "transfer already cancelled"
     } as Partial<ServiceError>);
   });
 });
