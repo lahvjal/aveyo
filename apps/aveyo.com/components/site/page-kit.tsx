@@ -48,11 +48,6 @@ export interface SiteHeroAction {
   target?: string;
 }
 
-export interface SiteStatItem {
-  label: string;
-  value: string;
-}
-
 export function SitePageShell({
   children,
   cta,
@@ -79,7 +74,6 @@ export function SiteHero({
   title,
   description,
   actions = [],
-  stats = [],
   imageSrc,
   imageAlt,
   backgroundSrc,
@@ -92,7 +86,6 @@ export function SiteHero({
   title: ReactNode;
   description: ReactNode;
   actions?: SiteHeroAction[];
-  stats?: SiteStatItem[];
   imageSrc?: string;
   imageAlt?: string;
   backgroundSrc?: string;
@@ -173,25 +166,6 @@ export function SiteHero({
                 >
                   {action.label}
                 </SiteButtonLink>
-              ))}
-            </div>
-          ) : null}
-
-          {stats.length > 0 ? (
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              {stats.map((stat) => (
-                <div
-                  key={`${stat.label}-${stat.value}`}
-                  className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-white/[0.06] p-[var(--site-card-padding-tight)] backdrop-blur-[12px]"
-                >
-                  <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-                  <div className="relative z-[2]">
-                    <p className="text-3xl text-[length:var(--site-h4)] font-bold leading-none">{stat.value}</p>
-                    <p className="mt-2 text-sm text-[length:var(--site-paragraph)] uppercase tracking-[0.2em] text-white/60">
-                      {stat.label}
-                    </p>
-                  </div>
-                </div>
               ))}
             </div>
           ) : null}

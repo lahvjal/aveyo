@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  getAveyoAppUrl,
   getAuthApiBaseUrl,
   getCustomerAppUrl,
   getEmployeeAppUrl
@@ -208,14 +209,7 @@ function readRoleFromSupabaseSession(session) {
   );
 }
 
-function resolveRedirectTarget({ sessionPayload, session, requestedReturnTo }) {
-  if (requestedReturnTo) {
-    return {
-      label: "requested destination",
-      url: requestedReturnTo
-    };
-  }
-
+function resolveRedirectTarget({ sessionPayload, session }) {
   const role = readRoleFromSessionPayload(sessionPayload) || readRoleFromSupabaseSession(session);
   if (role === "customer") {
     return {
@@ -436,6 +430,7 @@ export default function LoginPage() {
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState("info");
 
+  const aveyoAppUrl = useMemo(() => getAveyoAppUrl(), []);
   const panelCopy = useMemo(() => getPanelCopy(loginStep), [loginStep]);
   const callbackCode = callbackRequest.code;
   const callbackTokenHash = callbackRequest.tokenHash;
@@ -535,7 +530,7 @@ export default function LoginPage() {
           if (cancelled) {
             return;
           }
-          const target = resolveRedirectTarget({ sessionPayload, session, requestedReturnTo });
+          const target = resolveRedirectTarget({ sessionPayload, session });
           setStatus(`Session ready. Redirecting to ${target.label}...`);
           window.location.replace(target.url);
           return;
@@ -669,7 +664,7 @@ export default function LoginPage() {
 
       setStatus("Establishing shared cookies...");
       const sessionPayload = await bootstrapPlatformCookieSession(session);
-      const target = resolveRedirectTarget({ sessionPayload, session, requestedReturnTo });
+      const target = resolveRedirectTarget({ sessionPayload, session });
       setStatus(`Session ready. Redirecting to ${target.label}...`);
       window.location.replace(target.url);
     } catch (error) {
@@ -752,7 +747,7 @@ export default function LoginPage() {
       replaceLoginUrl({ requestedReturnTo });
       setStatus("Establishing shared cookies...");
       const sessionPayload = await bootstrapPlatformCookieSession(session);
-      const target = resolveRedirectTarget({ sessionPayload, session, requestedReturnTo });
+      const target = resolveRedirectTarget({ sessionPayload, session });
       setStatus(`Password updated. Redirecting to ${target.label}...`);
       window.location.replace(target.url);
     } catch (error) {
@@ -783,7 +778,9 @@ export default function LoginPage() {
 
   return (
     <main className="login-shell" aria-busy={isBootstrappingSession || isSubmitting}>
-      <img src="/aveyo-logo.svg" alt="Aveyo" className="login-brand" />
+      <a href={aveyoAppUrl} className="login-brand-link" aria-label="Go to Aveyo">
+        <img src="/aveyo-logo.svg" alt="Aveyo" className="login-brand" />
+      </a>
 
       <section className="login-frame">
         <div className="login-visual" aria-hidden="true" />

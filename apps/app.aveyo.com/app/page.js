@@ -1,10 +1,10 @@
 "use client";
 
+import designSystem from "../../aveyo.com/design-system.json";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  getEnvironmentLabel,
   resolveAppUrl,
   resolveEnvironment
 } from "@ava/config/runtime/app-urls";
@@ -17,26 +17,15 @@ import { PlatformSideNav } from "@packages/ui/src/shell/platform-side-nav";
 import { buildAuthLoginUrl } from "../lib/auth/config";
 import { authApiRequest, logoutAuthSession } from "../lib/auth/session";
 import { useAuthSession } from "../lib/auth/use-auth-session";
-import { resolveDashboardModules, summarizeDashboardAccess } from "../lib/dashboard-modules";
+import { summarizeDashboardAccess } from "../lib/dashboard-modules";
 
-const platformOpsCommands = [
-  "npm run supabase:migrations:check-source",
-  "npm run supabase:migrate:ordered",
-  "npm run supabase:seed-and-smoke:nonprod",
-  "npm run supabase:env:check"
-];
+const hardcodedDashboardVideoUrl =
+  "https://vz-bd3d2939-ded.b-cdn.net/903ce2e0-2f9f-4840-9afd-d472b706c34f/play_1080p.mp4";
 
-const announcementItems = [
-  "Quarterly goals sync starts Monday at 10:00 AM.",
-  "Unified side navigation rollout begins after dashboard sign-off.",
-  "Production release window for shared auth updates is Friday."
-];
-
-const upcomingEventItems = [
-  "Design review: Employee app shell - Tomorrow, 2:00 PM",
-  "Operations standup - Wednesday, 9:30 AM",
-  "Cross-team retro - Friday, 4:00 PM"
-];
+const dashboardPageStyleVars = {
+  "--dashboard-card-radius": `${designSystem.tokens.radius.card}px`,
+  "--dashboard-button-radius": `${designSystem.tokens.radius.button}px`
+};
 
 function readRuntimeContext() {
   if (typeof window === "undefined") {
@@ -96,6 +85,24 @@ function toRoleLabel(role, flags = {}) {
     default:
       return "Employee";
   }
+}
+
+function LogoutGlyph() {
+  return (
+    <svg
+      aria-hidden="true"
+      width="11"
+      height="10"
+      viewBox="0 0 10.1995 9.62891"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M6.38086 1H2.5C1.67175 1.00021 1 1.6717 1 2.5V7.12891C1.0002 7.95704 1.67187 8.6287 2.5 8.62891H6.38086V9.62891H2.5C1.11959 9.6287 0.000197847 8.50932 0 7.12891V2.5C1.28841e-07 1.11942 1.11946 0.000206168 2.5 0H6.38086V1ZM6.69238 1.74121C6.86194 1.57199 7.13702 1.57209 7.30664 1.74121L10.0723 4.50684C10.2419 4.67652 10.2419 4.95239 10.0723 5.12207L7.30664 7.88672C7.13695 8.05626 6.86203 8.05633 6.69238 7.88672C6.52279 7.71707 6.52284 7.44214 6.69238 7.27246L8.71582 5.24902H3.11621C2.87647 5.24881 2.68172 5.05422 2.68164 4.81445C2.68164 4.57461 2.87642 4.3801 3.11621 4.37988H8.71582L6.69238 2.35645C6.5227 2.18676 6.5227 1.9109 6.69238 1.74121Z"
+        fill="currentColor"
+      />
+    </svg>
+  );
 }
 
 const appUtilityNavItems = PLATFORM_UTILITY_NAV_ITEMS.map((item) => ({
@@ -169,6 +176,10 @@ export default function HomePage() {
   const [runtime, setRuntime] = useState(readRuntimeContext);
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [onboardingChecked, setOnboardingChecked] = useState(false);
+  const [isVideoMuted, setIsVideoMuted] = useState(true);
+  const [isVideoCursorVisible, setIsVideoCursorVisible] = useState(false);
+  const [videoCursorPosition, setVideoCursorPosition] = useState({ x: 0, y: 0 });
+  const dashboardVideoRef = useRef(null);
 
   useEffect(() => {
     setRuntime(readRuntimeContext());
@@ -235,24 +246,20 @@ export default function HomePage() {
     }
     return resolvePlatformNavHref(orgNavItem, runtime.environment);
   }, [runtime.environment]);
-  const kpiAppUrl = useMemo(() => {
-    const kpiNavItem = PLATFORM_PRIMARY_NAV_ITEMS.find((item) => item.id === "kpi");
-    if (!kpiNavItem) {
+  const orgBaseUrl = useMemo(() => trimTrailingSlash(orgAppUrl), [orgAppUrl]);
+  const paychexUrl = useMemo(() => {
+    const paychexNavItem = PLATFORM_PRIMARY_NAV_ITEMS.find((item) => item.id === "paychex");
+    if (!paychexNavItem) {
       return "";
     }
-    return resolvePlatformNavHref(kpiNavItem, runtime.environment);
+    return resolvePlatformNavHref(paychexNavItem, runtime.environment);
   }, [runtime.environment]);
-  const orgBaseUrl = useMemo(() => trimTrailingSlash(orgAppUrl), [orgAppUrl]);
-  const managerPanelUrl = useMemo(
-    () => (orgBaseUrl ? `${orgBaseUrl}/manager` : ""),
+  const orgProfileUrl = useMemo(
+    () => (orgBaseUrl ? `${orgBaseUrl}/profile` : ""),
     [orgBaseUrl]
   );
-  const adminPanelUrl = useMemo(
-    () => (orgBaseUrl ? `${orgBaseUrl}/admin` : ""),
-    [orgBaseUrl]
-  );
+  const dashboardVideoUrl = hardcodedDashboardVideoUrl;
   const accessSummary = useMemo(() => summarizeDashboardAccess(session.access), [session.access]);
-  const dashboardModules = useMemo(() => resolveDashboardModules(session.access), [session.access]);
   const canAccessManagerPanel = Boolean(
     accessSummary.flags.isManager ||
       accessSummary.flags.isAdmin ||
@@ -270,7 +277,34 @@ export default function HomePage() {
 
   const displayName = session.user?.name ?? session.user?.email ?? "Vel Fuimaono";
   const roleLabel = toRoleLabel(session.role, accessSummary.flags);
+  const departmentLabel = accessSummary.departmentLabel;
   const initials = getInitials(displayName);
+  const quickLinks = useMemo(
+    () => [
+      {
+        id: "org",
+        title: "Org app",
+        description: "Open the org chart workspace and team structure tools.",
+        href: orgAppUrl,
+        newTab: false
+      },
+      {
+        id: "profile",
+        title: "Profile page",
+        description: "Review and update your employee profile details.",
+        href: orgProfileUrl,
+        newTab: false
+      },
+      {
+        id: "paychex",
+        title: "Paychex",
+        description: "Open payroll and benefits in a new browser tab.",
+        href: paychexUrl,
+        newTab: true
+      }
+    ],
+    [orgAppUrl, orgProfileUrl, paychexUrl]
+  );
 
   async function handleSignOut() {
     if (isSigningOut) {
@@ -285,125 +319,32 @@ export default function HomePage() {
     }
   }
 
+  function handleDashboardVideoPointerMove(event) {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    setVideoCursorPosition({
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top
+    });
+  }
+
+  function handleDashboardVideoToggle() {
+    setIsVideoMuted((current) => {
+      const nextMuted = !current;
+      const video = dashboardVideoRef.current;
+      if (video) {
+        video.muted = nextMuted;
+        void video.play().catch(() => null);
+      }
+      return nextMuted;
+    });
+  }
+
   if (session.loading || !session.authenticated || !onboardingChecked) {
     return <main className="loading-shell">Checking shared session...</main>;
   }
 
-  function renderModuleContent(moduleId) {
-    switch (moduleId) {
-      case "org_chart":
-        return (
-          <>
-            {orgAppUrl ? (
-              <a href={orgAppUrl} className="inline-link">
-                Open org chart app
-              </a>
-            ) : (
-              <p>Org chart app link will appear for this environment.</p>
-            )}
-            <p>Environment: {getEnvironmentLabel(runtime.environment)}</p>
-            <p>Host: {runtime.hostname}</p>
-          </>
-        );
-      case "platform_operations":
-        return (
-          <ul className="ops-list">
-            {platformOpsCommands.map((command) => (
-              <li key={command}>
-                <code>{command}</code>
-              </li>
-            ))}
-          </ul>
-        );
-      case "department_scope":
-        return (
-          <>
-            <p>Department: {accessSummary.departmentLabel}</p>
-            <p>Scope path: {accessSummary.departmentPathLabel}</p>
-            <p>Sub-departments in scope: {accessSummary.subDepartmentCount}</p>
-          </>
-        );
-      case "sub_department_scope":
-        return (
-          <ul className="simple-list">
-            {accessSummary.subDepartmentNames.slice(0, 6).map((name) => (
-              <li key={name}>{name}</li>
-            ))}
-            {accessSummary.subDepartmentCount > 6 ? (
-              <li>+{accessSummary.subDepartmentCount - 6} more</li>
-            ) : null}
-          </ul>
-        );
-      case "manager_workspace":
-        return (
-          <>
-            {managerPanelUrl ? (
-              <a href={managerPanelUrl} className="inline-link">
-                Open manager panel
-              </a>
-            ) : (
-              <p>Manager panel link will appear for this environment.</p>
-            )}
-            <p>Team staffing updates and direct-report operations.</p>
-          </>
-        );
-      case "admin_workspace":
-        return (
-          <>
-            {adminPanelUrl ? (
-              <a href={adminPanelUrl} className="inline-link">
-                Open admin panel
-              </a>
-            ) : (
-              <p>Admin panel link will appear for this environment.</p>
-            )}
-            <p>Manage users, departments, and org-level permissions.</p>
-          </>
-        );
-      case "executive_workspace":
-        return (
-          <>
-            {kpiAppUrl ? (
-              <a href={kpiAppUrl} className="inline-link">
-                Open KPI dashboard
-              </a>
-            ) : (
-              <p>KPI app link will appear for this environment.</p>
-            )}
-            <p>Review cross-org performance trends and strategic KPIs.</p>
-          </>
-        );
-      case "super_admin_workspace":
-        return (
-          <>
-            <p>Environment controls and release readiness checks.</p>
-            <p>Global role governance and platform guardrails.</p>
-            <p>Current environment: {getEnvironmentLabel(runtime.environment)}</p>
-          </>
-        );
-      case "announcements":
-        return (
-          <ul className="simple-list">
-            {announcementItems.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        );
-      case "upcoming_events":
-        return (
-          <ul className="simple-list">
-            {upcomingEventItems.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        );
-      default:
-        return <p>No module content available.</p>;
-    }
-  }
-
   return (
-    <main className="app-shell">
+    <main className="app-shell dashboard-home" style={dashboardPageStyleVars}>
       <AppPlatformSideNav
         displayName={displayName}
         roleLabel={roleLabel}
@@ -422,32 +363,105 @@ export default function HomePage() {
 
       <section className="workspace">
         <header className="workspace-header">
-          <div className="header-copy">
-            <p>Good Afternoon</p>
-            <h1>{displayName}</h1>
-            <p>Scope: {accessSummary.departmentPathLabel}</p>
+          <div className="workspace-header-primary">
+            <p className="workspace-header-greeting">Good Afternoon</p>
+            <div className="workspace-header-identity">
+              <h1 className="workspace-header-name">{displayName}</h1>
+              {departmentLabel ? (
+                <span className="workspace-header-department">{departmentLabel}</span>
+              ) : null}
+            </div>
           </div>
-          <div className="header-meta">
-            <span>{roleLabel}</span>
-            <button type="button" onClick={handleSignOut} disabled={isSigningOut}>
-              {isSigningOut ? "Signing out..." : "Sign out"}
+          <div className="workspace-header-actions">
+            <span className="workspace-role-label">{roleLabel}</span>
+            <button
+              type="button"
+              className="workspace-logout-button"
+              onClick={handleSignOut}
+              disabled={isSigningOut}
+            >
+              <span>{isSigningOut ? "Logging out..." : "Logout"}</span>
+              <LogoutGlyph />
             </button>
           </div>
         </header>
 
-        <section className="workspace-grid">
-          {dashboardModules.map((module) => (
-            <article key={module.id} className="workspace-card">
-              <h2 className={module.id === "announcements" ? "with-alert-dot" : undefined}>
-                {module.id === "announcements" ? <span /> : null}
-                {module.title}
-              </h2>
-              <div className="workspace-content">
-                <p>{module.description}</p>
-                {renderModuleContent(module.id)}
-              </div>
-            </article>
-          ))}
+        <section className="dashboard-video-card">
+          {dashboardVideoUrl ? (
+            <button
+              type="button"
+              className="dashboard-video-toggle"
+              onClick={handleDashboardVideoToggle}
+              onPointerEnter={() => setIsVideoCursorVisible(true)}
+              onPointerMove={handleDashboardVideoPointerMove}
+              onPointerLeave={() => setIsVideoCursorVisible(false)}
+              aria-label={isVideoMuted ? "Unmute dashboard video" : "Mute dashboard video"}
+            >
+              <video
+                ref={dashboardVideoRef}
+                className="dashboard-video"
+                src={dashboardVideoUrl}
+                autoPlay
+                muted={isVideoMuted}
+                loop
+                playsInline
+                preload="metadata"
+              />
+              <span
+                className={`dashboard-video-cursor${isVideoCursorVisible ? " is-visible" : ""}`}
+                style={{
+                  left: `${videoCursorPosition.x}px`,
+                  top: `${videoCursorPosition.y}px`
+                }}
+                aria-hidden="true"
+              >
+                {isVideoMuted ? "Unmute" : "Mute"}
+              </span>
+              <span className="dashboard-video-hint" aria-hidden="true">
+                Click anywhere to {isVideoMuted ? "turn sound on" : "mute"}
+              </span>
+            </button>
+          ) : (
+            <div className="dashboard-video-empty">
+              <p className="dashboard-video-empty-kicker">External video ready</p>
+              <h2>Paste your Bunny.net video URL into `hardcodedDashboardVideoUrl`.</h2>
+              <p>The dashboard video area is prepared for a CDN-hosted MP4 and will render once that hardcoded URL is in place.</p>
+            </div>
+          )}
+        </section>
+
+        <section className="dashboard-quick-links" aria-label="Quick links">
+          {quickLinks.map((link) =>
+            link.href.startsWith("http://") || link.href.startsWith("https://") ? (
+              <a
+                key={link.id}
+                href={link.href}
+                target={link.newTab ? "_blank" : undefined}
+                rel={link.newTab ? "noreferrer" : undefined}
+                className="dashboard-quick-link"
+              >
+                <span className="dashboard-quick-link-kicker">Quick link</span>
+                <div className="dashboard-quick-link-copy">
+                  <h2>{link.title}</h2>
+                  <p>{link.description}</p>
+                </div>
+                <span className="dashboard-quick-link-arrow" aria-hidden="true">
+                  {link.newTab ? "↗" : "→"}
+                </span>
+              </a>
+            ) : (
+              <Link key={link.id} href={link.href} className="dashboard-quick-link">
+                <span className="dashboard-quick-link-kicker">Quick link</span>
+                <div className="dashboard-quick-link-copy">
+                  <h2>{link.title}</h2>
+                  <p>{link.description}</p>
+                </div>
+                <span className="dashboard-quick-link-arrow" aria-hidden="true">
+                  →
+                </span>
+              </Link>
+            )
+          )}
         </section>
       </section>
     </main>

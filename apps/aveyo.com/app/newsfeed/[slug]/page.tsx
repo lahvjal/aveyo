@@ -60,11 +60,6 @@ export default async function NewsArticlePage({
           { href: "/newsfeed", label: "Back To Newsfeed", variant: "light" },
           { href: "/contact#sales-form", label: "Talk To Sales", variant: "outline" }
         ]}
-        stats={[
-          { value: formatNewsDate(post.publishedAt), label: "Published" },
-          { value: post.category, label: "Category" },
-          { value: "Aveyo", label: "Publisher" }
-        ]}
         visual={
           post.heroImageUrl ? (
             <div className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-white/[0.06] shadow-[0_28px_80px_rgba(0,0,0,0.24)]">

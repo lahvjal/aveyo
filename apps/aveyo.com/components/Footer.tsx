@@ -272,7 +272,7 @@ export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: 
               />
             </div>
 
-            <div className="inset-x-0 bottom-0 h-[920px] sm:h-[1080px] xl:h-[var(--footer-image-height)]">
+            <div className="absolute inset-x-0 bottom-0 h-[920px] w-full sm:h-[1080px] xl:h-[var(--footer-image-height)]">
               <Image
                 src={image ?? footerTokens.assets.houseImage}
                 alt=""

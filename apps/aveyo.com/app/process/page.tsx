@@ -137,11 +137,6 @@ export default function ProcessPage() {
           { href: "/contact#sales-form", label: "Talk To Sales", variant: "light" },
           { href: getCustomerPortalUrl(), label: "Portal Login", variant: "outline" }
         ]}
-        stats={[
-          { value: "04", label: "Portal Stages" },
-          { value: "1-2", label: "Typical Install Days" },
-          { value: "Always", label: "Transparent Communication" }
-        ]}
         backgroundSrc="/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT5.jpg"
         backgroundAlt="Residential rooftop with large solar panel array at dusk, warm interior lights visible through windows"
       />

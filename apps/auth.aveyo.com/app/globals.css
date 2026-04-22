@@ -47,6 +47,11 @@ body {
   height: auto;
 }
 
+.login-brand-link {
+  display: block;
+  line-height: 0;
+}
+
 .login-frame {
   width: min(1026px, 100%);
   min-height: 700px;

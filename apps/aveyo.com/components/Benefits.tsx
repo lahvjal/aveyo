@@ -41,11 +41,12 @@ const benefitSlides: BenefitSlideCardData[] = [
       "Installing solar panels can significantly enhance your property's value, making it more attractive to potential buyers.",
     image: "/images/8e4311cef2aa5e0e923e53d10a172ca3e5cd3989.png",
     alt: "Close view of rooftop solar panels on a home",
+    hasDarkOverlay: true,
   },
 ];
 
 const extendedBenefitSlides = [...benefitSlides, ...benefitSlides, ...benefitSlides];
-const INITIAL_CENTER_SLIDE = 2;
+const INITIAL_CENTER_SLIDE = 1;
 const SAVINGS_VIDEO_SRC = "/images/web_photos/benefits.mp4";
 const SAVINGS_VIDEO_LAST_FRAME_EPSILON = 0.05;
 const SAVINGS_COUNTER_START = 150;

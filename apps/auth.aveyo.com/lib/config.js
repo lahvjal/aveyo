@@ -84,7 +84,7 @@ export function getEmployeeAppUrl() {
   }
 
   const environment = resolveRuntimeEnvironment();
-  return environment === "local" ? getLocalAppUrl("dashboard") : resolveAppUrl("app", environment);
+  return environment === "local" ? getLocalAppUrl("app") : resolveAppUrl("app", environment);
 }
 
 export function getCustomerAppUrl() {
@@ -97,6 +97,18 @@ export function getCustomerAppUrl() {
   return environment === "local"
     ? getLocalAppUrl("customer")
     : resolveAppUrl("customer", environment);
+}
+
+export function getAveyoAppUrl() {
+  const configured = resolveNetworkAwareConfiguredUrl(
+    process.env.NEXT_PUBLIC_AVEYO_APP_URL || process.env.NEXT_PUBLIC_AUTH_AVEYO_APP_URL
+  );
+  if (configured) {
+    return configured;
+  }
+
+  const environment = resolveRuntimeEnvironment();
+  return environment === "local" ? getLocalAppUrl("aveyo") : resolveAppUrl("aveyo", environment);
 }
 
 export function getAuthApiBaseUrl() {

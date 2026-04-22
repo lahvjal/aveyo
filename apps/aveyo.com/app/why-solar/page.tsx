@@ -74,7 +74,7 @@ export default function WhySolarPage() {
           { href: "/process", label: "How It Works", variant: "outline" }
         ]}
         spotlight="radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 45%)"
-        backgroundSrc="/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior.jpg"
+        backgroundSrc="/images/web_photos/whysolarHero.jpg"
         backgroundAlt="Modern home with dark solar panels on roof, golden hour, lush landscaping"
       />
 
@@ -120,7 +120,10 @@ export default function WhySolarPage() {
                 src: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone.jpg",
                 alt: "Aerial view of suburban home with solar panels on roof, bright sunny day"
               },
-              { alt: "Family in bright modern kitchen, morning light, casual and relaxed" }
+              { 
+                src: "/images/web_photos/whysolarImage.jpg",
+                alt: "Family in bright modern kitchen, morning light, casual and relaxed" 
+              }
             ]}
           />
         }

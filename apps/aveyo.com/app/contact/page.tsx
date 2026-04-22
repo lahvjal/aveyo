@@ -67,11 +67,6 @@ export default function ContactPage() {
           { href: "#sales-form", label: "Talk To Sales", variant: "light" },
           { href: AVEYO_CUSTOMER_CARE_PHONE_HREF, label: "Call Customer Care", variant: "outline" }
         ]}
-        stats={[
-          { value: AVEYO_SALES_PHONE, label: "Sales" },
-          { value: AVEYO_CUSTOMER_CARE_PHONE, label: "Customer Care" },
-          { value: AVEYO_INFO_EMAIL, label: "Email" }
-        ]}
         backgroundSrc="/images/web_photos/Contact_01_Office-Location-Utah-Mountains.jpg"
         backgroundAlt="Aveyo office building with Wasatch mountains in background, clear day"
       />

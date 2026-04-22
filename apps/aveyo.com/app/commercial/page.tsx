@@ -125,11 +125,6 @@ export default function CommercialPage() {
           { href: "/contact#sales-form", label: "Request Evaluation", variant: "light" },
           { href: "/process", label: "Learn How It Works", variant: "outline" }
         ]}
-        stats={[
-          { value: "60%-90%", label: "Potential Utility Savings" },
-          { value: "5", label: "Project Stages" },
-          { value: "6", label: "Flexible Funding Paths" }
-        ]}
         backgroundSrc="/images/web_photos/Commercial_02_Ground-Mounted-Array.jpg"
         backgroundAlt="Large commercial ground-mounted solar array on gravel with clear blue sky"
       />
@@ -154,8 +149,7 @@ export default function CommercialPage() {
 
       <SiteImageBreak
         images={[
-          { src: "/images/web_photos/Commercial_02_Ground-Mounted-Array_ALT.jpg", alt: "Ground-mounted solar array on open grassland, afternoon light, dramatic sky" },
-          { alt: "Modern solar carport covering commercial parking lot, sleek steel structure, cars parked underneath" }
+          { src: "/images/web_photos/Commercial_02_Ground-Mounted-Array_ALT.jpg", alt: "Ground-mounted solar array on open grassland, afternoon light, dramatic sky" }
         ]}
       />
 
@@ -185,7 +179,7 @@ export default function CommercialPage() {
         </div>
       </SiteSection>
 
-      <SiteSplitSection
+      {/* <SiteSplitSection
         eyebrow="System Types"
         title={
           <>
@@ -231,9 +225,9 @@ export default function CommercialPage() {
             </p>
           </>
         }
-      />
+      /> */}
 
-      <SiteSection
+      {/* <SiteSection
         eyebrow="Our Work"
         title="Installed In Partnership With Sola United"
         description="A strong commercial install depends on real coordination across design, permitting, build quality, and long-term support."
@@ -252,9 +246,9 @@ export default function CommercialPage() {
             imageAlt="Completed commercial rooftop solar installation on church building"
           />
         </SiteCardGrid>
-      </SiteSection>
+      </SiteSection> */}
 
-      <SiteSection
+      {/* <SiteSection
         eyebrow="Financing"
         title="Flexible Financing & Incentives"
         description="Commercial solar should match the way your business evaluates capital, tax strategy, and long-term energy spend."
@@ -271,9 +265,9 @@ export default function CommercialPage() {
             </div>
           ))}
         </div>
-      </SiteSection>
+      </SiteSection> */}
 
-      <SiteSection
+      {/* <SiteSection
         eyebrow="Project Fit"
         title="Example Commercial Use Cases"
         description="Different facilities need different solar strategies. These sample use cases show the types of projects we can evaluate."
@@ -329,7 +323,7 @@ export default function CommercialPage() {
         tone="navy"
       >
         <SiteFaq items={faqItems} tone="navy" />
-      </SiteSection>
+      </SiteSection> */}
     </SitePageShell>
   );
 }

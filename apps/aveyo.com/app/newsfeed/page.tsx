@@ -64,11 +64,6 @@ export default async function NewsfeedPage({
           { href: "/contact#sales-form", label: "Talk To Sales", variant: "light" },
           { href: "/about", label: "About Aveyo", variant: "outline" }
         ]}
-        stats={[
-          { value: String(result.total), label: "Published Posts" },
-          { value: String(result.categories.length), label: "Categories" },
-          { value: String(page), label: "Current Page" }
-        ]}
         backgroundSrc="/images/web_photos/Newsfeed_03_CEO-Lobby-Backdrop_ALT.jpg"
         backgroundAlt="Aveyo office lobby with illuminated brand logo, Barcelona chairs, and glass walls"
       />

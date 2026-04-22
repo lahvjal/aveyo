@@ -70,12 +70,7 @@ export default function AboutPage() {
           { href: "/why-solar", label: "Why Solar", variant: "light" },
           { href: "/process", label: "See Our Process", variant: "outline" }
         ]}
-        stats={[
-          { value: "2023", label: "Established" },
-          { value: "8", label: "Integrated Functions" },
-          { value: "1", label: "Customer-First Mission" }
-        ]}
-        backgroundSrc="/images/web_photos/About_01_Team-Company-Culture.jpg"
+        backgroundSrc="/images/web_photos/aveyobuilding.jpg"
         backgroundAlt="Aveyo team members standing together outdoors, blue sky, natural light"
       />
 
@@ -109,7 +104,7 @@ export default function AboutPage() {
         ]}
       />
 
-      <SiteSplitSection
+      {/* <SiteSplitSection
         eyebrow="Industry-Leading Partnerships"
         title={
           <>
@@ -151,9 +146,9 @@ export default function AboutPage() {
             </SiteCardGrid>
           </div>
         }
-      />
+      /> */}
 
-      <SiteSection
+      {/* <SiteSection
         eyebrow="Vertically Integrated"
         title={
           <>
@@ -183,7 +178,7 @@ export default function AboutPage() {
             keeps projects moving with more efficiency, accountability, and quality at every stage.
           </p>
         </div>
-      </SiteSection>
+      </SiteSection> */}
     </SitePageShell>
   );
 }

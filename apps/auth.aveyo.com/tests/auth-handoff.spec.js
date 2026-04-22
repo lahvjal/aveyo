@@ -31,7 +31,7 @@ async function completePasswordLogin(page, returnTo, options = {}) {
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
-test("employee password login hands off to the requested localhost origin", async ({ page }) => {
+test("employee password login ignores requested returnTo and lands in the employee app", async ({ page }) => {
   test.skip(!hasEmployeeCredentials(), "requires E2E_AUTH_EMAIL and E2E_AUTH_PASSWORD");
 
   const sessionRead = page.waitForResponse(
@@ -43,15 +43,15 @@ test("employee password login hands off to the requested localhost origin", asyn
   );
 
   await completePasswordLogin(page, localhostMarketingUrl, { logout: true });
-  await page.waitForURL((url) => url.toString().startsWith(localhostMarketingUrl), {
+  await page.waitForURL((url) => url.toString().startsWith(defaultEmployeeUrl), {
     timeout: 45_000
   });
   await sessionRead;
 
-  expect(page.url().startsWith(localhostMarketingUrl)).toBe(true);
+  expect(page.url().startsWith(defaultEmployeeUrl)).toBe(true);
 });
 
-test("direct navigation into a protected app route reaches hosted login first", async ({ page }) => {
+test("direct navigation into a protected app route reaches hosted login first, then lands in the employee app", async ({ page }) => {
   test.skip(!hasEmployeeCredentials(), "requires E2E_AUTH_EMAIL and E2E_AUTH_PASSWORD");
 
   await page.context().clearCookies();
@@ -65,11 +65,11 @@ test("direct navigation into a protected app route reaches hosted login first", 
   await page.getByRole("button", { name: "Continue" }).click();
   await page.getByPlaceholder("••••••••••••••").fill(employeePassword);
   await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL((url) => url.toString().startsWith(protectedAppUrl), {
+  await page.waitForURL((url) => url.toString().startsWith(defaultEmployeeUrl), {
     timeout: 45_000
   });
 
-  expect(page.url().startsWith(protectedAppUrl)).toBe(true);
+  expect(page.url().startsWith(defaultEmployeeUrl)).toBe(true);
 });
 
 test("untrusted returnTo falls back to the default employee destination", async ({ page }) => {
