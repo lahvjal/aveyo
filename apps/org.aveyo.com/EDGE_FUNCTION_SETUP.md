@@ -15,7 +15,7 @@ Set these as Supabase Edge Function secrets:
 ```bash
 supabase secrets set RESEND_API_KEY=...
 supabase secrets set FROM_EMAIL=noreply@send.yourdomain.com
-supabase secrets set APP_URL=https://orgchart.aveyo.com
+supabase secrets set APP_URL=https://org.aveyo.com
 ```
 
 Do not store these values in `VITE_` variables.

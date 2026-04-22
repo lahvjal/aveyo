@@ -9,7 +9,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Client for browser/client-side — uses shared .aveyo.com cookie so session
-// is readable by both kpi.aveyo.com and orgchart.aveyo.com
+// is readable by both kpi.aveyo.com and org.aveyo.com
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: supabaseCookieStorage,

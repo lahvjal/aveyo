@@ -127,7 +127,7 @@ Employee receives email → Clicks link → Auto-login → Dashboard
 ```bash
 supabase secrets set RESEND_API_KEY=...
 supabase secrets set FROM_EMAIL=noreply@send.yourdomain.com
-supabase secrets set APP_URL=https://orgchart.aveyo.com
+supabase secrets set APP_URL=https://org.aveyo.com
 ```
 
 Do not commit secret values to the repository.

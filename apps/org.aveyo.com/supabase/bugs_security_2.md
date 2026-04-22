@@ -157,8 +157,8 @@
 - **Where:** Invite email — "Access my account" link and fallback URL
 - **Original issue:** Link points directly to `semzdcsumfnmjnhzhtst.supabase.co/auth/v1/verify?token=...`
 - **Retest note (2026-02-19):** No new invite email was available to test. This finding remains open until a new invite email can be inspected.
-- **Suggested fix:** Route invite links through your own domain (e.g., `orgchart.aveyo.com/api/auth/verify?token=...`).
-- **Acceptance check:** Invite email links use an orgchart.aveyo.com domain, not supabase.co.
+- **Suggested fix:** Route invite links through your own domain (e.g., `org.aveyo.com/api/auth/verify?token=...`).
+- **Acceptance check:** Invite email links use an org.aveyo.com domain, not supabase.co.
 
 ---
 
@@ -170,7 +170,7 @@
 - **Where:** Invite email — header logo image
 - **Original issue:** Logo uses `data:image/svg+xml;base64,...` URI (blocked by Gmail), SVG format (unsupported in most email clients), and CSS `filter: brightness(0) invert(1)` (unsupported in email). Three compounding failures.
 - **Retest note (2026-02-19):** No new invite email was available to test. This finding remains open until a new invite email can be inspected.
-- **Suggested fix:** Replace with a hosted PNG at an Aveyo domain (e.g., `https://orgchart.aveyo.com/images/logo-white.png`). Use a pre-rendered white version — no CSS filters.
+- **Suggested fix:** Replace with a hosted PNG at an Aveyo domain (e.g., `https://org.aveyo.com/images/logo-white.png`). Use a pre-rendered white version — no CSS filters.
 - **Acceptance check:** Aveyo logo renders in Gmail, Outlook, and Apple Mail. No CSS filters or data URIs.
 
 ---
@@ -207,7 +207,7 @@
 
 - **Type:** Security
 - **Severity:** ~~High~~ → Medium (CSP now set, but some headers still need verification)
-- **Where:** All HTTP responses from orgchart.aveyo.com
+- **Where:** All HTTP responses from org.aveyo.com
 - **Original issue:** Missing Content-Security-Policy, X-Frame-Options, X-Content-Type-Options, Referrer-Policy, Permissions-Policy. Only HSTS was set.
 - **Retest result (2026-02-19):** Confirmed via CSP violation event listener that a **comprehensive Content-Security-Policy is now active**:
   ```
@@ -217,7 +217,7 @@
   font-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self';
   ```
   This is a strong CSP. `frame-src 'none'` blocks embedding child iframes, and `object-src 'none'` prevents Flash/plugin-based attacks. The site is served via **Cloudflare** (confirmed via Server-Timing headers: `cfCacheStatus`, `cfEdge`, `cfOrigin`).
-- **Still needs verification:** X-Frame-Options (iframe embedding test from same-origin succeeded, suggesting the header may not be set — though `frame-ancestors` could be added to CSP as a more modern alternative), X-Content-Type-Options, Referrer-Policy, Permissions-Policy. These can't be read from JavaScript but can be checked via `curl -I https://orgchart.aveyo.com` or Cloudflare dashboard.
+- **Still needs verification:** X-Frame-Options (iframe embedding test from same-origin succeeded, suggesting the header may not be set — though `frame-ancestors` could be added to CSP as a more modern alternative), X-Content-Type-Options, Referrer-Policy, Permissions-Policy. These can't be read from JavaScript but can be checked via `curl -I https://org.aveyo.com` or Cloudflare dashboard.
 - **CSP note:** The Cloudflare beacon script (`static.cloudflareinsights.com/beacon.min.js`) loaded despite `script-src 'self'`. This is expected — Cloudflare injects it at the edge layer. It's not a CSP bypass.
 - **Suggested remaining fix:** Add `frame-ancestors 'self'` to CSP (or set `X-Frame-Options: SAMEORIGIN` via Cloudflare). Verify X-Content-Type-Options and Referrer-Policy are set in the Cloudflare dashboard.
 
@@ -299,7 +299,7 @@
 - ~~Responsive dashboard layout~~ → DONE
 - ~~Improve sidebar list truncation~~ → DONE
 - **Link search to canvas behavior**: Still needed — search should pan/zoom/highlight the matched employee on the canvas (Finding 6).
-- **Brand the invite email links**: Still needed — route auth links through orgchart.aveyo.com (Finding 12).
+- **Brand the invite email links**: Still needed — route auth links through org.aveyo.com (Finding 12).
 
 ### Bigger Bets (Unchanged)
 

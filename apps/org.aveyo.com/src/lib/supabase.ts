@@ -8,7 +8,7 @@ const supabaseAnonKey =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
 
 // Uses shared .aveyo.com cookie so session is readable by both
-// orgchart.aveyo.com and kpi.aveyo.com simultaneously
+// org.aveyo.com and kpi.aveyo.com simultaneously
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
     storage: supabaseCookieStorage,

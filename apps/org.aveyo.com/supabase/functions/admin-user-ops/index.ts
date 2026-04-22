@@ -67,7 +67,7 @@ function normalizedEmail(raw: unknown): string | null {
 }
 
 function sanitizeRedirectTo(raw: unknown, fallbackPath: string): string {
-  const appUrl = (Deno.env.get('APP_URL') || 'https://orgchart.aveyo.com').replace(/\/+$/, '')
+  const appUrl = (Deno.env.get('APP_URL') || 'https://org.aveyo.com').replace(/\/+$/, '')
   const fallback = `${appUrl}${fallbackPath}`
 
   if (typeof raw !== 'string' || !raw.trim()) {

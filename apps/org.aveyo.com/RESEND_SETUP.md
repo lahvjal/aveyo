@@ -11,7 +11,7 @@ Set these values in Supabase:
 ```bash
 supabase secrets set RESEND_API_KEY=...
 supabase secrets set FROM_EMAIL=noreply@send.yourdomain.com
-supabase secrets set APP_URL=https://orgchart.aveyo.com
+supabase secrets set APP_URL=https://org.aveyo.com
 ```
 
 Do not set Resend keys in `.env.local`.

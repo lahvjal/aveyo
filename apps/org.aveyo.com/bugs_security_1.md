@@ -32,7 +32,7 @@
 - **Severity:** Blocker
 - **Where:** Onboarding (all steps), Profile page (/profile), Sign-in page
 - **Steps to reproduce:**
-  1. Navigate to https://orgchart.aveyo.com/profile
+  1. Navigate to https://org.aveyo.com/profile
   2. Scroll to the bottom of the form
   3. Observe "Save Changes" — it appears as plain black text with no background, border, or hover state
   4. Same issue on onboarding: "Get Started," "Continue," "Complete Setup" (confirmed via screenshots)
@@ -49,7 +49,7 @@
 - **Severity:** High
 - **Where:** Profile page (/profile) — Job Description field; also present in onboarding Complete Profile step
 - **Steps to reproduce:**
-  1. Navigate to https://orgchart.aveyo.com/profile
+  1. Navigate to https://org.aveyo.com/profile
   2. Scroll to the "Job Description" field
   3. Click in the middle or bottom area of the text box
   4. Observe: no cursor appears, field does not receive focus
@@ -202,11 +202,11 @@
 - **Steps to reproduce:**
   1. Open the invite email
   2. Hover over "Access my account" button or read the fallback URL at the bottom
-- **Expected:** Links should use a branded domain (e.g., orgchart.aveyo.com/invite?token=...) that then handles the auth redirect server-side.
+- **Expected:** Links should use a branded domain (e.g., org.aveyo.com/invite?token=...) that then handles the auth redirect server-side.
 - **Actual:** The link points directly to `semzdcsumfnmjnhzhtst.supabase.co/auth/v1/verify?token=...` — exposing the Supabase project ID and auth endpoint directly to end users.
 - **Evidence:** Email .eml file shows the raw Supabase URL.
-- **Suggested fix:** Route invite links through your own domain (e.g., `orgchart.aveyo.com/api/auth/verify?token=...`) which proxies to Supabase. This looks more professional and doesn't leak infrastructure details.
-- **Acceptance check:** Invite email links use an orgchart.aveyo.com domain, not supabase.co.
+- **Suggested fix:** Route invite links through your own domain (e.g., `org.aveyo.com/api/auth/verify?token=...`) which proxies to Supabase. This looks more professional and doesn't leak infrastructure details.
+- **Acceptance check:** Invite email links use an org.aveyo.com domain, not supabase.co.
 
 ### Finding 13: Invite email logo is broken
 
@@ -219,7 +219,7 @@
 - **Expected:** The Aveyo logo should display as a white logo on the black header background.
 - **Actual:** The logo image is broken/missing. It renders as a broken image icon or is simply invisible. Three compounding issues cause this: (a) the image uses a `data:image/svg+xml;base64,...` URI — Gmail and most email clients block `data:` URIs for security; (b) SVG is not a supported image format in most email clients; (c) the CSS `filter: brightness(0) invert(1)` used to turn the dark logo white is not supported in email clients.
 - **Evidence:** User-reported; confirmed by inspecting the email source (.eml artifact). The `<img>` tag uses `src="data:image/svg+xml;base64,..."` with a CSS filter for color inversion.
-- **Suggested fix:** Replace the base64 SVG with a hosted PNG image on an Aveyo domain (e.g., `https://orgchart.aveyo.com/images/logo-white.png`). Use a pre-rendered white version of the logo — do not rely on CSS filters. Ensure the image has proper `alt="Aveyo"`, `width`, and `height` attributes.
+- **Suggested fix:** Replace the base64 SVG with a hosted PNG image on an Aveyo domain (e.g., `https://org.aveyo.com/images/logo-white.png`). Use a pre-rendered white version of the logo — do not rely on CSS filters. Ensure the image has proper `alt="Aveyo"`, `width`, and `height` attributes.
 - **Acceptance check:** The Aveyo logo renders correctly in Gmail, Outlook, and Apple Mail. No CSS filters or data URIs are used for email images.
 
 ### Finding 14: No page title in browser tab
@@ -256,7 +256,7 @@
 
 - **Type:** Security
 - **Severity:** High
-- **Where:** All HTTP responses from orgchart.aveyo.com
+- **Where:** All HTTP responses from org.aveyo.com
 - **Details:** The following security headers are missing:
   - **Content-Security-Policy (CSP):** Not set. No protection against XSS or code injection.
   - **X-Frame-Options:** Not set. The app can be embedded in iframes on any domain, enabling clickjacking attacks.
@@ -274,7 +274,7 @@
 - **Where:** HTTP response headers — `Access-Control-Allow-Origin: *`
 - **Details:** The server returns `Access-Control-Allow-Origin: *`, meaning any website on the internet can make cross-origin requests to the app and read the responses.
 - **Risk:** If combined with authenticated endpoints, a malicious site could make requests on behalf of a logged-in user and read org chart data, employee profiles, etc.
-- **Suggested fix:** Replace `*` with the specific origins that need access (e.g., `https://orgchart.aveyo.com`). If the API is only consumed by its own frontend, there's no reason to allow wildcard origins.
+- **Suggested fix:** Replace `*` with the specific origins that need access (e.g., `https://org.aveyo.com`). If the API is only consumed by its own frontend, there's no reason to allow wildcard origins.
 - **Acceptance check:** `Access-Control-Allow-Origin` is set to specific trusted origins, not `*`.
 
 ### Security Finding S4: Supabase table names and structure exposed in client bundle

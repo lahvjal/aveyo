@@ -133,7 +133,7 @@ export const APP_URLS_BY_ENV = Object.freeze({
     local: LOCAL_APP_URLS.org,
     dev: "https://org-dev.aveyo.com",
     staging: "https://org-staging.aveyo.com",
-    prod: "https://orgchart.aveyo.com"
+    prod: "https://org.aveyo.com"
   }),
   kpi: Object.freeze({
     local: LOCAL_APP_URLS.kpi,

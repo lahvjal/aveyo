@@ -14,7 +14,7 @@ This file defines the required runtime variables for each app subdomain and serv
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | dev | `https://auth-dev.aveyo.com` | `https://api-dev.aveyo.com` | `https://ava-dev.aveyo.com` | `https://widget-dev.aveyo.com` | `https://org-dev.aveyo.com` | `https://kpi-dev.aveyo.com` | `https://customer-dev.aveyo.com` |
 | staging | `https://auth-staging.aveyo.com` | `https://api-staging.aveyo.com` | `https://ava-staging.aveyo.com` | `https://widget-staging.aveyo.com` | `https://org-staging.aveyo.com` | `https://kpi-staging.aveyo.com` | `https://customer-staging.aveyo.com` |
-| prod | `https://auth.aveyo.com` | `https://api.aveyo.com` | `https://ava.aveyo.com` | `https://widget.aveyo.com` | `https://orgchart.aveyo.com` | `https://kpi.aveyo.com` | `https://customer.aveyo.com` |
+| prod | `https://auth.aveyo.com` | `https://api.aveyo.com` | `https://ava.aveyo.com` | `https://widget.aveyo.com` | `https://org.aveyo.com` | `https://kpi.aveyo.com` | `https://customer.aveyo.com` |
 
 ## Variable Contracts by Service
 

@@ -7,7 +7,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 const FROM_EMAIL = Deno.env.get('FROM_EMAIL') || 'noreply@send.aveyo.com'
-const APP_URL = Deno.env.get('APP_URL') || 'https://orgchart.aveyo.com'
+const APP_URL = Deno.env.get('APP_URL') || 'https://org.aveyo.com'
 const RESET_ALLOWLIST = (Deno.env.get('PASSWORD_RESET_REDIRECT_ALLOWLIST') || '')
   .split(',')
   .map((value) => value.trim())

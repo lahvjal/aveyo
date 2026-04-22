@@ -117,7 +117,7 @@ supabase functions deploy send-password-reset-email
 
 ### Custom Domain (Optional)
 
-If you want a custom domain like `orgchart.aveyo.com`:
+If you want a custom domain like `org.aveyo.com`:
 
 1. Go to Vercel → Settings → Domains
 2. Add your custom domain
@@ -173,7 +173,7 @@ https://aveyo-orgchart.vercel.app
 
 or with custom domain:
 ```
-https://orgchart.aveyo.com
+https://org.aveyo.com
 ```
 
 ## Security Notes

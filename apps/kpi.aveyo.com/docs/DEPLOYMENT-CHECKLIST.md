@@ -11,7 +11,7 @@
 - [ ] Verify existing KPI admin users have `profiles.is_admin = true` in the org-chart Supabase
 - [ ] In Supabase dashboard → **Authentication → URL Configuration**:
   - Add `https://kpi.aveyo.com` to **Redirect URLs**
-  - Add `https://orgchart.aveyo.com` to **Redirect URLs** (if not already present)
+  - Add `https://org.aveyo.com` to **Redirect URLs** (if not already present)
 
 ## 2. Vercel — KPI Dashboard project
 
@@ -20,7 +20,7 @@
   NEXT_PUBLIC_SUPABASE_URL    = https://semzdcsumfnmjnhzhtst.supabase.co
   NEXT_PUBLIC_SUPABASE_ANON_KEY = <org-chart anon key>
   SUPABASE_SERVICE_ROLE_KEY   = <org-chart service role key>
-  NEXT_PUBLIC_ORG_CHART_URL   = https://orgchart.aveyo.com
+  NEXT_PUBLIC_ORG_CHART_URL   = https://org.aveyo.com
   ```
   MySQL vars stay unchanged.
 - [ ] Add custom domain `kpi.aveyo.com` in Vercel project settings
@@ -29,12 +29,12 @@
 
 ## 3. Vercel — Org Chart project
 
-- [ ] Add custom domain `orgchart.aveyo.com` in Vercel project settings
-- [ ] Add DNS CNAME record: `orgchart` → `cname.vercel-dns.com`
+- [ ] Add custom domain `org.aveyo.com` in Vercel project settings
+- [ ] Add DNS CNAME record: `org` → `cname.vercel-dns.com`
 
 ## 4. Testing Checklist
 
-- [ ] Visiting `kpi.aveyo.com` while logged out → redirects to `orgchart.aveyo.com/login`
+- [ ] Visiting `kpi.aveyo.com` while logged out → redirects to `org.aveyo.com/login`
 - [ ] Logging in on org-chart then navigating to `kpi.aveyo.com` → no second login required
 - [ ] Non-admin user → sees "Access Restricted" screen with back link
 - [ ] Admin user → full KPI dashboard access

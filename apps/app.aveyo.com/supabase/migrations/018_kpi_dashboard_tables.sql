@@ -1,6 +1,6 @@
 -- Migration: KPI Dashboard Tables
 -- Adds custom_kpis, goals, and section_order tables to the org-chart Supabase project
--- so both orgchart.aveyo.com and kpi.aveyo.com share a single Supabase project.
+-- so both org.aveyo.com and kpi.aveyo.com share a single Supabase project.
 --
 -- Note: the `profiles` table with `is_admin` already exists from earlier migrations.
 -- Run this after importing existing KPI data from the old Supabase project.

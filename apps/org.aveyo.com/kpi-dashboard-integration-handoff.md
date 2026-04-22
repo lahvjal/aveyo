@@ -4,7 +4,7 @@
 
 The KPI dashboard is being unified with the org-chart app under a single
 Supabase project and a shared authentication system. The goal is seamless
-SSO across orgchart.aveyo.com and kpi.aveyo.com — users log in once on the
+SSO across org.aveyo.com and kpi.aveyo.com — users log in once on the
 org-chart and are automatically authenticated on the KPI dashboard.
 
 **What stays the same:**
@@ -50,7 +50,7 @@ DB_NAME=avyomkng
 DB_SSL=true
 
 # Org-chart app URL (used for auth redirects)
-NEXT_PUBLIC_ORG_CHART_URL=https://orgchart.aveyo.com
+NEXT_PUBLIC_ORG_CHART_URL=https://org.aveyo.com
 ```
 
 The org-chart credentials will be provided separately. Do not commit
@@ -302,7 +302,7 @@ variables to match the new `.env.local` values from Step 2. Specifically:
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- `NEXT_PUBLIC_ORG_CHART_URL` (set to `https://orgchart.aveyo.com`)
+- `NEXT_PUBLIC_ORG_CHART_URL` (set to `https://org.aveyo.com`)
 
 The MySQL variables do not change.
 
@@ -324,8 +324,8 @@ In the **org-chart Supabase project** dashboard (coordinate with org-chart team)
 1. Go to Authentication → URL Configuration
 2. Add to **Redirect URLs**:
    - `https://kpi.aveyo.com/**`
-   - `https://orgchart.aveyo.com/**`
-3. Set **Site URL** to `https://orgchart.aveyo.com`
+   - `https://org.aveyo.com/**`
+3. Set **Site URL** to `https://org.aveyo.com`
 
 ---
 
@@ -333,10 +333,10 @@ In the **org-chart Supabase project** dashboard (coordinate with org-chart team)
 
 Before going live, verify the following:
 
-- [ ] Visiting `kpi.aveyo.com` while logged out redirects to `orgchart.aveyo.com/login`
-- [ ] Logging in on `orgchart.aveyo.com` and then navigating to `kpi.aveyo.com` lands directly on the dashboard (no second login)
+- [ ] Visiting `kpi.aveyo.com` while logged out redirects to `org.aveyo.com/login`
+- [ ] Logging in on `org.aveyo.com` and then navigating to `kpi.aveyo.com` lands directly on the dashboard (no second login)
 - [ ] A non-admin user navigating to `kpi.aveyo.com` sees the Access Restricted screen
-- [ ] Logging out on `orgchart.aveyo.com` and then visiting `kpi.aveyo.com` redirects to login
+- [ ] Logging out on `org.aveyo.com` and then visiting `kpi.aveyo.com` redirects to login
 - [ ] All KPI data loads correctly (MySQL connection unchanged)
 - [ ] Goals, custom KPIs, and section ordering work (now reading from org-chart Supabase)
 - [ ] The "← Org Chart" header link navigates correctly
