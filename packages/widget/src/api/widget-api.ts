@@ -20,6 +20,11 @@ export interface ImpersonationCustomer {
   projectTitle: string | null;
 }
 
+export interface GuestReplyMessageInput {
+  kind: "customer" | "ava";
+  text: string;
+}
+
 export interface WidgetApiClient {
   listConversations: (options?: {
     excludeImpersonation?: boolean;
@@ -36,6 +41,9 @@ export interface WidgetApiClient {
     text: string;
     clientMessageId?: string;
   }) => Promise<{ message: TimelineMessage }>;
+  generateGuestReply: (body: {
+    messages: GuestReplyMessageInput[];
+  }) => Promise<{ replyText: string }>;
   requestHandoff: (body: {
     conversationId: string;
     customerName: string;
@@ -169,6 +177,12 @@ export function createWidgetApiClient({
           text: body.text,
           clientMessageId: body.clientMessageId
         })
+      }),
+
+    generateGuestReply: (body) =>
+      requestJson<{ replyText: string }>(resolvedBaseUrl, "/api/public/ava/guest-reply", {
+        method: "POST",
+        body: JSON.stringify(body)
       }),
 
     requestHandoff: (body) =>

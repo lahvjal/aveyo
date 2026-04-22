@@ -4,6 +4,13 @@ import AvaWidgetEmbed from "@/components/AvaWidgetEmbed";
 import { SiteLoadOverlay } from "@/components/site-load-overlay";
 import { metadataBase, siteDescription, siteName, siteTitle } from "@/lib/site-metadata";
 
+const socialPreviewImage = {
+  url: "/twitter-image",
+  width: 1200,
+  height: 630,
+  alt: "Aveyo Solar social preview"
+};
+
 export const metadata: Metadata = {
   metadataBase,
   title: siteTitle,
@@ -17,12 +24,14 @@ export const metadata: Metadata = {
     url: "/",
     siteName,
     title: siteTitle,
-    description: siteDescription
+    description: siteDescription,
+    images: [socialPreviewImage]
   },
   twitter: {
     card: "summary_large_image",
     title: siteTitle,
-    description: siteDescription
+    description: siteDescription,
+    images: [socialPreviewImage]
   }
 };
 

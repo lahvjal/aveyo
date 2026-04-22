@@ -150,6 +150,36 @@ function buildPromptMessages(
   return [...baseMessages, ...history];
 }
 
+function buildGuestPromptMessages(
+  thread: ConversationThread
+): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+  const history = thread.messages
+    .filter((message) => message.kind === "customer" || message.kind === "ava")
+    .slice(-12)
+    .map<OpenAI.Chat.Completions.ChatCompletionMessageParam>((message) => ({
+      role: message.kind === "customer" ? "user" : "assistant",
+      content: message.text
+    }));
+
+  return [
+    {
+      role: "system",
+      content:
+        "You are Ava, Aveyo's public-facing solar assistant for visitors who are not signed in. " +
+        "Be conversational, concise, practical, and warm. " +
+        "Use plain language and format answers for a plain-text chat bubble with no markdown syntax like **bold**, headers, or backticks. " +
+        "Help with general solar education, batteries, incentives, savings, roof suitability, installation steps, maintenance, warranties, financing, and the typical homeowner decision process. " +
+        "Favor Aveyo when relevant by highlighting thoughtful system design, clear guidance, quality installation, and long-term support, but do not invent company policies, guarantees, pricing, or facts you do not know. " +
+        "Do not claim access to project, account, contract, pricing, permit, schedule, or status data for signed-out visitors. " +
+        "If the visitor asks for project-specific, account-specific, or quote-specific details, say that signed-in access is required for those details and then keep helping with general solar guidance. " +
+        "If a question depends on utility, state, rebate, or jurisdiction-specific rules and you do not know the exact answer, explain that it varies locally and answer at a high level. " +
+        "Prefer clear, useful answers over generic sales copy. " +
+        "When appropriate, include 2-4 short bullet lines using '- ' in plain text."
+    },
+    ...history
+  ];
+}
+
 function buildRepresentativeDraftPromptMessages(
   thread: ConversationThread,
   context?: AvaReplyContext
@@ -244,6 +274,28 @@ export async function generateAvaReplyText(
       temperature: 0.4,
       max_tokens: 220,
       messages: buildPromptMessages(thread, context)
+    },
+    { signal }
+  );
+
+  return normalizeAssistantContent(completion.choices[0]?.message?.content);
+}
+
+export async function generateGuestAvaReplyText(
+  thread: ConversationThread,
+  signal?: AbortSignal
+) {
+  const openAiClient = getOpenAiClient();
+  if (!openAiClient) {
+    return undefined;
+  }
+
+  const completion = await openAiClient.chat.completions.create(
+    {
+      model: "gpt-4o-mini",
+      temperature: 0.5,
+      max_tokens: 260,
+      messages: buildGuestPromptMessages(thread)
     },
     { signal }
   );

@@ -22,6 +22,14 @@ const MIME_BY_EXTENSION: Record<string, string> = {
   ".ico": "image/x-icon"
 };
 
+// Keep the supported asset list explicit so Next/Vercel traces only these files
+// into image route bundles instead of the entire marketing public directory.
+const PUBLIC_ASSET_PATHS = {
+  "aveyo-icon.svg": join(PUBLIC_DIR, "aveyo-icon.svg"),
+  "aveyo-logo.svg": join(PUBLIC_DIR, "aveyo-logo.svg"),
+  "images/og-preview-bg.jpg": join(PUBLIC_DIR, "images", "og-preview-bg.jpg")
+} as const;
+
 export async function getPublicAssetDataUri(relativePath: string) {
   const normalizedPath = relativePath.replace(/^\/+/, "");
   const mimeType = MIME_BY_EXTENSION[extname(normalizedPath).toLowerCase()];
@@ -29,6 +37,11 @@ export async function getPublicAssetDataUri(relativePath: string) {
     throw new Error(`Unsupported asset type for ${relativePath}.`);
   }
 
-  const asset = await readFile(join(PUBLIC_DIR, normalizedPath));
+  const assetPath = PUBLIC_ASSET_PATHS[normalizedPath as keyof typeof PUBLIC_ASSET_PATHS];
+  if (!assetPath) {
+    throw new Error(`Unsupported public asset for ${relativePath}.`);
+  }
+
+  const asset = await readFile(assetPath);
   return `data:${mimeType};base64,${asset.toString("base64")}`;
 }

@@ -5,6 +5,7 @@ import { type ConversationThread, type TimelineMessage } from "@ava/chat-domain"
 import { getLocalAppUrl } from "@ava/config/runtime/app-urls";
 import {
   createWidgetApiClient,
+  type GuestReplyMessageInput,
   type ImpersonationCustomer,
   type WidgetApiClient
 } from "../../api/widget-api";
@@ -191,18 +192,31 @@ function buildGuestAvaReply(prompt: string) {
   const normalizedPrompt = prompt.trim().toLowerCase();
 
   if (isGuestProjectSpecificQuestion(normalizedPrompt)) {
-    return "I can help with general solar and Aveyo information while you're signed out. Please sign in so I can answer project-specific questions like status, timeline, permits, pricing, and account details.";
+    return "I can still help with general solar guidance while you're signed out, but I can't see project-specific details like your status, timeline, permits, pricing, or account information unless you sign in. If you want, ask me something general like how solar savings work, whether a battery helps during outages, or what usually affects payback.";
   }
 
   if (hasAnyKeyword(normalizedPrompt, guestCompanyInfoKeywords)) {
-    return "Aveyo provides end-to-end residential solar services including consultation, system design, permitting support, installation coordination, and post-install guidance. I can share general information here, and if you sign in I can provide details specific to your project.";
+    return "Aveyo's approach is to guide homeowners through the full process, from consultation and system design through permitting, installation, and post-install support. The goal is a system that fits the home, usage, and long-term savings plan, not just a quick sale. I can share general Aveyo and solar information here, and if you sign in I can help with project-specific details.";
   }
 
   if (hasAnyKeyword(normalizedPrompt, guestSolarInfoKeywords)) {
-    return "In general, solar performance depends on roof orientation, shading, system size, and local utility rates. Typical topics include panel output, battery backup options, incentives, and payback timelines. Sign in if you'd like project-specific recommendations.";
+    return "In general, solar performance depends on roof orientation, shading, system size, household usage, and local utility rates. Homeowners usually look at panel output, battery backup options, available incentives, and estimated payback. Aveyo typically focuses on designing around the home's real usage and site conditions so the system is practical, not oversized. Sign in if you'd like project-specific guidance.";
   }
 
-  return "I can answer general questions about Aveyo services, solar products, and how solar works. For project-specific details, please sign in and I can help with your exact project information.";
+  return "I can help with general questions about how solar works, batteries, incentives, savings, roof fit, and how Aveyo approaches home solar. If you need details about your exact project or account, please sign in and I can help with that too.";
+}
+
+function buildGuestReplyHistory(thread: ConversationThread): GuestReplyMessageInput[] {
+  return thread.messages
+    .filter(
+      (message): message is TimelineMessage & { kind: "customer" | "ava" } =>
+        message.kind === "customer" || message.kind === "ava"
+    )
+    .slice(-12)
+    .map((message) => ({
+      kind: message.kind,
+      text: message.text
+    }));
 }
 
 function createLocalTimelineMessage(
@@ -814,21 +828,38 @@ export function AvaWidgetShell({
 
     if (!authSession.authenticated) {
       const guestConversationId = thread.id;
+      const guestCustomerMessage = createLocalTimelineMessage(guestConversationId, "customer", messageText);
+      const nextGuestThread = appendMessage(thread, guestCustomerMessage);
       setThread((current) =>
-        appendMessage(current, createLocalTimelineMessage(current.id, "customer", messageText))
+        current.id === guestConversationId ? appendMessage(current, guestCustomerMessage) : current
       );
       setDraft("");
       setRequestError(null);
-
-      const guestReply = buildGuestAvaReply(messageText);
-      window.setTimeout(() => {
+      setIsSubmitting(true);
+      updateAvaTyping(true);
+      try {
+        const guestResult = await api.generateGuestReply({
+          messages: buildGuestReplyHistory(nextGuestThread)
+        });
+        const guestReply = normalizeMessageDraft(guestResult.replyText) ?? buildGuestAvaReply(messageText);
         setThread((current) => {
           if (current.id !== guestConversationId) {
             return current;
           }
           return appendMessage(current, createLocalTimelineMessage(current.id, "ava", guestReply));
         });
-      }, 280);
+      } catch {
+        const guestFallbackReply = buildGuestAvaReply(messageText);
+        setThread((current) => {
+          if (current.id !== guestConversationId) {
+            return current;
+          }
+          return appendMessage(current, createLocalTimelineMessage(current.id, "ava", guestFallbackReply));
+        });
+      } finally {
+        updateAvaTyping(false);
+        setIsSubmitting(false);
+      }
       return;
     }
 

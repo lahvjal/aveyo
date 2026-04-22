@@ -43,7 +43,7 @@ export function createOptimisticCustomerGreetingConversation(
 export function createLoggedOutConversation(): ConversationThread {
   return buildAvaSystemThread(
     "logged-out-conversation",
-    "You can ask Ava general questions about Aveyo services and solar. Sign in for project-specific answers.",
+    "Hi! I'm Ava from Aveyo. I can answer general solar questions, explain how Aveyo approaches home solar, and help with signed-out guidance. Sign in for project-specific answers.",
     false
   );
 }
