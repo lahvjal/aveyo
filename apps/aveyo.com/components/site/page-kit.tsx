@@ -491,7 +491,6 @@ export function SiteImageBreak({
 export function SiteArticleCard({
   category,
   title,
-  excerpt,
   href,
   publishedLabel,
   imageSrc,
@@ -499,7 +498,6 @@ export function SiteArticleCard({
 }: {
   category?: string;
   title: string;
-  excerpt: string;
   href: string;
   publishedLabel?: string;
   imageSrc?: string;
@@ -529,9 +527,6 @@ export function SiteArticleCard({
         <h3 className="mt-5 text-[length:var(--site-h4)] leading-[1.1] tracking-[-0.02em] text-[#212120] text-[color:var(--site-black)]">
           {title}
         </h3>
-        <p className="mt-4 flex-1 text-[length:var(--site-body)] leading-[1.75] text-[#5f646b] text-[color:var(--site-text-muted)]">
-          {excerpt}
-        </p>
         <div className="mt-6">
           <SiteButtonLink href={href} variant="ghost" className="text-[length:var(--site-body)]">
             Read Article

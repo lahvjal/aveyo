@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import ContactInquiryForms from "@/app/contact/contact-inquiry-forms";
+import ContactAvaGuidance from "./contact-ava-guidance";
 import {
   SiteCard,
   SiteCardGrid,
@@ -56,7 +56,7 @@ export default function ContactPage() {
         title: "Talk Through The Right Next Step.\nWe Will Help You Get Started.",
         description: "Whether you are researching solar or ready for a quote, our team can help you move forward clearly.",
         actionLabel: "Talk To Sales",
-        actionHref: "#sales-form"
+        actionHref: AVEYO_SALES_PHONE_HREF
       }}
     >
       <SiteHero
@@ -64,7 +64,7 @@ export default function ContactPage() {
         title="Need To Get In Touch?"
         description="Whether you are ready for a quote, need customer care, or just want to ask a question, we will point you to the right team."
         actions={[
-          { href: "#sales-form", label: "Talk To Sales", variant: "light" },
+          { href: AVEYO_SALES_PHONE_HREF, label: "Talk To Sales", variant: "light" },
           { href: AVEYO_CUSTOMER_CARE_PHONE_HREF, label: "Call Customer Care", variant: "outline" }
         ]}
         backgroundSrc="/images/web_photos/Contact_01_Office-Location-Utah-Mountains.jpg"
@@ -81,8 +81,11 @@ export default function ContactPage() {
             title="Sales"
             description="Speak to a Solar Educator for a quote, pricing, or help deciding whether solar is right for your home."
             footer={
-              <a href="#sales-form" className="text-[length:var(--site-body)] font-bold text-[#0A1628] text-[color:var(--site-black)]">
-                Talk To Sales
+              <a
+                href={AVEYO_SALES_PHONE_HREF}
+                className="text-[length:var(--site-body)] font-bold text-[#0A1628] text-[color:var(--site-black)]"
+              >
+                {AVEYO_SALES_PHONE}
               </a>
             }
           />
@@ -90,8 +93,8 @@ export default function ContactPage() {
             title="Get More Info"
             description="Not ready for a quote yet? Send a message and we will help answer questions about process, timing, or system fit."
             footer={
-              <a href="#team-form" className="text-[length:var(--site-body)] font-bold text-[#0A1628] text-[color:var(--site-black)]">
-                Message Our Team
+              <a href="#ask-ava" className="text-[length:var(--site-body)] font-bold text-[#0A1628] text-[color:var(--site-black)]">
+                Talk To Ava
               </a>
             }
           />
@@ -132,11 +135,11 @@ export default function ContactPage() {
       </SiteSection>
 
       <SiteSection
-        eyebrow="Contact Forms"
-        title="Send The Right Team A Message"
-        description="These forms are a quick way to generate a message to Aveyo without needing a separate portal or account."
+        eyebrow="Ask Ava"
+        title="Talk To Ava When You Have Questions"
+        description="Instead of filling out a contact form, start with Ava for quick answers about solar, timelines, project questions, and the right next step."
       >
-        <ContactInquiryForms />
+        <ContactAvaGuidance />
       </SiteSection>
 
       <SiteSection

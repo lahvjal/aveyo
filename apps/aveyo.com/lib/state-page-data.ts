@@ -87,7 +87,7 @@ export const defaultSpendLessSlides: SpendLessSlide[] = [
   },
   {
     type: "image",
-    src: "/images/45963692b81b39be37da6b988910cdf8f25e2996.png",
+    src: "/images/web_photos/powerup.jpg",
     title: "Power up. Bill Down.",
     description: "Power more of what you love doing at-home without worrying about your monthly bill."
   }
@@ -221,18 +221,19 @@ export const statePages: Record<string, StatePageData> = {
       "Between federal credits and state-level programs, Pennsylvania homeowners have strong financial reasons to go solar now.",
     incentives: [
       {
-        tag: "Federal",
-        title: "Federal Solar Investment Tax Credit (ITC)",
-        value: "30%",
+        tag: "Pennsylvania",
+        title: "State Incentive",
+        value: "$8K - $14K",
         description:
-          "The federal ITC lets you deduct 30% of the total cost of your solar system from your federal taxes. This is the single largest incentive available to homeowners in Pennsylvania."
+          "Pennsylvania homeowners may qualify for state-level solar incentive value that can land in the $8K to $14K range, depending on system size, utility territory, and program availability."
       },
       {
-        tag: "State",
-        title: "PA Solar Renewable Energy Credits (SRECs)",
-        value: "Varies",
+        tag: "Utility",
+        title: "Utility Bill Swap",
+   
+        value: "$0 Down",
         description:
-          "Pennsylvania\u2019s Alternative Energy Portfolio Standards require utilities to purchase SRECs, creating an ongoing revenue stream for solar system owners."
+          "Swap your Duquesne light bill with a lower, fixed solar rate. Instant savings for homeowners that qualify"
       }
     ],
     transparencyBody:
@@ -319,18 +320,18 @@ export const statePages: Record<string, StatePageData> = {
       "Utah\u2019s solar-friendly policies and strong federal incentives make going solar an especially smart financial decision.",
     incentives: [
       {
-        tag: "Federal",
-        title: "Federal Solar Investment Tax Credit (ITC)",
-        value: "30%",
-        description:
-          "The federal ITC lets you deduct 30% of the total cost of your solar system from your federal taxes. This is the single largest incentive available to Utah homeowners."
-      },
-      {
         tag: "Utility",
-        title: "Net Metering (Rocky Mountain Power)",
+        title: "Net Metering",
         value: "Bill Credit",
         description:
           "Utah\u2019s net metering program allows homeowners to earn bill credits for excess solar energy exported to the grid, reducing monthly costs further."
+      },
+      {
+        tag: "Solar Loan",
+        title: "Lock in your energy rates",
+        value: "$0 Down",
+        description:
+          "Utah homeowners can lock in their energy rates for 20 years with a solar loan, ensuring predictable monthly payments and protection from future rate increases."
       }
     ],
     transparencyBody:
@@ -417,18 +418,18 @@ export const statePages: Record<string, StatePageData> = {
       "California\u2019s ambitious clean energy goals and strong incentive programs make solar one of the smartest investments a homeowner can make.",
     incentives: [
       {
-        tag: "Federal",
-        title: "Federal Solar Investment Tax Credit (ITC)",
-        value: "30%",
+        tag: "Utility",
+        title: "Blackout Protection",
+        value: "Bill Credit",
         description:
-          "The federal ITC lets you deduct 30% of the total cost of your solar system from your federal taxes. This is the single largest incentive available to California homeowners."
+          "California homeowners can earn bill credits for excess solar energy exported to the grid, reducing monthly costs further."
       },
       {
-        tag: "State",
-        title: "Self-Generation Incentive Program (SGIP)",
-        value: "Varies",
+        tag: "Solar Loan",
+        title: "Lock in your energy rates",
+        value: "$0 Down",
         description:
-          "California\u2019s SGIP provides rebates for battery storage systems, making it more affordable to pair storage with solar under NEM 3.0 and maximize savings during peak-rate hours."
+          "California homeowners can lock in their energy rates for 20 years with a solar loan, ensuring predictable monthly payments and protection from future rate increases."
       }
     ],
     transparencyBody:

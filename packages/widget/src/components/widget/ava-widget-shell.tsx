@@ -303,10 +303,9 @@ function isRepConfirmationYes(text: string) {
 }
 
 // The inactivity timeout (in milliseconds) before the conversation timeline is reset.
-// Currently set to 30 minutes (30 * 60 * 1000 ms).
+// Currently set to 5 minutes (5 * 60 * 1000 ms).
 // To change this duration, simply adjust the multiplier values.
-// For example, for a 10-minute timeout, use: 10 * 60 * 1000
-const TIMELINE_RESET_INACTIVITY_MS = 1 * 20 * 1000;
+const TIMELINE_RESET_INACTIVITY_MS = 5 * 60 * 1000;
 const TIMELINE_RESET_STORAGE_PREFIX = "ava-widget-timeline-reset-v1:";
 const AVA_TYPING_FALLBACK_MS = 15_000;
 const AVA_TYPING_STOP_GRACE_MS = 3_200;

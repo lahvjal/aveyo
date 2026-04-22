@@ -2,7 +2,6 @@ import Image from "next/image";
 import type { Metadata } from "next";
 import Testimonials from "@/components/Testimonials";
 import {
-  SiteCard,
   SiteHero,
   SiteImageBreak,
   SitePageShell,
@@ -112,6 +111,89 @@ export const metadata: Metadata = {
     "Four project stages—Pre-Approvals, Approvals, Construction, and Activation—with the same milestones you track in the customer portal."
 };
 
+function ProcessTimeline() {
+  return (
+    <article className="relative overflow-hidden rounded-[var(--site-radius-corner)]">
+      <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
+      <div className="relative z-[2] px-6 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
+        <div className="pb-6">
+          <p className="text-xs font-bold uppercase tracking-[0.3em] text-[color:var(--site-text-muted-alt)]">
+            Project Roadmap
+          </p>
+        </div>
+
+        <div className="mt-8 space-y-6 lg:space-y-8">
+          {portalStages.map((stage) => (
+            <section
+              key={stage.title}
+              className="relative overflow-hidden rounded-[var(--site-radius-corner)]"
+            >
+              <div className="grid gap-0 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
+                <div className="relative px-6 py-6 lg:px-7 lg:py-7">
+                  <div className="relative pl-12">
+                    <div className="absolute left-0 top-0 flex h-9 w-9 items-center justify-center rounded-full bg-[#0A1628] text-sm font-extrabold text-white">
+                      {stage.eyebrow}
+                    </div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[color:var(--site-text-muted-alt)]">
+                      Stage {stage.eyebrow}
+                    </p>
+                    <h4 className="mt-2 text-[length:var(--site-h5)] leading-[1.08] tracking-[-0.02em] text-[color:var(--site-black)]">
+                      {stage.title}
+                    </h4>
+                    <p className="mt-4 text-[length:var(--site-body)] leading-[1.8] text-[color:var(--site-text-muted)]">
+                      {stage.summary}
+                    </p>
+                  </div>
+                </div>
+
+                <ol
+                  className="space-y-0 px-6 py-4 sm:px-7 sm:py-5"
+                  aria-label={`${stage.title} milestones`}
+                >
+                  {stage.milestones.map((milestone, milestoneIndex) => {
+                    const isLastMilestone = milestoneIndex === stage.milestones.length - 1;
+
+                    return (
+                      <li
+                        key={milestone.title}
+                        className={`relative pl-12 ${isLastMilestone ? "pb-0 pt-3" : "pb-5 pt-3"}`}
+                      >
+                        {!isLastMilestone ? (
+                          <div
+                            className="absolute bottom-0 left-[11px] top-9 w-px bg-[color:var(--site-border-soft)]"
+                            aria-hidden
+                          />
+                        ) : null}
+                        <div
+                          className="absolute left-0 top-5 flex h-[22px] w-[22px] items-center justify-center rounded-full bg-[color:var(--site-gray-light-4)] text-[11px] font-bold text-[color:var(--site-black)]"
+                          aria-hidden
+                        >
+                          {milestoneIndex + 1}
+                        </div>
+                        <div className="rounded-[calc(var(--site-radius-corner)-8px)] px-5 py-4">
+                          <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--site-text-muted-alt)]">
+                            Milestone {milestoneIndex + 1}
+                          </p>
+                          <h5 className="mt-2 text-[length:var(--site-h7)] font-extrabold leading-snug text-[color:var(--site-black)]">
+                            {milestone.title}
+                          </h5>
+                          <p className="mt-2 text-[length:var(--site-body)] leading-[1.75] text-[color:var(--site-text-muted)]">
+                            {milestone.description}
+                          </p>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            </section>
+          ))}
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function ProcessPage() {
   return (
     <SitePageShell
@@ -152,35 +234,7 @@ export default function ProcessPage() {
         }
         description="Each stage groups the milestones you see in the Aveyo customer portal, in the same order—from Pre-Approvals through Activation."
       >
-        <div className="grid gap-5 md:grid-cols-2">
-          {portalStages.map((stage) => (
-            <SiteCard
-              key={stage.title}
-              eyebrow={stage.eyebrow}
-              title={stage.title}
-              description={
-                <>
-                  <p className="mb-6">{stage.summary}</p>
-                  <ul className="m-0 list-none space-y-5 p-0" aria-label={`${stage.title} milestones`}>
-                    {stage.milestones.map((milestone) => (
-                      <li
-                        key={milestone.title}
-                        className="border-t border-[#dbe2e8] border-[color:var(--site-border-soft)] pt-5 first:border-t-0 first:pt-0"
-                      >
-                        <p className="text-[length:var(--site-h7)] font-extrabold leading-snug text-[color:var(--site-black)]">
-                          {milestone.title}
-                        </p>
-                        <p className="mt-2 text-[length:var(--site-body)] leading-[1.7] text-[color:var(--site-text-muted)]">
-                          {milestone.description}
-                        </p>
-                      </li>
-                    ))}
-                  </ul>
-                </>
-              }
-            />
-          ))}
-        </div>
+        <ProcessTimeline />
       </SiteSection>
 
       <SiteImageBreak

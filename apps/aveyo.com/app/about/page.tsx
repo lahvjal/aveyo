@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 import {
-  SiteCard,
-  SiteCardGrid,
   SiteHero,
   SiteImageBreak,
   SitePageShell,
-  SiteSplitSection,
   SiteSection
 } from "@/components/site/page-kit";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
@@ -28,22 +25,71 @@ const timelineItems = [
   }
 ];
 
-const integrationFunctions = [
-  "Sales",
-  "Install",
-  "CAD / Engineering",
-  "Survey",
-  "Net Metering",
-  "Roofing",
-  "Activation",
-  "Marketing"
-];
-
 export const metadata: Metadata = {
   title: "About Aveyo | Solar As It Should Be",
   description:
     "Learn how Aveyo was built to create a smoother, more transparent solar experience from first conversation to final activation."
 };
+
+function StoryTimelineDocument() {
+  return (
+    <article className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-gradient-to-b from-[#fcfbf8] to-white shadow-[0_24px_70px_rgba(10,22,40,0.08)]">
+      <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
+      <div className="relative z-[2] px-6 py-7 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
+        <div className="border-b border-[color:var(--site-border-soft)] pb-6">
+          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.3em] text-[color:var(--site-text-muted-alt)]">
+                Aveyo Story Archive
+              </p>
+              <h3 className="mt-3 text-[length:var(--site-h5)] leading-[1.05] tracking-[-0.02em] text-[color:var(--site-black)]">
+                A Brief Documented Timeline
+              </h3>
+            </div>
+            <div className="grid gap-1 text-sm text-[color:var(--site-text-muted)]">
+              <span>Document type: Company history</span>
+              <span>Prepared for prospective homeowners</span>
+            </div>
+          </div>
+
+          <p className="mt-6 max-w-[780px] text-[length:var(--site-body)] leading-[1.85] text-[color:var(--site-text-muted)]">
+            Aveyo was built around a simple idea: homeowners deserve a cleaner, more transparent solar
+            experience. The timeline below reads like a company record, tracing how that idea became a
+            business and then a mission we continue to refine.
+          </p>
+        </div>
+
+        <div className="divide-y divide-[color:var(--site-border-soft)]">
+          {timelineItems.map((item, index) => (
+            <section
+              key={item.label}
+              className="grid gap-4 py-6 md:grid-cols-[180px_minmax(0,1fr)] md:gap-8 lg:py-7"
+            >
+              <div className="md:pt-1">
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[color:var(--site-text-muted-alt)]">
+                  Section {String(index + 1).padStart(2, "0")}
+                </p>
+                <h4 className="mt-2 text-[length:var(--site-h7)] font-extrabold uppercase tracking-[0.08em] text-[color:var(--site-black)]">
+                  {item.label}
+                </h4>
+              </div>
+
+              <div className="space-y-4 text-[length:var(--site-body)] leading-[1.9] text-[color:var(--site-text-muted)]">
+                <p>{item.description}</p>
+              </div>
+            </section>
+          ))}
+        </div>
+
+        <div className="border-t border-[color:var(--site-border-soft)] pt-6">
+          <p className="text-sm uppercase tracking-[0.22em] text-[color:var(--site-text-muted-alt)]">
+            Solar As It Should Be
+          </p>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 export default function AboutPage() {
   return (
@@ -86,20 +132,30 @@ export default function AboutPage() {
         description={
           <>
             <p>Aveyo was established with one goal in mind: to give customers a better solar experience.</p>
-            <p className="mt-4">Here's a timeline:</p>
           </>
         }
       >
-        <SiteCardGrid>
-          {timelineItems.map((item) => (
-            <SiteCard
+        <div className="divide-y divide-[color:var(--site-border-soft)]">
+          {timelineItems.map((item, index) => (
+            <section
               key={item.label}
-              eyebrow={item.label}
-              title={item.label}
-              description={item.description}
-            />
+              className="grid gap-4 py-6 md:grid-cols-[180px_minmax(0,1fr)] md:gap-8 lg:py-7"
+            >
+              <div className="md:pt-1">
+                <p className="text-[11px] font-bold uppercase tracking-[0.24em] text-[color:var(--site-text-muted-alt)]">
+                  Section {String(index + 1).padStart(2, "0")}
+                </p>
+                <h4 className="mt-2 text-[length:var(--site-h7)] font-extrabold uppercase tracking-[0.08em] text-[color:var(--site-black)]">
+                  {item.label}
+                </h4>
+              </div>
+
+              <div className="space-y-4 text-[length:var(--site-body)] leading-[1.9] text-[color:var(--site-text-muted)]">
+                <p>{item.description}</p>
+              </div>
+            </section>
           ))}
-        </SiteCardGrid>
+        </div>
       </SiteSection>
 
       <SiteImageBreak

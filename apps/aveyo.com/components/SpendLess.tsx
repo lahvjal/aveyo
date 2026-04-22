@@ -5,12 +5,98 @@ import { useCarouselAutoplay } from "@/components/ui/use-carousel-autoplay";
 import { useCarouselWheelNavigation } from "@/components/ui/use-carousel-wheel-navigation";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, type MutableRefObject } from "react";
 import { defaultSpendLessSlides, type SpendLessSlide } from "@/lib/state-page-data";
 
 type SpendLessProps = {
   slides?: SpendLessSlide[];
 };
+
+type VideoSlideProps = {
+  slide: SpendLessSlide;
+  isActive: boolean;
+  logicalIndex: number;
+  playbackPositionsRef: MutableRefObject<Record<number, number>>;
+};
+
+function restoreVideoPlaybackPosition(
+  video: HTMLVideoElement,
+  logicalIndex: number,
+  playbackPositionsRef: MutableRefObject<Record<number, number>>
+) {
+  const savedTime = playbackPositionsRef.current[logicalIndex];
+  if (typeof savedTime !== "number" || !Number.isFinite(savedTime)) {
+    return;
+  }
+
+  if (Math.abs(video.currentTime - savedTime) < 0.1) {
+    return;
+  }
+
+  try {
+    video.currentTime = savedTime;
+  } catch {
+    // Metadata may not be ready yet; onLoadedMetadata retries this.
+  }
+}
+
+function VideoSlide({ slide, isActive, logicalIndex, playbackPositionsRef }: VideoSlideProps) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleLoadedMetadata = useCallback(() => {
+    if (!videoRef.current) {
+      return;
+    }
+
+    restoreVideoPlaybackPosition(videoRef.current, logicalIndex, playbackPositionsRef);
+  }, [logicalIndex, playbackPositionsRef]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) {
+      return;
+    }
+
+    if (isActive) {
+      restoreVideoPlaybackPosition(video, logicalIndex, playbackPositionsRef);
+      video.play().catch(() => {});
+      return;
+    }
+
+    playbackPositionsRef.current[logicalIndex] = video.currentTime;
+    video.pause();
+  }, [isActive, logicalIndex, playbackPositionsRef]);
+
+  useEffect(() => {
+    return () => {
+      if (!videoRef.current) {
+        return;
+      }
+
+      playbackPositionsRef.current[logicalIndex] = videoRef.current.currentTime;
+    };
+  }, [logicalIndex, playbackPositionsRef]);
+
+  return (
+    <video
+      ref={videoRef}
+      autoPlay={isActive}
+      muted
+      loop
+      playsInline
+      preload="auto"
+      poster={slide.poster}
+      className="absolute inset-0 h-full w-full object-cover"
+      onLoadedMetadata={handleLoadedMetadata}
+    >
+      <source src={slide.src} type="video/mp4" />
+    </video>
+  );
+}
+
+function getLogicalSlideIndex(index: number, slideCount: number) {
+  return ((index % slideCount) + slideCount) % slideCount;
+}
 
 export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
   const slides = slidesProp ?? defaultSpendLessSlides;
@@ -21,6 +107,7 @@ export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
   const [slideWidth, setSlideWidth] = useState(1200);
   const [gap] = useState(20);
   const containerRef = useRef<HTMLDivElement>(null);
+  const playbackPositionsRef = useRef<Record<number, number>>({});
 
   // Update slide width on resize
   useEffect(() => {
@@ -90,36 +177,9 @@ export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
     return -offset;
   };
 
-  // Video slide component to handle play/pause
-  const VideoSlide = ({ slide, isCenter }: { slide: SpendLessSlide; isCenter: boolean }) => {
-    const videoRef = useRef<HTMLVideoElement>(null);
-
-    useEffect(() => {
-      if (videoRef.current) {
-        if (isCenter) {
-          videoRef.current.play().catch(() => {});
-        } else {
-          videoRef.current.pause();
-        }
-      }
-    }, [isCenter]);
-
-    return (
-      <video
-        ref={videoRef}
-        muted
-        loop
-        playsInline
-        poster={slide.poster}
-        className="absolute inset-0 w-full h-full object-cover"
-      >
-        <source src={slide.src} type="video/mp4" />
-      </video>
-    );
-  };
-
   const renderSlide = (slide: SpendLessSlide, index: number) => {
     const isCenter = index === currentIndex;
+    const logicalIndex = getLogicalSlideIndex(index, slides.length);
 
     return (
       <div
@@ -138,7 +198,12 @@ export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
       >
         {/* Background - Image or Video */}
         {slide.type === "video" ? (
-          <VideoSlide slide={slide} isCenter={isCenter} />
+          <VideoSlide
+            slide={slide}
+            isActive={isCenter}
+            logicalIndex={logicalIndex}
+            playbackPositionsRef={playbackPositionsRef}
+          />
         ) : (
           <Image
             src={slide.src}
@@ -161,11 +226,9 @@ export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
 
         {/* Content */}
         <div 
-          className="absolute bottom-0 left-0 p-8 sm:p-12 lg:p-[70px] flex flex-col gap-2.5 transition-all duration-700"
+          className="absolute bottom-0 left-0 flex flex-col gap-2.5 p-8 transition-opacity duration-300 sm:p-12 lg:p-[70px]"
           style={{
-            transform: isCenter ? "translateX(0)" : "translateX(340px)",
             opacity: isCenter ? 1 : 0,
-            transitionTimingFunction: "cubic-bezier(0.33, 1, 0.68, 1)",
           }}
         >
           <p className="max-w-[249px] text-base font-extrabold leading-[1.5] text-white sm:text-[length:var(--home-text-medium-extra-bold)]">

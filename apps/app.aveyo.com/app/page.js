@@ -20,7 +20,7 @@ import { useAuthSession } from "../lib/auth/use-auth-session";
 import { summarizeDashboardAccess } from "../lib/dashboard-modules";
 
 const hardcodedDashboardVideoUrl =
-  "https://vz-bd3d2939-ded.b-cdn.net/903ce2e0-2f9f-4840-9afd-d472b706c34f/play_1080p.mp4";
+  "https://vz-bd3d2939-ded.b-cdn.net/340a5949-b949-4328-a27d-d1698a64b0ae/play_1080p.mp4";
 
 const dashboardPageStyleVars = {
   "--dashboard-card-radius": `${designSystem.tokens.radius.card}px`,

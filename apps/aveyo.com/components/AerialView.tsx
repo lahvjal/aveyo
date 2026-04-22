@@ -206,7 +206,7 @@ export default function AerialView({ content }: { content?: AerialViewContent })
         </div>
       </div>
 
-      <div className="pb-0 mt-[-290px] z-2 relative w-full">
+      <div className="pb-0 mt-[-30vh] z-2 relative w-full">
         <div className="mx-auto flex w-full max-w-[1200px] flex-col items-center gap-10 px-5 text-center lg:gap-[40px]">
           {/* <div className="relative h-[140px] w-[180px] sm:h-[190px] sm:w-[240px] lg:h-[238px] lg:w-[306px]">
             <svg

@@ -254,7 +254,7 @@ export default function Benefits() {
         {/* Row 1 - Savings Hero */}
         <div
           ref={savingsScrollRef}
-          className="relative flex h-[calc(100vh-40px)] min-h-[80vh] w-full flex-col items-center justify-center overflow-hidden rounded-[var(--home-card-radius)] px-6 py-16 text-center sm:px-10 lg:px-16"
+          className="relative flex h-[calc(100vh-40px)] max-h-[800px] w-full flex-col items-center justify-center overflow-hidden rounded-[var(--home-card-radius)] px-6 py-16 text-center sm:px-10 lg:px-16"
           style={{ background: "#5f91af" }}
         >
           <div className="absolute inset-0">

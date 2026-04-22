@@ -164,8 +164,8 @@ export default function WhySolarPage() {
         visual={
           <div className="relative h-[400px] overflow-hidden rounded-[var(--site-radius-corner)]">
             <Image
-              src="/images/web_photos/WhySolar_02_System-Design-CloseUp.jpg"
-              alt="Close-up of black monocrystalline solar panels in clean grid pattern on roof, overhead angle"
+              src="/images/web_photos/highendPanels.jpg"
+              alt="Black rooftop solar panels installed on a sloped house roof in warm sunlight"
               fill
               className="object-cover"
               sizes="(min-width: 1024px) 50vw, 100vw"

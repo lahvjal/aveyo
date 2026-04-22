@@ -130,7 +130,7 @@ function StateTrustBar({ data }: { data: StatePageData }) {
                         </svg>
                       ))}
                     </span>
-                    4.9 Star Rating
+                    4.7 Star Rating
                   </span>
                   <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center">
                     <Image
@@ -197,7 +197,13 @@ function StateIncentives({ data }: { data: StatePageData }) {
   );
 }
 
-export default function StatePageTemplate({ data }: { data: StatePageData }) {
+export default function StatePageTemplate({
+  data,
+  currentQueryString = ""
+}: {
+  data: StatePageData;
+  currentQueryString?: string;
+}) {
   return (
     <main>
       <Navbar />
@@ -208,7 +214,12 @@ export default function StatePageTemplate({ data }: { data: StatePageData }) {
       <StateIncentives data={data} />
       <AerialView content={data.aerial} />
       <Misconceptions myths={data.misconceptions} />
-      <PricingPlans />
+      <PricingPlans
+        currentQueryString={currentQueryString}
+        originPath={`/${data.slug}`}
+        pageSlug={data.slug}
+        offerName={`Aveyo ${data.name} Plans`}
+      />
       <Footer image={data.footerImage} />
     </main>
   );

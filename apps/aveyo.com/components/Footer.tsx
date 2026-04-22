@@ -79,10 +79,16 @@ const contactLinks = [
   { name: AVEYO_INFO_EMAIL, href: AVEYO_INFO_EMAIL_HREF }
 ] as const;
 
+const footerAddresses = [
+  { state: "California", address: "1640 Second St, Norco, CA 92860" },
+  { state: "Illinois", address: "916 Community Dr, Springfield, IL 62703" },
+  { state: "Pennsylvania", address: "8162 Perry Hwy, Pittsburgh, PA 15237" },
+  { state: "Utah", address: AVEYO_ADDRESS }
+] as const;
+
 const footerTokens = designSystem.components.footer;
 const designTokens = designSystem.tokens;
 
-const addressHref = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(AVEYO_ADDRESS)}`;
 const defaultCta: Required<Pick<FooterCtaConfig, "title" | "description" | "actionLabel">> = {
   title: "Speak With An Aveyo Advisor. See What Solar Can Do For You.",
   description: "We're here to answer your burning questions. No upsells. No commitments. Just top-tier help.",
@@ -148,6 +154,10 @@ function renderFooterLink(link: { name: string; href: string }, className: strin
 
 function splitLines(value: string) {
   return value.split("\n");
+}
+
+function buildMapsSearchHref(address: string) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 }
 
 function openAvaWidget() {
@@ -322,27 +332,36 @@ export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: 
 
           <div className="relative flex h-full flex-col border-t border-[rgba(255,255,255,0.28)] px-6 py-10 sm:px-8 xl:px-[var(--footer-footer-px)] xl:py-[var(--footer-footer-py)]">
             <div className="grid flex-1 gap-10 sm:gap-12 lg:grid-cols-[minmax(0,1fr)_160px_160px_160px] xl:gap-14">
-              <div className="max-w-[280px]">
+              <div className="max-w-[520px]">
                 <Link href="/" className="inline-flex items-center">
                   <Image src="/aveyo-logo.svg" alt="Aveyo" width={110} height={24} className="h-6 w-auto" />
                 </Link>
 
-                <div className="mt-7 space-y-5 text-[13px] leading-[1.65] text-white/88 xl:text-[var(--footer-paragraph)]">
-                  <div>
+                <div className="mt-7 grid gap-5 text-[13px] leading-[1.65] text-white/88 sm:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)] sm:gap-6 xl:text-[var(--footer-paragraph)]">
+                  <div className="min-w-0">
                     <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.22em] text-white/58">
-                      Address:
+                      Addresses:
                     </p>
-                    <a
-                      href={addressHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="transition-colors hover:text-white"
-                    >
-                      {AVEYO_ADDRESS}
-                    </a>
+                    <div className="space-y-4">
+                      {footerAddresses.map((location) => (
+                        <div key={location.state}>
+                          <p className="mb-1 text-[10px] font-medium uppercase tracking-[0.2em] text-white/58">
+                            {location.state}
+                          </p>
+                          <a
+                            href={buildMapsSearchHref(location.address)}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block transition-colors hover:text-white"
+                          >
+                            {location.address}
+                          </a>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
                     <p className="mb-2 text-[11px] font-medium uppercase tracking-[0.22em] text-white/58">
                       Contact:
                     </p>

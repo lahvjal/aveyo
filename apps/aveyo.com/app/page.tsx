@@ -10,8 +10,18 @@ import AerialView from "@/components/AerialView";
 import Misconceptions from "@/components/Misconceptions";
 import Testimonials from "@/components/Testimonials";
 import Footer from "@/components/Footer";
+import {
+  buildSearchParamString,
+  type SearchParamRecord
+} from "@/lib/plans-lead";
 
-export default function Home() {
+export default async function Home({
+  searchParams
+}: {
+  searchParams: Promise<SearchParamRecord>;
+}) {
+  const currentQueryString = buildSearchParamString(await searchParams);
+
   return (
     <main>
       <Navbar />
@@ -20,7 +30,12 @@ export default function Home() {
       <TrustSeals />
       <Benefits />
       {/* <LifestyleGallery /> */}
-      <PricingPlans />
+      <PricingPlans
+        currentQueryString={currentQueryString}
+        originPath="/"
+        pageSlug="home"
+        offerName="Aveyo Homepage Plans"
+      />
       <AerialView />
       <Misconceptions />
       <Testimonials />
