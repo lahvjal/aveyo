@@ -74,6 +74,16 @@ html {
   scroll-behavior: smooth;
 }
 
+@keyframes carousel-indicator-progress {
+  from {
+    transform: scaleX(0);
+  }
+
+  to {
+    transform: scaleX(1);
+  }
+}
+
 body {
   color: var(--foreground);
   background: var(--background);

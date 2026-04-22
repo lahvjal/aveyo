@@ -6,6 +6,8 @@ import {
   type BenefitSlideCardData,
 } from "@/components/ui/benefit-slide-card";
 import { CarouselIndicators } from "@/components/ui/carousel-indicators";
+import { useCarouselAutoplay } from "@/components/ui/use-carousel-autoplay";
+import { useCarouselWheelNavigation } from "@/components/ui/use-carousel-wheel-navigation";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -209,6 +211,21 @@ export default function Benefits() {
   const handleNavClick = (index: number) => {
     goToSlide(benefitSlides.length + index);
   };
+  const goToNextSlide = useCallback(() => {
+    goToSlide(currentIndex + 1);
+  }, [currentIndex, goToSlide]);
+  const goToPreviousSlide = useCallback(() => {
+    goToSlide(currentIndex - 1);
+  }, [currentIndex, goToSlide]);
+
+  const handleAutoAdvance = useCallback(() => {
+    if (isTransitioning) {
+      return;
+    }
+
+    setIsTransitioning(true);
+    setCurrentIndex((index) => index + 1);
+  }, [isTransitioning]);
 
   const getTransformOffset = () => {
     const offset = currentIndex * (slideWidth + gap);
@@ -219,6 +236,14 @@ export default function Benefits() {
   const realIndex =
     ((currentIndex % benefitSlides.length) + benefitSlides.length) %
     benefitSlides.length;
+  const { isPlaying, autoplayDurationMs, toggle } = useCarouselAutoplay({
+    restartKey: realIndex,
+    onAdvance: handleAutoAdvance,
+  });
+  const handleCarouselWheel = useCarouselWheelNavigation({
+    onNext: goToNextSlide,
+    onPrevious: goToPreviousSlide,
+  });
 
   return (
     <section
@@ -298,7 +323,11 @@ export default function Benefits() {
         </div>
 
         {/* Row 2 - Benefits Carousel */}
-        <div className="relative rounded-[var(--home-card-radius)]" style={{ height: `${slideHeight}px` }}>
+        <div
+          className="relative rounded-[var(--home-card-radius)]"
+          style={{ height: `${slideHeight}px` }}
+          onWheel={handleCarouselWheel}
+        >
           <div
             className="flex h-full items-center"
             style={{
@@ -333,6 +362,11 @@ export default function Benefits() {
               onSelect={handleNavClick}
               getAriaLabel={(index) => `Go to benefit slide ${index + 1}`}
               className="pointer-events-auto"
+              isPlaying={isPlaying}
+              autoplayDurationMs={autoplayDurationMs}
+              onTogglePlayback={toggle}
+              playLabel="Play benefits carousel autoplay"
+              pauseLabel="Pause benefits carousel autoplay"
             />
           </div>
         </div>

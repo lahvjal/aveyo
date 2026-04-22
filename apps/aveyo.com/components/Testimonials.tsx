@@ -2,6 +2,8 @@
 
 import { CarouselIndicators } from "@/components/ui/carousel-indicators";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
+import { useCarouselAutoplay } from "@/components/ui/use-carousel-autoplay";
+import { useCarouselWheelNavigation } from "@/components/ui/use-carousel-wheel-navigation";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -179,6 +181,21 @@ export default function Testimonials() {
     const targetIndex = testimonials.length + index;
     goToSlide(targetIndex);
   };
+  const goToNextSlide = useCallback(() => {
+    goToSlide(currentIndex + 1);
+  }, [currentIndex, goToSlide]);
+  const goToPreviousSlide = useCallback(() => {
+    goToSlide(currentIndex - 1);
+  }, [currentIndex, goToSlide]);
+
+  const handleAutoAdvance = useCallback(() => {
+    if (isTransitioning) {
+      return;
+    }
+
+    setIsTransitioning(true);
+    setCurrentIndex((index) => index + 1);
+  }, [isTransitioning]);
 
   const step = slideWidth + GAP;
 
@@ -186,6 +203,14 @@ export default function Testimonials() {
   const translateX = peekPx - currentIndex * step;
 
   const realIndex = currentIndex % testimonials.length;
+  const { isPlaying, autoplayDurationMs, toggle } = useCarouselAutoplay({
+    restartKey: realIndex,
+    onAdvance: handleAutoAdvance,
+  });
+  const handleCarouselWheel = useCarouselWheelNavigation({
+    onNext: goToNextSlide,
+    onPrevious: goToPreviousSlide,
+  });
 
   const slideHeight = useMemo(
     () => (slideWidth < 1000 ? (slideWidth < 600 ? 460 : 540) : 580),
@@ -284,10 +309,10 @@ export default function Testimonials() {
       <div className="relative flex flex-col items-center">
         <p className="sr-only" aria-live="polite">
           Showing {visibleCount} review card{visibleCount === 1 ? "" : "s"} in the main area, with part of the
-          previous and next cards visible on the sides. Use the controls to change slides.
+          previous and next cards visible on the sides. Use the controls to change slides or pause autoplay.
         </p>
 
-        <div className="w-full max-w-full overflow-hidden">
+        <div className="w-full max-w-full overflow-hidden" onWheel={handleCarouselWheel}>
           <div className="mx-auto w-full overflow-hidden py-[50px]">
             <div
               className="flex items-stretch"
@@ -308,6 +333,11 @@ export default function Testimonials() {
             activeIndex={realIndex}
             onSelect={handleNavClick}
             getAriaLabel={(index) => `Go to review ${index + 1}`}
+            isPlaying={isPlaying}
+            autoplayDurationMs={autoplayDurationMs}
+            onTogglePlayback={toggle}
+            playLabel="Play review carousel autoplay"
+            pauseLabel="Pause review carousel autoplay"
           />
         </div>
       </div>

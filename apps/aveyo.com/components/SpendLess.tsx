@@ -1,6 +1,8 @@
 "use client";
 
 import { CarouselIndicators } from "@/components/ui/carousel-indicators";
+import { useCarouselAutoplay } from "@/components/ui/use-carousel-autoplay";
+import { useCarouselWheelNavigation } from "@/components/ui/use-carousel-wheel-navigation";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
@@ -72,6 +74,15 @@ export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
     const targetIndex = slides.length + index;
     goToSlide(targetIndex);
   };
+
+  const handleAutoAdvance = useCallback(() => {
+    if (isTransitioning) {
+      return;
+    }
+
+    setIsTransitioning(true);
+    setCurrentIndex((index) => index + 1);
+  }, [isTransitioning]);
 
   // Calculate the transform offset to center the current slide
   const getTransformOffset = () => {
@@ -170,6 +181,14 @@ export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
 
   // Get the real slide index (0, 1, or 2) for navigation indicator
   const realIndex = currentIndex % slides.length;
+  const { isPlaying, autoplayDurationMs, toggle } = useCarouselAutoplay({
+    restartKey: realIndex,
+    onAdvance: handleAutoAdvance,
+  });
+  const handleCarouselWheel = useCarouselWheelNavigation({
+    onNext: goToNext,
+    onPrevious: goToPrev,
+  });
 
   return (
     <section
@@ -186,7 +205,7 @@ export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
       </div>
 
       {/* Carousel */}
-      <div className="relative" ref={containerRef}>
+      <div className="relative" ref={containerRef} onWheel={handleCarouselWheel}>
         <div 
           className="flex items-center"
           style={{
@@ -204,6 +223,11 @@ export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
             count={slides.length}
             activeIndex={realIndex}
             onSelect={handleNavClick}
+            isPlaying={isPlaying}
+            autoplayDurationMs={autoplayDurationMs}
+            onTogglePlayback={toggle}
+            playLabel="Play spend less carousel autoplay"
+            pauseLabel="Pause spend less carousel autoplay"
           />
         </div>
       </div>

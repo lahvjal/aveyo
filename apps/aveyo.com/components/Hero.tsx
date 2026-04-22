@@ -1,10 +1,13 @@
 "use client";
 
+import { CarouselIndicators } from "@/components/ui/carousel-indicators";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
+import { useCarouselAutoplay } from "@/components/ui/use-carousel-autoplay";
+import { useCarouselWheelNavigation } from "@/components/ui/use-carousel-wheel-navigation";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const testimonials = [
   {
@@ -32,13 +35,23 @@ const testimonials = [
 export default function Hero() {
   const [activeSlide, setActiveSlide] = useState(0);
   const heroVideoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveSlide((prev) => (prev + 1) % testimonials.length);
-    }, 5000);
-    return () => clearInterval(interval);
+  const goToNextSlide = useCallback(() => {
+    setActiveSlide((prev) => (prev + 1) % testimonials.length);
   }, []);
+  const goToPreviousSlide = useCallback(() => {
+    setActiveSlide((prev) => (prev - 1 + testimonials.length) % testimonials.length);
+  }, []);
+  const advanceSlide = useCallback(() => {
+    goToNextSlide();
+  }, [goToNextSlide]);
+  const { isPlaying, autoplayDurationMs, toggle } = useCarouselAutoplay({
+    restartKey: activeSlide,
+    onAdvance: advanceSlide,
+  });
+  const handleCarouselWheel = useCarouselWheelNavigation({
+    onNext: goToNextSlide,
+    onPrevious: goToPreviousSlide,
+  });
 
   useEffect(() => {
     const videoEl = heroVideoRef.current;
@@ -179,7 +192,10 @@ export default function Hero() {
           </div>
 
           {/* Testimonial Carousel - Right */}
-          <div className="flex flex-col gap-2.5 items-start w-[353px]">
+          <div
+            className="flex flex-col gap-2.5 items-start w-[353px]"
+            onWheel={handleCarouselWheel}
+          >
             <div className="relative w-full overflow-hidden">
               <div 
                 className="flex transition-transform duration-500 ease-in-out"
@@ -227,17 +243,18 @@ export default function Hero() {
               </div>
             </div>
             {/* Progress Indicator Navigation */}
-            <div className="w-full flex gap-2.5">
-              {testimonials.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setActiveSlide(index)}
-                  className={`flex-1 h-[2px] rounded-full transition-colors duration-300 ${
-                    index === activeSlide ? "bg-white" : "bg-white/30"
-                  }`}
-                  aria-label={`Go to testimonial ${index + 1}`}
-                />
-              ))}
+            <div className="w-full">
+              <CarouselIndicators
+                count={testimonials.length}
+                activeIndex={activeSlide}
+                onSelect={setActiveSlide}
+                getAriaLabel={(index) => `Go to hero testimonial ${index + 1}`}
+                isPlaying={isPlaying}
+                autoplayDurationMs={autoplayDurationMs}
+                onTogglePlayback={toggle}
+                playLabel="Play hero testimonial autoplay"
+                pauseLabel="Pause hero testimonial autoplay"
+              />
             </div>
           </div>
         </div>
