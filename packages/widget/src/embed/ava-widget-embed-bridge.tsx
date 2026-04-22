@@ -280,6 +280,28 @@ export function AvaWidgetEmbedBridge({
   }, [postAuthSessionSnapshot, widgetOrigin]);
 
   useEffect(() => {
+    if (!isWidgetOpen) {
+      return;
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (iframeRef.current?.contains(target)) {
+        return;
+      }
+
+      setDesiredOpenState(false);
+      postOpenStateCommand(false);
+    };
+
+    window.addEventListener("pointerdown", onPointerDown);
+    return () => window.removeEventListener("pointerdown", onPointerDown);
+  }, [isWidgetOpen, postOpenStateCommand]);
+
+  useEffect(() => {
     if (!registerGlobalApi) {
       return;
     }

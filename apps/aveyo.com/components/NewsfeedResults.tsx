@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLoader } from "@/components/ui/brand-loader";
 import { useEffect, useState } from "react";
 import { SiteArticleCard } from "@/components/site/page-kit";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
@@ -151,31 +152,41 @@ export default function NewsfeedResults({
         ))}
       </div>
 
-      {result.posts.length > 0 ? (
-        <div
-          className={`mt-10 grid gap-5 lg:grid-cols-2 xl:grid-cols-3 transition-opacity ${
-            isLoading ? "opacity-70" : "opacity-100"
-          }`}
-          aria-busy={isLoading}
-        >
-          {result.posts.map((post) => (
-            <SiteArticleCard
-              key={post.id}
-              category={post.category}
-              title={post.title}
-              href={`/newsfeed/${post.slug}`}
-              publishedLabel={formatNewsDate(post.publishedAt)}
-              imageSrc={post.heroImageUrl ?? undefined}
-              imageAlt={post.title}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="relative mt-8 overflow-hidden rounded-[var(--site-radius-corner)] bg-white p-[var(--site-card-padding-compact)] text-[length:var(--site-body)] text-[#5f646b] text-[color:var(--site-text-muted)]">
-          <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-          <div className="relative z-[2]">No articles match this category yet.</div>
-        </div>
-      )}
+      <div className="relative mt-10" aria-busy={isLoading}>
+        {result.posts.length > 0 ? (
+          <div
+            className={`grid gap-5 transition-opacity lg:grid-cols-2 xl:grid-cols-3 ${
+              isLoading ? "opacity-35" : "opacity-100"
+            }`}
+          >
+            {result.posts.map((post) => (
+              <SiteArticleCard
+                key={post.id}
+                category={post.category}
+                title={post.title}
+                href={`/newsfeed/${post.slug}`}
+                publishedLabel={formatNewsDate(post.publishedAt)}
+                imageSrc={post.heroImageUrl ?? undefined}
+                imageAlt={post.title}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-white p-[var(--site-card-padding-compact)] text-[length:var(--site-body)] text-[#5f646b] text-[color:var(--site-text-muted)]">
+            <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
+            <div className="relative z-[2]">No articles match this category yet.</div>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="pointer-events-none absolute inset-0 z-[5] flex items-center justify-center">
+            <div className="inline-flex items-center gap-4 rounded-full bg-[#0A1628] px-5 py-4 text-sm font-semibold text-white shadow-[0_20px_60px_rgba(10,22,40,0.24)]">
+              <BrandLoader size={86} tone="light" label="Loading articles" />
+              <span>Loading articles...</span>
+            </div>
+          </div>
+        ) : null}
+      </div>
 
       {errorMessage ? (
         <div className="mt-4 text-[length:var(--site-paragraph)] text-[#b42318]">

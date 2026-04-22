@@ -5104,6 +5104,7 @@ body.ava-embed-mode nextjs-portal {
   justify-content: flex-end;
   min-height: 100vh;
   padding: 0 24px 24px 0;
+  pointer-events: none;
 }
 
 .widget-embed-root .floating-widget {
@@ -5111,6 +5112,7 @@ body.ava-embed-mode nextjs-portal {
   background: transparent !important;
   gap: 10px;
   width: auto;
+  pointer-events: auto;
 }
 
 .widget-embed-root .widget-panel {

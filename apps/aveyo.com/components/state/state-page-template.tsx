@@ -20,6 +20,7 @@ function StateHero({ data }: { data: StatePageData }) {
         {data.heroVideoUrl ? (
           // eslint-disable-next-line jsx-a11y/media-has-caption
           <video
+            data-site-hero-video="true"
             autoPlay
             loop
             muted

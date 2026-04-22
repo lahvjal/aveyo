@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLoader } from "@/components/ui/brand-loader";
 import { useMemo, useState, type FormEvent } from "react";
 import { SiteButtonLink } from "@/components/site/site-button-link";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
@@ -577,13 +578,18 @@ export default function PlansLeadForm({
                   <button
                     type="submit"
                     disabled={!canAdvance}
-                    className="inline-flex items-center justify-center rounded-[var(--site-button-radius)] bg-[#212120] bg-[color:var(--site-black)] px-[var(--site-button-px)] py-[var(--site-button-py)] text-[length:var(--site-button-text)] font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex items-center justify-center gap-3 rounded-[var(--site-button-radius)] bg-[#212120] bg-[color:var(--site-black)] px-[var(--site-button-px)] py-[var(--site-button-py)] text-[length:var(--site-button-text)] font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {currentStep === PLANS_LEAD_TOTAL_STEPS
-                      ? isSubmitting
-                        ? "Submitting..."
-                        : "Get My Quote"
-                      : "Next Step"}
+                    {currentStep === PLANS_LEAD_TOTAL_STEPS && isSubmitting ? (
+                      <>
+                        <BrandLoader size={72} tone="light" label="Submitting quote request" />
+                        <span>Submitting...</span>
+                      </>
+                    ) : currentStep === PLANS_LEAD_TOTAL_STEPS ? (
+                      "Get My Quote"
+                    ) : (
+                      "Next Step"
+                    )}
                   </button>
                 </div>
               </div>

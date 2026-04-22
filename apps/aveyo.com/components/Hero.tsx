@@ -95,6 +95,7 @@ export default function Hero() {
       <div className="absolute inset-0 z-0 overflow-hidden">
         <video
           ref={heroVideoRef}
+          data-site-hero-video="true"
           autoPlay
           loop
           muted

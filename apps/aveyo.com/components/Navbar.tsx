@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLoader } from "@/components/ui/brand-loader";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import { useEffect, useState } from "react";
@@ -268,7 +269,7 @@ export default function Navbar() {
                     <span className="text-base font-extrabold">{avatarInitial}</span>
                   )
                 ) : authSession.loading ? (
-                  <span className="h-2 w-2 rounded-full bg-current opacity-60" />
+                  <BrandLoader size={34} tone="dark" label="Loading account" />
                 ) : (
                   <svg
                     width="20"

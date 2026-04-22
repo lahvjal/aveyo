@@ -452,7 +452,8 @@ export function AvaWidgetShell({
   const [isRepresentativeTyping, setIsRepresentativeTyping] = useState(false);
   const [ratingSubmissionRequestId, setRatingSubmissionRequestId] = useState<string | null>(null);
   const [timelineResetAtMs, setTimelineResetAtMs] = useState<number | null>(null);
-  const floatingWidgetRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLElement | null>(null);
+  const launcherRef = useRef<HTMLDivElement | null>(null);
   const closeTimerRef = useRef<number | null>(null);
   const avaTypingTimeoutRef = useRef<number | null>(null);
   const avaTypingStopTimeoutRef = useRef<number | null>(null);
@@ -1352,7 +1353,7 @@ export function AvaWidgetShell({
   }, [closePanel, openPanel]);
 
   useEffect(() => {
-    if (embedMode || !isOpen) {
+    if (!isOpen) {
       return;
     }
 
@@ -1361,7 +1362,7 @@ export function AvaWidgetShell({
       if (!(target instanceof Node)) {
         return;
       }
-      if (floatingWidgetRef.current?.contains(target)) {
+      if (panelRef.current?.contains(target) || launcherRef.current?.contains(target)) {
         return;
       }
       closePanel();
@@ -1371,7 +1372,7 @@ export function AvaWidgetShell({
     return () => {
       window.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [embedMode, isOpen, closePanel]);
+  }, [isOpen, closePanel]);
 
   const togglePanel = () => {
     if (embedMode) {
@@ -1407,9 +1408,10 @@ export function AvaWidgetShell({
 
   return (
     <div className="host-surface">
-      <div ref={floatingWidgetRef} className="floating-widget">
+      <div className="floating-widget">
         {isPanelMounted ? (
           <section
+            ref={panelRef}
             className={`widget-panel ${isPanelVisible ? "is-open" : "is-closed"}`}
             aria-hidden={!isPanelVisible}
           >
@@ -1484,7 +1486,11 @@ export function AvaWidgetShell({
           </section>
         ) : null}
 
-        {!embedMode ? <LauncherButton isOpen={isOpen} onToggle={togglePanel} /> : null}
+        {!embedMode ? (
+          <div ref={launcherRef}>
+            <LauncherButton isOpen={isOpen} onToggle={togglePanel} />
+          </div>
+        ) : null}
       </div>
 
       {shouldShowEmbedNote ? (
