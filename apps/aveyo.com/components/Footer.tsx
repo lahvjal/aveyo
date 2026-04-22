@@ -13,6 +13,7 @@ import {
   AVEYO_SALES_PHONE,
   AVEYO_SALES_PHONE_HREF
 } from "@/lib/site-config";
+import { stateNavLinks } from "@/lib/state-page-data";
 
 export interface FooterCtaConfig {
   eyebrow?: string;
@@ -22,27 +23,40 @@ export interface FooterCtaConfig {
   actionHref?: string;
 }
 
-const footerColumns = [
-  [
-    { name: "About Us", href: "/about" },
-    { name: "Services", href: "/process" },
-    { name: "Solar Calculator", href: "/contact#sales-form" },
-    { name: "Blog", href: "/newsfeed" },
-    { name: "Contact Us", href: "/contact" }
-  ],
-  [
-    { name: "FAQs", href: "/contact" },
-    { name: "Support", href: AVEYO_CUSTOMER_CARE_PHONE_HREF },
-    {
-      name: "Terms of Use",
-      href: `${AVEYO_INFO_EMAIL_HREF}?subject=${encodeURIComponent("Aveyo Terms Of Use")}`
-    },
-    {
-      name: "Privacy Policy",
-      href: `${AVEYO_INFO_EMAIL_HREF}?subject=${encodeURIComponent("Aveyo Privacy Policy")}`
-    }
-  ]
-] as const;
+const footerColumns: Array<{
+  label: string;
+  links: Array<{ name: string; href: string }>;
+}> = [
+  {
+    label: "Footer company links",
+    links: [
+      { name: "About Us", href: "/about" },
+      { name: "Services", href: "/process" },
+      { name: "Solar Calculator", href: "/contact#sales-form" },
+      { name: "Blog", href: "/newsfeed" },
+      { name: "Contact Us", href: "/contact" }
+    ]
+  },
+  {
+    label: "Footer support links",
+    links: [
+      { name: "FAQs", href: "/contact" },
+      { name: "Support", href: AVEYO_CUSTOMER_CARE_PHONE_HREF },
+      {
+        name: "Terms of Use",
+        href: `${AVEYO_INFO_EMAIL_HREF}?subject=${encodeURIComponent("Aveyo Terms Of Use")}`
+      },
+      {
+        name: "Privacy Policy",
+        href: `${AVEYO_INFO_EMAIL_HREF}?subject=${encodeURIComponent("Aveyo Privacy Policy")}`
+      }
+    ]
+  },
+  {
+    label: "Footer location links",
+    links: stateNavLinks
+  }
+];
 
 const legalLinks = [
   {
@@ -307,7 +321,7 @@ export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: 
           </div>
 
           <div className="relative flex h-full flex-col border-t border-[rgba(255,255,255,0.28)] px-6 py-10 sm:px-8 xl:px-[var(--footer-footer-px)] xl:py-[var(--footer-footer-py)]">
-            <div className="grid flex-1 gap-10 sm:gap-12 lg:grid-cols-[minmax(0,1fr)_160px_160px] xl:gap-14">
+            <div className="grid flex-1 gap-10 sm:gap-12 lg:grid-cols-[minmax(0,1fr)_160px_160px_160px] xl:gap-14">
               <div className="max-w-[280px]">
                 <Link href="/" className="inline-flex items-center">
                   <Image src="/aveyo-logo.svg" alt="Aveyo" width={110} height={24} className="h-6 w-auto" />
@@ -343,10 +357,10 @@ export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: 
                 </div>
               </div>
 
-              {footerColumns.map((column, columnIndex) => (
-                <nav key={`footer-column-${columnIndex}`} aria-label={`Footer links ${columnIndex + 1}`}>
+              {footerColumns.map((column) => (
+                <nav key={column.label} aria-label={column.label}>
                   <ul className="space-y-2.5 text-[13px] leading-[1.7] text-white/88 xl:text-[var(--footer-paragraph)]">
-                    {column.map((link) => (
+                    {column.links.map((link) => (
                       <li key={link.name}>
                         {renderFooterLink(link, "transition-colors hover:text-white")}
                       </li>

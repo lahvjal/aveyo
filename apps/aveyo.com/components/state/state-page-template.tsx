@@ -50,7 +50,7 @@ function StateHero({ data }: { data: StatePageData }) {
       <div className="relative z-[2] mx-auto flex min-h-[90vh] max-w-[1240px] flex-col justify-end px-5 pb-20 pt-36 sm:px-6 lg:px-8 lg:pb-24">
         <div className="flex items-center gap-2 text-[length:var(--home-h7)] font-extrabold uppercase tracking-[0.2em] text-white/70">
           <span className="inline-block h-2 w-2 rounded-full bg-white/50" />
-          Aveyo Solar &middot; {data.name}
+          Aveyo &middot; {data.name}
         </div>
 
         <h1 className="mt-4 max-w-[780px] font-telegraf text-[clamp(2rem,5vw,3.5rem)] font-extrabold leading-[1.1] tracking-tight">
