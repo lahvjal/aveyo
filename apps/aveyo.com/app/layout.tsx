@@ -5,9 +5,9 @@ import { SiteLoadOverlay } from "@/components/site-load-overlay";
 import { metadataBase, siteDescription, siteName, siteTitle } from "@/lib/site-metadata";
 
 const socialPreviewImage = {
-  url: "/twitter-image",
-  width: 1200,
-  height: 630,
+  url: "/images/og-preview-bg.jpg",
+  width: 1600,
+  height: 900,
   alt: "Aveyo Solar social preview"
 };
 
