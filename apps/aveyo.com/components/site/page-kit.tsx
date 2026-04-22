@@ -444,7 +444,7 @@ export function SiteImageRow({
   images,
   className = ""
 }: {
-  images: Array<{ src?: string; alt: string }>;
+  images: Array<{ src?: string; alt: string; objectPosition?: CSSProperties["objectPosition"] }>;
   className?: string;
 }) {
   const isSplit = images.length >= 2;
@@ -462,6 +462,7 @@ export function SiteImageRow({
               alt={image.alt}
               fill
               className="object-cover"
+              style={image.objectPosition ? { objectPosition: image.objectPosition } : undefined}
               sizes={isSplit ? "(min-width: 1024px) 50vw, 100vw" : "100vw"}
             />
           ) : (
@@ -476,7 +477,7 @@ export function SiteImageRow({
 export function SiteImageBreak({
   images
 }: {
-  images: Array<{ src?: string; alt: string }>;
+  images: Array<{ src?: string; alt: string; objectPosition?: CSSProperties["objectPosition"] }>;
 }) {
   return (
     <section className="bg-white bg-[color:var(--site-white)] pb-[100px]">

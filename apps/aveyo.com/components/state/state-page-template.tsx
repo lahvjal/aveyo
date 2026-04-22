@@ -102,30 +102,50 @@ function StateHero({ data }: { data: StatePageData }) {
 function StateTrustBar({ data }: { data: StatePageData }) {
   return (
     <div
-      className="overflow-hidden bg-[#212120] py-4"
+      className="overflow-hidden border-y border-white/10 bg-[#212120] py-3"
       style={homepageStyleVars}
     >
-      <div className="flex animate-[scroll_30s_linear_infinite] items-center gap-8 whitespace-nowrap">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-8">
-            <span className="flex items-center gap-2 text-sm font-bold text-white/80">
-              <svg className="h-4 w-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              Serving {data.name} Homeowners
-            </span>
-            <span className="flex items-center gap-1.5 text-sm font-bold text-white/80">
-              {Array.from({ length: 5 }).map((_, j) => (
-                <svg key={j} className="h-4 w-4 text-[#F0B046]" fill="currentColor" viewBox="0 0 20 20">
-                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                </svg>
+      <div className="[mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]">
+        <div className="flex w-max animate-[state-trust-scroll_28s_linear_infinite] items-center whitespace-nowrap motion-reduce:animate-none [will-change:transform]">
+          {Array.from({ length: 2 }).map((_, loopIndex) => (
+            <div
+              key={loopIndex}
+              className="flex shrink-0 items-center gap-4 pr-4 sm:gap-5 sm:pr-5 lg:gap-6 lg:pr-6"
+              aria-hidden={loopIndex === 1}
+            >
+              {Array.from({ length: 3 }).map((_, groupIndex) => (
+                <div key={`${loopIndex}-${groupIndex}`} className="flex shrink-0 items-center gap-4 sm:gap-5 lg:gap-6">
+                  <span className="inline-flex h-10 shrink-0 items-center justify-center gap-2.5 px-4 text-sm font-semibold text-white/80 min-w-[220px]">
+                    <svg className="h-4 w-4 shrink-0 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Serving {data.name} Homeowners
+                  </span>
+                  <span className="inline-flex h-10 shrink-0 items-center justify-center gap-2.5 px-4 text-sm font-semibold text-white/80 min-w-[168px]">
+                    <span className="flex items-center gap-1 text-[#F0B046]">
+                      {Array.from({ length: 5 }).map((_, starIndex) => (
+                        <svg key={starIndex} className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                        </svg>
+                      ))}
+                    </span>
+                    4.9 Star Rating
+                  </span>
+                  <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center">
+                    <Image
+                      src="/images/web_photos/aveyo-icon.svg"
+                      alt=""
+                      width={23}
+                      height={19}
+                      className="h-auto w-[18px] opacity-90"
+                    />
+                  </span>
+                </div>
               ))}
-              4.9 Star Rating
-            </span>
-            <Image src="/aveyo-logo.svg" alt="" width={80} height={18} className="opacity-30" />
-          </div>
-        ))}
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

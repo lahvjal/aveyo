@@ -1,10 +1,10 @@
+import Image from "next/image";
 import type { Metadata } from "next";
 import Testimonials from "@/components/Testimonials";
 import {
   SiteCard,
   SiteHero,
   SiteImageBreak,
-  SiteImagePlaceholder,
   SitePageShell,
   SiteSection,
   SiteSplitSection
@@ -102,7 +102,7 @@ const portalStages: PortalStage[] = [
 const supportFeatures = [
   "Account manager",
   "Customer service access",
-  "Your install app",
+  "Customer portal & Ava assistance",
   "Constant communication"
 ];
 
@@ -214,7 +214,13 @@ export default function ProcessPage() {
         }
         visual={
           <div className="relative h-[400px] overflow-hidden rounded-[var(--site-radius-corner)] shadow-[0_20px_60px_rgba(10,22,40,0.12)]">
-            <SiteImagePlaceholder alt="Hands holding smartphone showing clean dashboard app with progress tracker, soft-focus living room background" className="h-full w-full" />
+            <Image
+              src="/images/web_photos/customerPortal.png"
+              alt="Man viewing the Aveyo customer portal on a laptop at a kitchen table"
+              fill
+              className="object-cover"
+              sizes="(min-width: 1024px) 50vw, 100vw"
+            />
           </div>
         }
       />

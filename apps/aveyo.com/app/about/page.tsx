@@ -14,17 +14,17 @@ const timelineItems = [
   {
     label: "Early 2022",
     description:
-      "Leaders from across the solar industry came together around one idea: build a better solar company by combining trusted expertise, proven processes, and hard-earned relationships."
+      "Leaders, from all over the solar industry, came together to make this lofty goal a reality. It was decided they would combine their well-established, well-respected companies to form a better solar company. Seamlessly integrating their expertise, processes, and relationships to create something the solar world desperately needed."
   },
   {
     label: "2023",
     description:
-      "Aveyo officially launched with a clear mission to raise the bar for what the residential solar experience should feel like."
+      "Aveyo was officially established, and we've been running forward ever since. The mission became a company, and the better-customer-experience vision had a name."
   },
   {
     label: "Since 2023",
     description:
-      "Every team, design choice, and process improvement has been focused on transparency, smoother installs, and stronger savings for homeowners."
+      "We've dedicated our efforts, designs, and energy to providing our customers with a transparent, smooth experience so they can save bigger and live brighter. Ultimately, we hope to help you power more of what matters most."
   }
 ];
 
@@ -75,15 +75,20 @@ export default function AboutPage() {
       />
 
       <SiteSection
-        eyebrow="Timeline"
+        eyebrow="The Aveyo Story"
         title={
           <>
-            Built To Change
+            Est. 2023
             <br />
-            The Solar Experience
+            Timeline
           </>
         }
-        description="Aveyo came together because the industry needed a more transparent, more accountable way to bring solar to homeowners."
+        description={
+          <>
+            <p>Aveyo was established with one goal in mind: to give customers a better solar experience.</p>
+            <p className="mt-4">Here's a timeline:</p>
+          </>
+        }
       >
         <SiteCardGrid>
           {timelineItems.map((item) => (
@@ -99,8 +104,15 @@ export default function AboutPage() {
 
       <SiteImageBreak
         images={[
-          { src: "/images/web_photos/Newsfeed_03_CEO-Lobby-Backdrop.jpg", alt: "Aveyo office lobby with brand logo, modern reception desk, and seating area" },
-          { alt: "Solar installation crew on residential rooftop mid-install, four workers with different tasks, sunny day" }
+          {
+            src: "/images/web_photos/Newsfeed_03_CEO-Lobby-Backdrop.jpg",
+            alt: "Aveyo office lobby with brand logo, modern reception desk, and seating area",
+            objectPosition: "left center"
+          },
+          {
+            src: "/images/web_photos/roofsolarinstall.png",
+            alt: "Solar installation crew on residential rooftop mid-install, four workers with different tasks, sunny day"
+          }
         ]}
       />
 

@@ -147,7 +147,7 @@ export default function Navbar() {
                 >
                   <button
                     type="button"
-                    className={`flex items-center gap-2 text-sm font-extrabold text-white transition-opacity xl:text-[length:var(--home-paragraph)] ${
+                    className={`flex items-center gap-2 text-sm font-extrabold text-white transition-opacity xl:text-[length:var(--home-h7)] ${
                       openDesktopGroup === group.name || isActiveGroup(group.links) ? "opacity-100" : "opacity-80 hover:opacity-100"
                     }`}
                     onClick={() =>

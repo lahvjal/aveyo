@@ -1111,12 +1111,12 @@ body {
   width: min(440px, calc(100vw - 8px));
 }
 
-@keyframes scroll {
+@keyframes state-trust-scroll {
   from {
-    transform: translateX(0);
+    transform: translate3d(0, 0, 0);
   }
   to {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 
