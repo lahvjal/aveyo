@@ -278,7 +278,7 @@ export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: 
                 alt=""
                 fill
                 sizes="100vw"
-                className="object-contain"
+                className="object-cover"
               />
               <div
                 className="absolute inset-0"

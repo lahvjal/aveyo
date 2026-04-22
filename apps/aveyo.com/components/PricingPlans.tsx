@@ -87,7 +87,7 @@ export default function PricingPlans() {
             >
               <div>
                 {plan.badge ? (
-                  <span className="mb-7 inline-flex items-center justify-center rounded-[30px] bg-[#70beff] px-5 py-2.5 text-[length:var(--home-text-large)] text-[color:var(--home-black)] md:text-[length:var(--home-h5)]">
+                  <span className="mb-7 inline-flex items-center justify-center rounded-[30px] bg-[#70beff] px-5 py-2.5 text-[length:var(--home-h7)] font-semibold text-[color:var(--home-black)]">
                     {plan.badge}
                   </span>
                 ) : (

@@ -104,7 +104,7 @@ export const statePages: Record<string, StatePageData> = {
       "Illinois electricity rates have risen sharply since 2021, and another rate increase is expected this summer. Take control of your energy future with Aveyo Solar and tap into Illinois' best-in-the-Midwest solar incentives.",
     heroBackgroundImage: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone3.jpg",
     heroVideoUrl: "/images/web_photos/IL/heroIL.mp4",
-    footerImage: "",
+    footerImage: "/images/web_photos/PA/footerPA1.png",
     aerialImage: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone.jpg",
     aerial: {
       videoUrl: "/images/web_photos/IL/droneIL.mp4",
@@ -300,6 +300,7 @@ export const statePages: Record<string, StatePageData> = {
       "Utah\u2019s abundant sunshine makes it one of the best states in the country for residential solar. Aveyo was built right here in Utah, so we know the local market, the incentives, and the communities we serve better than anyone.",
     heroBackgroundImage: "/images/web_photos/Contact_01_Office-Location-Utah-Mountains.jpg",
     heroVideoUrl: "/images/web_photos/UT/heroUT-roofvid.mp4",
+    footerImage: "/images/web_photos/PA/footerPA1.png",
     aerialImage: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone2.jpg",
     aerial: {
       videoUrl: "/images/web_photos/UT/maskedUT.mp4",
@@ -397,6 +398,7 @@ export const statePages: Record<string, StatePageData> = {
       "California residents face some of the highest electricity rates in the nation. With NEM 3.0, pairing solar with battery storage is more valuable than ever, letting you store the energy you generate and use it when rates are highest.",
     heroBackgroundImage: "/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT3.jpg",
     heroVideoUrl: "/images/web_photos/CA/heroCA.mp4",
+    footerImage: "/images/web_photos/CA/footerCA.png",
     aerialImage: "/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT2.jpg",
     aerial: {
       videoUrl: "/images/web_photos/CA/maskedCA.mp4",
