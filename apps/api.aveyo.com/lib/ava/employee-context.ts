@@ -88,45 +88,179 @@ function normalizeQuestion(value: string) {
     .trim();
 }
 
-function getLatestCustomerText(thread: ConversationThread) {
+function getLatestCustomerTexts(thread: ConversationThread, limit = 2) {
+  const texts: string[] = [];
   for (let index = thread.messages.length - 1; index >= 0; index -= 1) {
     const message = thread.messages[index];
     if (message?.kind === "customer") {
-      return message.text.trim();
+      const trimmed = message.text.trim();
+      if (trimmed) {
+        texts.push(trimmed);
+      }
+      if (texts.length >= limit) {
+        break;
+      }
     }
   }
 
-  return "";
+  return texts;
 }
 
-function looksLikeEmployeePersonQuery(question: string) {
+function getLatestCustomerText(thread: ConversationThread) {
+  return getLatestCustomerTexts(thread, 1)[0] ?? "";
+}
+
+function getPreviousCustomerText(thread: ConversationThread) {
+  return getLatestCustomerTexts(thread, 2)[1] ?? "";
+}
+
+const directPersonPatterns = [
+  /\bcan you tell me about\b/,
+  /\btell me about\b/,
+  /\bwhat does\b/,
+  /\bwhat do\b/,
+  /\bwhere does\b/,
+  /\bwhere is\b/,
+  /\bwho handles\b/,
+  /\bwho leads\b/,
+  /\bwho runs\b/,
+  /\bwho works in\b/,
+  /\bdo you know\b/
+];
+
+const followUpNamePrefixes = [/^how about\b/, /^what about\b/, /^how bout\b/, /^about\b/, /^and\b/];
+
+const nonNameTokens = new Set([
+  "a",
+  "an",
+  "and",
+  "anyone",
+  "anybody",
+  "about",
+  "around",
+  "department",
+  "email",
+  "employee",
+  "employees",
+  "for",
+  "he",
+  "her",
+  "him",
+  "how",
+  "i",
+  "in",
+  "info",
+  "information",
+  "is",
+  "manager",
+  "me",
+  "my",
+  "of",
+  "on",
+  "or",
+  "our",
+  "people",
+  "phone",
+  "reports",
+  "role",
+  "team",
+  "the",
+  "their",
+  "them",
+  "title",
+  "to",
+  "what",
+  "who"
+]);
+
+function tokenizeQuestion(value: string) {
+  return value.split(" ").filter(Boolean);
+}
+
+function isLikelyNameToken(token: string) {
+  return /^[a-z][a-z']{1,}$/.test(token) && !nonNameTokens.has(token);
+}
+
+function looksLikeStandaloneFullNameQuery(normalizedQuestion: string) {
+  const tokens = tokenizeQuestion(normalizedQuestion);
+  return (
+    tokens.length >= 2 &&
+    tokens.length <= 3 &&
+    tokens.every((token) => isLikelyNameToken(token))
+  );
+}
+
+function looksLikeSingleNameReference(normalizedQuestion: string) {
+  const tokens = tokenizeQuestion(normalizedQuestion);
+  return tokens.length === 1 && isLikelyNameToken(tokens[0] ?? "");
+}
+
+function stripFollowUpNamePrefix(normalizedQuestion: string) {
+  for (const pattern of followUpNamePrefixes) {
+    if (pattern.test(normalizedQuestion)) {
+      return normalizedQuestion.replace(pattern, "").trim();
+    }
+  }
+  return normalizedQuestion;
+}
+
+function looksLikeFollowUpNameQuery(normalizedQuestion: string) {
+  const strippedQuestion = stripFollowUpNamePrefix(normalizedQuestion);
+  if (strippedQuestion === normalizedQuestion) {
+    return false;
+  }
+
+  const tokens = tokenizeQuestion(strippedQuestion);
+  return (
+    tokens.length >= 1 &&
+    tokens.length <= 3 &&
+    tokens.every((token) => isLikelyNameToken(token))
+  );
+}
+
+function hasExplicitEmployeePersonSignal(normalizedQuestion: string) {
+  if (!normalizedQuestion.trim()) {
+    return false;
+  }
+
+  if (DIRECTORY_PATTERNS.some((pattern) => pattern.test(normalizedQuestion))) {
+    return true;
+  }
+
+  return directPersonPatterns.some((pattern) => pattern.test(normalizedQuestion));
+}
+
+function looksLikeEmployeePersonQuery(question: string, previousQuestion?: string) {
   if (!question.trim()) {
     return false;
   }
 
   const normalizedQuestion = normalizeQuestion(question);
-  if (DIRECTORY_PATTERNS.some((pattern) => pattern.test(normalizedQuestion))) {
+  if (
+    hasExplicitEmployeePersonSignal(normalizedQuestion) ||
+    looksLikeStandaloneFullNameQuery(normalizedQuestion)
+  ) {
     return true;
   }
 
-  const directPersonPatterns = [
-    /\bcan you tell me about\b/,
-    /\btell me about\b/,
-    /\bwhat does\b/,
-    /\bwhat do\b/,
-    /\bwhere does\b/,
-    /\bwhere is\b/,
-    /\bwho handles\b/,
-    /\bwho leads\b/,
-    /\bwho runs\b/,
-    /\bwho works in\b/,
-    /\bdo you know\b/
-  ];
-  if (directPersonPatterns.some((pattern) => pattern.test(normalizedQuestion))) {
-    return true;
+  const normalizedPreviousQuestion = normalizeQuestion(previousQuestion ?? "");
+  if (!normalizedPreviousQuestion) {
+    return false;
   }
 
-  return /\b[A-Z][a-z]{1,}\s+[A-Z][a-z]{1,}\b/.test(question);
+  const previousQuestionLookedLikeDirectoryQuery =
+    hasExplicitEmployeePersonSignal(normalizedPreviousQuestion) ||
+    looksLikeStandaloneFullNameQuery(normalizedPreviousQuestion) ||
+    looksLikeFollowUpNameQuery(normalizedPreviousQuestion) ||
+    looksLikeSingleNameReference(normalizedPreviousQuestion);
+
+  if (!previousQuestionLookedLikeDirectoryQuery) {
+    return false;
+  }
+
+  return (
+    looksLikeFollowUpNameQuery(normalizedQuestion) || looksLikeSingleNameReference(normalizedQuestion)
+  );
 }
 
 export function detectEmployeeKnowledgeIntents(question: string): EmployeeKnowledgeIntent[] {
@@ -159,6 +293,7 @@ export async function buildEmployeeAvaContext(params: {
   actorAccess?: SessionAccessContext;
 }): Promise<EmployeeAvaContext | undefined> {
   const latestQuestion = getLatestCustomerText(params.thread);
+  const previousQuestion = getPreviousCustomerText(params.thread);
   if (!latestQuestion) {
     return undefined;
   }
@@ -176,6 +311,12 @@ export async function buildEmployeeAvaContext(params: {
   }
 
   const detectedIntents = detectEmployeeKnowledgeIntents(latestQuestion);
+  const shouldQueryDirectory =
+    detectedIntents.includes("directory") ||
+    looksLikeEmployeePersonQuery(latestQuestion, previousQuestion);
+  if (shouldQueryDirectory && !detectedIntents.includes("directory")) {
+    detectedIntents.push("directory");
+  }
   const employeeContext: EmployeeAvaContext = {
     audience: "employee",
     actor: {
@@ -187,7 +328,7 @@ export async function buildEmployeeAvaContext(params: {
     detectedIntents
   };
 
-  if (detectedIntents.includes("directory") || looksLikeEmployeePersonQuery(latestQuestion)) {
+  if (shouldQueryDirectory) {
     employeeContext.directory = await lookupEmployeeDirectoryContext({
       question: latestQuestion,
       viewerUserId: params.actorUserId

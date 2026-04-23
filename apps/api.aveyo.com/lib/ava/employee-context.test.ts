@@ -27,9 +27,9 @@ const mockedLookupEmployeeDirectoryContext = vi.mocked(lookupEmployeeDirectoryCo
 const mockedLookupEmployeeNewsContext = vi.mocked(lookupEmployeeNewsContext);
 const mockedLookupEmployeeKpiSummary = vi.mocked(lookupEmployeeKpiSummary);
 
-function createMessage(text: string): TimelineMessage {
+function createMessage(id: number, text: string): TimelineMessage {
   return {
-    id: "message-1",
+    id: `message-${id}`,
     conversationId: "conversation-1",
     kind: "customer",
     text,
@@ -38,11 +38,12 @@ function createMessage(text: string): TimelineMessage {
   };
 }
 
-function createThread(text: string): ConversationThread {
+function createThread(text: string | string[]): ConversationThread {
+  const texts = Array.isArray(text) ? text : [text];
   return {
     id: "conversation-1",
     authenticated: true,
-    messages: [createMessage(text)],
+    messages: texts.map((entry, index) => createMessage(index + 1, entry)),
     handoff: {
       state: "none"
     },
@@ -102,5 +103,91 @@ describe("buildEmployeeAvaContext", () => {
     expect(result?.audience).toBe("employee");
     expect(result?.actor.policy.isEmployee).toBe(true);
     expect(result?.directory?.status).toBe("ok");
+  });
+
+  it("treats lowercase full names as directory lookups", async () => {
+    mockedLookupEmployeeDirectoryContext.mockResolvedValue({
+      status: "ok",
+      requestType: "person",
+      restrictedContactRequest: false,
+      matchedDepartment: null,
+      matches: [],
+      note: null
+    });
+
+    const result = await buildEmployeeAvaContext({
+      actorUserId: "employee-1",
+      actorRole: "support_agent",
+      actorAccess: {
+        userType: "employee",
+        departmentId: "dept-sales",
+        departmentName: "Sales",
+        departmentPath: [],
+        subDepartments: [],
+        subDepartmentIds: [],
+        isManager: false,
+        isAdmin: false,
+        isExecutive: false,
+        isSuperAdmin: false
+      },
+      thread: createThread("dave anderson")
+    });
+
+    expect(mockedLookupEmployeeDirectoryContext).toHaveBeenCalledWith({
+      question: "dave anderson",
+      viewerUserId: "employee-1"
+    });
+    expect(result?.detectedIntents).toContain("directory");
+  });
+
+  it("treats follow-up name questions as directory lookups", async () => {
+    mockedLookupEmployeeDirectoryContext.mockResolvedValue({
+      status: "ambiguous",
+      requestType: "person",
+      restrictedContactRequest: false,
+      matchedDepartment: null,
+      matches: [
+        {
+          name: "Dave Anderson",
+          title: "CEO",
+          department: "Leadership",
+          manager: null,
+          reportingChain: []
+        },
+        {
+          name: "Dave Brown",
+          title: "Marketing Director",
+          department: "Marketing",
+          manager: "Donny McGinnis",
+          reportingChain: ["Donny McGinnis"]
+        }
+      ],
+      note: "Multiple employees matched this name. Ask one short clarifying question and use the candidate names instead of guessing."
+    });
+
+    const result = await buildEmployeeAvaContext({
+      actorUserId: "employee-1",
+      actorRole: "support_agent",
+      actorAccess: {
+        userType: "employee",
+        departmentId: "dept-sales",
+        departmentName: "Sales",
+        departmentPath: [],
+        subDepartments: [],
+        subDepartmentIds: [],
+        isManager: false,
+        isAdmin: false,
+        isExecutive: false,
+        isSuperAdmin: false
+      },
+      thread: createThread(["What department is Donny Mcginnis in?", "how about Dave?"])
+    });
+
+    expect(mockedLookupEmployeeDirectoryContext).toHaveBeenCalledWith({
+      question: "how about Dave?",
+      viewerUserId: "employee-1"
+    });
+    expect(result?.detectedIntents).toContain("directory");
+    expect(result?.directory?.status).toBe("ambiguous");
   });
 });

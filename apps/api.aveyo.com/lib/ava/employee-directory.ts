@@ -25,7 +25,7 @@ export interface EmployeeDirectoryMatch {
 }
 
 export interface EmployeeDirectoryLookupResult {
-  status: "ok" | "no_match" | "unavailable";
+  status: "ok" | "ambiguous" | "no_match" | "unavailable";
   requestType: "person" | "department";
   restrictedContactRequest: boolean;
   matchedDepartment: string | null;
@@ -202,6 +202,24 @@ function createUnavailableResult(note: string): EmployeeDirectoryLookupResult {
   };
 }
 
+function buildPersonMatchNote(params: {
+  restrictedContactRequest: boolean;
+  ambiguousMatch: boolean;
+}) {
+  const notes: string[] = [];
+  if (params.ambiguousMatch) {
+    notes.push(
+      "Multiple employees matched this name. Ask one short clarifying question and use the candidate names instead of guessing."
+    );
+  }
+  if (params.restrictedContactRequest) {
+    notes.push(
+      "Approved directory answers only include safe org fields. Private contact details stay out of scope."
+    );
+  }
+  return notes.length > 0 ? notes.join(" ") : null;
+}
+
 export async function lookupEmployeeDirectoryContext(params: {
   question: string;
   viewerUserId?: string | null;
@@ -250,7 +268,7 @@ export async function lookupEmployeeDirectoryContext(params: {
       };
     }
 
-    const matchedProfiles = profiles
+    const scoredProfileMatches = profiles
       .map((profile) => ({
         profile,
         score: getProfileSearchScore(question, profile)
@@ -261,20 +279,27 @@ export async function lookupEmployeeDirectoryContext(params: {
           return right.score - left.score;
         }
         return getDisplayName(left.profile).localeCompare(getDisplayName(right.profile));
-      })
+      });
+
+    const ambiguousPersonMatch =
+      scoredProfileMatches.length > 1 &&
+      scoredProfileMatches[0]?.score === scoredProfileMatches[1]?.score &&
+      (scoredProfileMatches[0]?.score ?? 0) <= 6;
+    const matchedProfiles = scoredProfileMatches
       .slice(0, 3)
       .map((entry) => mapDirectoryMatch(entry.profile, profileById, departmentNameById));
 
     if (matchedProfiles.length > 0) {
       return {
-        status: "ok",
+        status: ambiguousPersonMatch ? "ambiguous" : "ok",
         requestType: "person",
         restrictedContactRequest,
         matchedDepartment: null,
         matches: matchedProfiles,
-        note: restrictedContactRequest
-          ? "Approved directory answers only include safe org fields. Private contact details stay out of scope."
-          : null
+        note: buildPersonMatchNote({
+          restrictedContactRequest,
+          ambiguousMatch: ambiguousPersonMatch
+        })
       };
     }
 
@@ -292,7 +317,9 @@ export async function lookupEmployeeDirectoryContext(params: {
         restrictedContactRequest,
         matchedDepartment: null,
         matches: [],
-        note: "No matching employee or department was found in the approved directory data."
+        note:
+          "No matching employee or department was found in the approved directory data. " +
+          "If the name may be incomplete, ask one short follow-up question for a last name, team, or title."
       };
     }
 

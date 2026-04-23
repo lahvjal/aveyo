@@ -24,8 +24,16 @@ interface UseWidgetAuthSessionOptions {
 
 const DEFAULT_POLL_INTERVAL_MS = 30000;
 const PARENT_SESSION_RESPONSE_WAIT_MS = 750;
+const transientAuthFailureGraceMs = 5000;
 const LOCAL_HOST_PATTERN =
   /^(localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|::1|.+\.localhost|.+\.local)$/i;
+const RETRYABLE_AUTH_FAILURE_REASONS = new Set([
+  "missing_access_token",
+  "invalid_access_token",
+  "refresh_failed",
+  "refreshed_access_token_invalid"
+]);
+let lastConfirmedAuthenticatedAt = 0;
 
 interface HostSessionSnapshotMessageData {
   source?: string;
@@ -53,6 +61,54 @@ function toSession(snapshot: HostSessionSnapshot): WidgetAuthSession {
 
 function toSignedOutSession(): WidgetAuthSession {
   return toSession(createSignedOutSnapshot());
+}
+
+function preserveRecentAuthenticatedSession(
+  previousSession: WidgetAuthSession
+): WidgetAuthSession {
+  return {
+    ...previousSession,
+    loading: false
+  };
+}
+
+function readFailureReason(response: Response, payload: unknown) {
+  const headerReason = response.headers.get("x-ava-auth-reason")?.trim();
+  if (headerReason) {
+    return headerReason;
+  }
+
+  if (!payload || typeof payload !== "object" || !("failure" in payload)) {
+    return undefined;
+  }
+
+  const failure = (payload as { failure?: unknown }).failure;
+  if (!failure || typeof failure !== "object" || !("reason" in failure)) {
+    return undefined;
+  }
+
+  const reason = (failure as { reason?: unknown }).reason;
+  return typeof reason === "string" && reason.trim() ? reason.trim() : undefined;
+}
+
+function shouldGracefullyRetainAuthenticatedSession(
+  previousSession: WidgetAuthSession,
+  requestOk: boolean,
+  failureReason?: string
+) {
+  if (!previousSession.authenticated) {
+    return false;
+  }
+
+  if (Date.now() - lastConfirmedAuthenticatedAt > transientAuthFailureGraceMs) {
+    return false;
+  }
+
+  if (requestOk) {
+    return false;
+  }
+
+  return !failureReason || RETRYABLE_AUTH_FAILURE_REASONS.has(failureReason);
 }
 
 function isTrustedParentOrigin(origin: string) {
@@ -100,6 +156,9 @@ export function useWidgetAuthSession({
 
   useEffect(() => {
     if (sessionSnapshot) {
+      if (sessionSnapshot.authenticated) {
+        lastConfirmedAuthenticatedAt = Date.now();
+      }
       setSession(toSession(sessionSnapshot));
       return;
     }
@@ -134,6 +193,9 @@ export function useWidgetAuthSession({
         return;
       }
 
+      if (normalized.authenticated) {
+        lastConfirmedAuthenticatedAt = Date.now();
+      }
       setHasParentSnapshot(true);
       setSession(toSession(normalized));
     };
@@ -183,18 +245,39 @@ export function useWidgetAuthSession({
 
         const normalized = normalizeHostSessionSnapshot(payload);
         if (normalized) {
-          setSession(toSession(normalized));
-          return;
+          if (normalized.authenticated) {
+            lastConfirmedAuthenticatedAt = Date.now();
+            setSession(toSession(normalized));
+            return;
+          }
         }
 
-        if (response.status === 401) {
-          setSession(toSignedOutSession());
-          return;
-        }
-        setSession(toSignedOutSession());
+        const failureReason = readFailureReason(response, payload);
+        setSession((previousSession) => {
+          if (
+            shouldGracefullyRetainAuthenticatedSession(
+              previousSession,
+              response.ok,
+              failureReason
+            )
+          ) {
+            return preserveRecentAuthenticatedSession(previousSession);
+          }
+
+          if (normalized) {
+            return toSession(normalized);
+          }
+
+          return toSignedOutSession();
+        });
       } catch {
         if (!cancelled) {
-          setSession(toSignedOutSession());
+          setSession((previousSession) => {
+            if (shouldGracefullyRetainAuthenticatedSession(previousSession, false)) {
+              return preserveRecentAuthenticatedSession(previousSession);
+            }
+            return toSignedOutSession();
+          });
         }
       }
     };

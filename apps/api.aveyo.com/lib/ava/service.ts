@@ -155,7 +155,7 @@ function buildEmployeeContextSystemMessage(employeeContext: EmployeeAvaContext |
       "Approved employee knowledge context for this chat:\n" +
       `${JSON.stringify(promptContext, null, 2)}\n` +
       "Use only this approved internal context when answering employee questions. " +
-      "If a provider says data is restricted, unavailable, or no match was found, say that briefly instead of guessing. " +
+      "If a provider says data is restricted, unavailable, ambiguous, or no match was found, say that briefly instead of guessing. " +
       "Never reveal private phone numbers, direct email addresses, personal schedules, or KPI data outside the approved scope."
   };
 }

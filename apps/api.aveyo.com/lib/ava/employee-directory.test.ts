@@ -124,4 +124,52 @@ describe("lookupEmployeeDirectoryContext", () => {
       manager: "Jane Smith"
     });
   });
+
+  it("marks first-name-only matches as ambiguous when multiple employees fit", async () => {
+    mockDirectoryLookups({
+      profiles: [
+        {
+          id: "employee-dave-anderson",
+          full_name: "Dave Anderson",
+          preferred_name: null,
+          job_title: "CEO",
+          department_id: "dept-leadership",
+          manager_id: null,
+          employment_status: "active"
+        },
+        {
+          id: "employee-dave-brown",
+          full_name: "Dave Brown",
+          preferred_name: null,
+          job_title: "Marketing Director",
+          department_id: "dept-marketing",
+          manager_id: "employee-donny",
+          employment_status: "active"
+        },
+        {
+          id: "employee-donny",
+          full_name: "Donny McGinnis",
+          preferred_name: null,
+          job_title: "CMO",
+          department_id: "dept-marketing",
+          manager_id: null,
+          employment_status: "active"
+        }
+      ],
+      departments: [
+        { id: "dept-leadership", name: "Leadership", parent_id: null },
+        { id: "dept-marketing", name: "Marketing", parent_id: null }
+      ]
+    });
+
+    const result = await lookupEmployeeDirectoryContext({
+      question: "how about Dave?",
+      viewerUserId: "employee-donny"
+    });
+
+    expect(result.status).toBe("ambiguous");
+    expect(result.matches).toHaveLength(2);
+    expect(result.matches.map((match) => match.name)).toEqual(["Dave Anderson", "Dave Brown"]);
+    expect(result.note).toContain("Multiple employees matched this name");
+  });
 });
