@@ -14,7 +14,7 @@ type TrustSeal = {
 const trustSeals: TrustSeal[] = [
   {
     eyebrow: "On Google",
-    title: "4.9 Stars on Google",
+    title: "4.7 Stars on Google",
     description:
       "Based on customer reviews on Google as of April 2026.",
     glow: "rgba(15, 23, 42, 0.08)",
