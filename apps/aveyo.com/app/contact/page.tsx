@@ -137,7 +137,7 @@ export default function ContactPage() {
       <SiteSection
         eyebrow="Ask Ava"
         title="Talk To Ava When You Have Questions"
-        description="Instead of filling out a contact form, start with Ava for quick answers about solar, timelines, project questions, and the right next step."
+        description="Instead of filling out a contact form, start with Ava for quick answers about solar, timelines, plan options, incentives, and the right next step."
       >
         <ContactAvaGuidance />
       </SiteSection>

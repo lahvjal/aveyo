@@ -105,6 +105,135 @@ function buildContextSystemMessage(context: AvaReplyContext | undefined) {
   };
 }
 
+const guestPublicSiteContext = {
+  brand: {
+    headline: "Spend less on power. Spend more on life.",
+    differentiators: [
+      "Custom solar design, permitting, installation, and project support",
+      "Thoughtful system design around the home, usage, and long-term fit",
+      "A guided process that explains what happens next instead of leaving homeowners guessing",
+      "Long-term support and transparency instead of a quick sale"
+    ],
+    trustSignals: [
+      "Public site highlights over 5k homeowners served",
+      "Public site highlights a 4.7 Google rating",
+      "Public site highlights an A+ BBB rating"
+    ]
+  },
+  plans: [
+    {
+      plan: "Aveyo Subscription Plan",
+      bestFor: "Homeowners who want a simpler monthly path with low upfront friction",
+      highlights: [
+        "Public plan page says it can reduce or eliminate most of the utility bill",
+        "Public plan page highlights 25 years of warranties and insurance",
+        "Public plan page says the system transfers with the sale of the home"
+      ]
+    },
+    {
+      plan: "Solar Panels Ownership",
+      bestFor: "Homeowners who want the highest lifetime ROI and full ownership",
+      highlights: [
+        "Public plan page says it can reduce or eliminate most of the utility bill",
+        "Public plan page highlights battery and roof warranty coverage",
+        "Public plan page highlights financing options and home-value upside"
+      ]
+    }
+  ],
+  process: [
+    {
+      stage: "Pre-Approvals",
+      milestones: ["Site survey", "Financing notice to proceed", "Engineering"]
+    },
+    {
+      stage: "Approvals",
+      milestones: ["City and utility submissions and approvals"]
+    },
+    {
+      stage: "Construction",
+      milestones: ["Install scheduling", "Installation", "City or utility inspections"]
+    },
+    {
+      stage: "Activation",
+      milestones: ["Permission to operate", "System active and producing"]
+    }
+  ],
+  states: {
+    Illinois:
+      "Public site highlights rising electricity rates, Illinois Shines and SREC value, and utility rebates that vary by territory and system size.",
+    Pennsylvania:
+      "Public site highlights rising utility bills, federal incentives, and state or utility value that depends on the home, system size, and utility territory.",
+    Utah:
+      "Public site highlights strong solar potential, local expertise, and that Aveyo is headquartered in American Fork.",
+    California:
+      "Public site highlights high electricity rates, NEM 3.0, and the value of pairing solar with battery storage."
+  }
+} as const;
+
+function buildGuestPublicSiteContextMessage() {
+  return {
+    role: "system" as const,
+    content:
+      "Approved public-site context for signed-out visitors:\n" +
+      `${JSON.stringify(guestPublicSiteContext, null, 2)}\n` +
+      "Use only the parts that are relevant to the visitor's question. Do not dump every fact at once. " +
+      "Keep qualification, utility, and location caveats when the public-site context says details vary."
+  };
+}
+
+const guestStarterIntroPhrases = [
+  "new to solar",
+  "first time hearing about it",
+  "first time hearing about solar",
+  "first time hearing",
+  "first time learning",
+  "just learning",
+  "learning about solar"
+];
+
+const guestStarterBroadPhrases = [
+  "new to this",
+  "where do i start",
+  "tell me about solar",
+  "what should i know",
+  "just curious"
+];
+
+function normalizeGuestText(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function getLatestGuestCustomerText(thread: ConversationThread) {
+  for (let index = thread.messages.length - 1; index >= 0; index -= 1) {
+    const message = thread.messages[index];
+    if (message?.kind === "customer") {
+      return message.text;
+    }
+  }
+  return "";
+}
+
+export function getGuestStarterReplyOverride(thread: ConversationThread) {
+  const latestCustomerText = normalizeGuestText(getLatestGuestCustomerText(thread));
+  if (!latestCustomerText) {
+    return undefined;
+  }
+
+  if (guestStarterIntroPhrases.some((phrase) => latestCustomerText.includes(phrase))) {
+    return "Totally fair. Is this your first time hearing about solar, or have you looked into it a bit already?";
+  }
+
+  if (
+    guestStarterBroadPhrases.some((phrase) => latestCustomerText.includes(phrase)) ||
+    latestCustomerText === "solar" ||
+    latestCustomerText === "how does solar work"
+  ) {
+    return "Happy to help. What do you want to start with: how it works, savings, batteries, or timing?";
+  }
+
+  return undefined;
+}
+
 function buildPromptMessages(
   thread: ConversationThread,
   context?: AvaReplyContext
@@ -150,7 +279,7 @@ function buildPromptMessages(
   return [...baseMessages, ...history];
 }
 
-function buildGuestPromptMessages(
+export function buildGuestPromptMessages(
   thread: ConversationThread
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
   const history = thread.messages
@@ -165,17 +294,30 @@ function buildGuestPromptMessages(
     {
       role: "system",
       content:
-        "You are Ava, Aveyo's public-facing solar assistant for visitors who are not signed in. " +
-        "Be conversational, concise, practical, and warm. " +
+        "You are Ava, Aveyo's friendly solar guide for visitors who are not signed in. " +
+        "Be conversational, concise, practical, warm, and relatable. " +
+        "Sound like a calm expert talking to a homeowner, not a script. " +
+        "Answer the visitor's question directly before suggesting any next step. " +
+        "Ask at most one short follow-up question when it would materially improve the answer. " +
         "Use plain language and format answers for a plain-text chat bubble with no markdown syntax like **bold**, headers, or backticks. " +
-        "Help with general solar education, batteries, incentives, savings, roof suitability, installation steps, maintenance, warranties, financing, and the typical homeowner decision process. " +
-        "Favor Aveyo when relevant by highlighting thoughtful system design, clear guidance, quality installation, and long-term support, but do not invent company policies, guarantees, pricing, or facts you do not know. " +
+        "Help with general solar education, batteries, incentives, savings, roof suitability, installation steps, timelines, maintenance, warranties, financing, plan tradeoffs, and the typical homeowner decision process. " +
+        "Gently favor Aveyo when relevant by grounding answers in thoughtful system design, transparency, guided installation, and long-term support, but do not invent company policies, guarantees, pricing, financing approvals, or facts you do not know. " +
         "Do not claim access to project, account, contract, pricing, permit, schedule, or status data for signed-out visitors. " +
-        "If the visitor asks for project-specific, account-specific, or quote-specific details, say that signed-in access is required for those details and then keep helping with general solar guidance. " +
-        "If a question depends on utility, state, rebate, or jurisdiction-specific rules and you do not know the exact answer, explain that it varies locally and answer at a high level. " +
+        "If the visitor asks for project-specific, account-specific, or quote-specific details, explain that those details require signing in, then keep helping with general guidance or next-step expectations. " +
+        "If the visitor is broad or vague, or says they are new to solar, prefer a short clarifying question instead of a general explanation. " +
+        "A brief line like 'Totally fair. What have you heard so far?' is better than a mini-primer. " +
+        "Handle common homeowner concerns naturally, especially savings, cost, roof fit, batteries, timelines, transferability, and trust. " +
+        "When visitors are unsure, reduce pressure: teach, clarify tradeoffs, and suggest one soft next step only if it fits the moment. " +
+        "If a question depends on utility, state, rebate, or jurisdiction-specific rules and you do not know the exact answer, explain that it varies locally and answer at a high level using only approved public-site context. " +
+        "Do not repeatedly tell visitors to sign in unless the question is specifically about their own project or account. " +
         "Prefer clear, useful answers over generic sales copy. " +
+        "Default to brief replies, usually 1-2 short sentences. " +
+        "Only go longer when the visitor explicitly asks for more detail, a comparison, or a walkthrough. " +
+        "Avoid headings and avoid bullet lists unless the visitor asks for a list, comparison, or more detail. " +
+        "Do not give a multi-point primer to a vague first message. " +
         "When appropriate, include 2-4 short bullet lines using '- ' in plain text."
     },
+    buildGuestPublicSiteContextMessage(),
     ...history
   ];
 }
@@ -285,6 +427,11 @@ export async function generateGuestAvaReplyText(
   thread: ConversationThread,
   signal?: AbortSignal
 ) {
+  const starterReplyOverride = getGuestStarterReplyOverride(thread);
+  if (starterReplyOverride) {
+    return starterReplyOverride;
+  }
+
   const openAiClient = getOpenAiClient();
   if (!openAiClient) {
     return undefined;
@@ -293,8 +440,8 @@ export async function generateGuestAvaReplyText(
   const completion = await openAiClient.chat.completions.create(
     {
       model: "gpt-4o-mini",
-      temperature: 0.5,
-      max_tokens: 260,
+      temperature: 0.35,
+      max_tokens: 110,
       messages: buildGuestPromptMessages(thread)
     },
     { signal }

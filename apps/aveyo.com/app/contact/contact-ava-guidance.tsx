@@ -9,10 +9,10 @@ import {
 } from "@/lib/site-config";
 
 const suggestedQuestions = [
-  "How does solar work for my home?",
-  "What happens after I sign up?",
+  "Is solar worth it for my home?",
+  "Should I choose subscription or ownership?",
   "How long do permitting and installation usually take?",
-  "Who should I contact about my project?"
+  "What incentives usually matter in my state?"
 ];
 
 function openAvaWidget() {
@@ -41,7 +41,9 @@ export default function ContactAvaGuidance() {
             Get answers faster than a contact form.
           </h3>
           <p className="mt-5 max-w-[58ch] text-[length:var(--site-body)] leading-[1.7] text-[#5f646b] text-[color:var(--site-text-muted)]">
-            Ask Ava about solar basics, quotes, installation timing, project updates, or what to do next. If you need a live person, Ava helps point you to the right next step instead of making you guess which team to contact.
+            Ask Ava about solar basics, plan options, incentives, installation timing, or what to do next. For
+            project-specific updates, sign in or reach customer care. If you need a live person, Ava can still
+            help point you to the right next step instead of making you guess which team to contact.
           </p>
 
           <div className="mt-8 flex flex-wrap gap-3">
@@ -77,7 +79,7 @@ export default function ContactAvaGuidance() {
           </ul>
 
           <p className="mt-6 text-[length:var(--site-body)] leading-[1.7] text-[#5f646b] text-[color:var(--site-text-muted)]">
-            Need help with an active project? Customer care is available at{" "}
+            Need help with an active project or account-specific update? Customer care is available at{" "}
             <a
               href={AVEYO_CUSTOMER_CARE_PHONE_HREF}
               className="font-semibold text-[#212120] text-[color:var(--site-black)]"

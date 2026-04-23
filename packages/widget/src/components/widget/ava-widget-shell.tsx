@@ -147,17 +147,102 @@ const guestProjectSpecificKeywords = [
 
 const guestCompanyInfoKeywords = [
   "aveyo",
+  "about aveyo",
+  "why aveyo",
+  "why choose aveyo",
   "company",
-  "service",
-  "services",
-  "product",
-  "products",
-  "installation",
-  "consultation",
-  "permitting",
+  "different",
+  "difference",
+  "compare companies"
+];
+
+const guestPlanKeywords = [
+  "subscription",
+  "lease",
+  "leasing",
+  "own",
+  "ownership",
+  "buy",
+  "purchase",
+  "loan",
+  "finance",
   "financing",
-  "warranty",
-  "monitoring"
+  "cash"
+];
+
+const guestSavingsKeywords = [
+  "worth it",
+  "save",
+  "savings",
+  "saving",
+  "payback",
+  "bill",
+  "cost",
+  "costs",
+  "expensive",
+  "monthly payment",
+  "utility rates",
+  "electric bill"
+];
+
+const guestProcessKeywords = [
+  "process",
+  "timeline",
+  "timing",
+  "how long",
+  "after i sign up",
+  "after signup",
+  "next step",
+  "next steps",
+  "site survey",
+  "permit",
+  "permitting",
+  "install",
+  "inspection",
+  "construction",
+  "activation",
+  "permission to operate",
+  "pto"
+];
+
+const guestTrustKeywords = [
+  "scam",
+  "scams",
+  "legit",
+  "trust",
+  "trustworthy",
+  "bad experience",
+  "bad name",
+  "pushy",
+  "pressure",
+  "transparent",
+  "transparency"
+];
+
+const guestIncentiveKeywords = [
+  "incentive",
+  "incentives",
+  "rebate",
+  "rebates",
+  "tax credit",
+  "net metering",
+  "nem 3.0",
+  "srec",
+  "illinois shines"
+];
+
+const guestBroadIntroKeywords = [
+  "new to solar",
+  "first time hearing about it",
+  "first time hearing",
+  "first time learning",
+  "new to this",
+  "just learning",
+  "learning about solar",
+  "where do i start",
+  "just curious",
+  "tell me about solar",
+  "what should i know"
 ];
 
 const guestSolarInfoKeywords = [
@@ -175,6 +260,57 @@ const guestSolarInfoKeywords = [
   "utility"
 ];
 
+const guestStateContexts = [
+  {
+    label: "Illinois",
+    keywords: ["illinois", "illinois shines", "srec", "comed", "ameren"],
+    shortReply:
+      "Illinois is one of the stronger incentive markets on Aveyo's public site, with value that can come from Illinois Shines, SRECs, and utility rebates depending on the territory. If you want, I can compare how subscription and ownership usually feel there.",
+    detailedReply:
+      "Illinois is one of the strongest incentive conversations on Aveyo's public site.\n" +
+      "- Illinois Shines and SREC value can materially improve the economics\n" +
+      "- Utility rebates may add more value depending on the territory\n" +
+      "- Final numbers still vary by system size and utility\n" +
+      "If you want, I can also explain how subscription and ownership usually feel different there."
+  },
+  {
+    label: "Pennsylvania",
+    keywords: ["pennsylvania", "duquesne", "keystone state"],
+    shortReply:
+      "Pennsylvania is usually a rising-bills and predictability conversation. Aveyo's public site emphasizes incentives and lower, steadier monthly energy costs. If you want, I can compare the main plan tradeoffs.",
+    detailedReply:
+      "Pennsylvania is usually a predictability and rising-bill conversation.\n" +
+      "- Aveyo's public site emphasizes federal incentives and relief from rising utility costs\n" +
+      "- Savings still depend on your roof, usage, and utility territory\n" +
+      "- The best fit often comes down to simplicity versus maximum long-term ROI\n" +
+      "If you want, I can walk through the main plan tradeoffs."
+  },
+  {
+    label: "Utah",
+    keywords: ["utah", "american fork", "rocky mountain power"],
+    shortReply:
+      "Utah can be a strong solar fit because of the sunlight, and Aveyo's public site also emphasizes local expertise from its American Fork base. If you want, I can help you think through solar versus solar-plus-storage.",
+    detailedReply:
+      "Utah can be a strong solar fit because of the sunlight and Aveyo's local roots.\n" +
+      "- Aveyo's public site highlights strong solar production potential\n" +
+      "- The site also points to predictable-rate planning and local expertise from its American Fork base\n" +
+      "- Exact savings still depend on your bill, roof, and shading\n" +
+      "If you want, I can help you think through whether solar or solar-plus-storage makes more sense."
+  },
+  {
+    label: "California",
+    keywords: ["california", "nem 3.0", "pg&e", "sce", "sdg&e"],
+    shortReply:
+      "California is usually a solar-plus-storage conversation now. Aveyo's public site highlights high electricity rates and NEM 3.0, which is why batteries matter more there. If you want, I can explain when storage is worth the extra cost.",
+    detailedReply:
+      "California is usually a solar-plus-storage conversation now.\n" +
+      "- Aveyo's public site highlights high electricity rates and NEM 3.0\n" +
+      "- Batteries can matter more because stored energy is useful when rates peak\n" +
+      "- The best system depends on your usage pattern, utility plan, and outage goals\n" +
+      "If you want, I can explain when storage is worth the extra cost."
+  }
+] as const;
+
 function hasAnyKeyword(text: string, keywords: string[]) {
   return keywords.some((keyword) => text.includes(keyword));
 }
@@ -188,22 +324,178 @@ function isGuestProjectSpecificQuestion(normalizedText: string) {
   );
 }
 
+function getGuestStateContext(normalizedText: string) {
+  return guestStateContexts.find((state) =>
+    state.keywords.some((keyword) => normalizedText.includes(keyword))
+  );
+}
+
+function wantsDetailedGuestReply(normalizedText: string) {
+  return [
+    "more detail",
+    "more details",
+    "tell me more",
+    "explain more",
+    "long version",
+    "walk me through",
+    "step by step",
+    "break it down",
+    "break that down",
+    "compare",
+    "comparison",
+    "vs",
+    "versus"
+  ].some((keyword) => normalizedText.includes(keyword));
+}
+
+function isBroadGuestIntro(normalizedText: string) {
+  if (hasAnyKeyword(normalizedText, guestBroadIntroKeywords)) {
+    return true;
+  }
+
+  return (
+    normalizedText.includes("how does solar work") &&
+    !hasAnyKeyword(normalizedText, guestSavingsKeywords) &&
+    !hasAnyKeyword(normalizedText, guestIncentiveKeywords) &&
+    !hasAnyKeyword(normalizedText, guestPlanKeywords) &&
+    !hasAnyKeyword(normalizedText, guestProcessKeywords)
+  );
+}
+
 function buildGuestAvaReply(prompt: string) {
-  const normalizedPrompt = prompt.trim().toLowerCase();
+  const normalizedPrompt = prompt.trim().toLowerCase().replace(/\s+/g, " ");
+  const stateContext = getGuestStateContext(normalizedPrompt);
+  const wantsDetails = wantsDetailedGuestReply(normalizedPrompt);
+
+  if (isBroadGuestIntro(normalizedPrompt) && !wantsDetails) {
+    if (
+      normalizedPrompt.includes("new to solar") ||
+      normalizedPrompt.includes("first time hearing") ||
+      normalizedPrompt.includes("first time learning")
+    ) {
+      return "Totally fair. Is this your first time hearing about solar, or have you looked into it a bit already?";
+    }
+
+    return "Happy to help. What do you want to start with: how it works, savings, batteries, or timing?";
+  }
 
   if (isGuestProjectSpecificQuestion(normalizedPrompt)) {
-    return "I can still help with general solar guidance while you're signed out, but I can't see project-specific details like your status, timeline, permits, pricing, or account information unless you sign in. If you want, ask me something general like how solar savings work, whether a battery helps during outages, or what usually affects payback.";
+    if (!wantsDetails) {
+      return "I can't see your specific quote, status, or account details while you're signed out. If you sign in, I can help with that. I can still explain the usual next step or what typically affects timing.";
+    }
+    return (
+      "I can't see your specific quote, project status, permits, pricing, or account details while you're signed out. " +
+      "If you sign in, I can help with that.\n" +
+      "- I can still explain what stage usually comes next\n" +
+      "- I can walk through what typically affects timing or pricing\n" +
+      "- I can help you figure out whether sales or customer care is the better next step"
+    );
+  }
+
+  if (hasAnyKeyword(normalizedPrompt, guestPlanKeywords)) {
+    if (!wantsDetails) {
+      return "Broadly, subscription is more about simplicity and lower upfront friction, while ownership is more about long-term ROI and full control. If you want, I can compare them in more detail.";
+    }
+    return (
+      "A simple way to compare Aveyo's public plan options:\n" +
+      "- Subscription: lower upfront friction, a simpler monthly path, and long coverage highlighted on the plan page\n" +
+      "- Ownership: more long-term upside, full ownership, financing options, and home-value potential\n" +
+      "- The better fit depends on whether you care more about simplicity or maximum lifetime ROI\n" +
+      "If you want, tell me whether your priority is monthly payment or long-term return and I can point you in the right direction."
+    );
+  }
+
+  if (hasAnyKeyword(normalizedPrompt, guestProcessKeywords)) {
+    if (!wantsDetails) {
+      return "Usually it goes survey and engineering, then approvals, then install and inspections, then activation. Timing varies by city and utility. If you want, I can break down any stage.";
+    }
+    return (
+      "Aveyo's public process is usually framed in four stages:\n" +
+      "- Pre-Approvals: survey, financing clearance, and engineering\n" +
+      "- Approvals: city and utility submissions\n" +
+      "- Construction: install scheduling, installation, and inspections\n" +
+      "- Activation: permission to operate and system turn-on\n" +
+      "Exact timing varies by city, utility, and inspection backlog, but I can explain any stage in plain English if you'd like."
+    );
+  }
+
+  if (
+    stateContext &&
+    (hasAnyKeyword(normalizedPrompt, guestSavingsKeywords) ||
+      hasAnyKeyword(normalizedPrompt, guestIncentiveKeywords) ||
+      hasAnyKeyword(normalizedPrompt, guestSolarInfoKeywords) ||
+      normalizedPrompt.split(" ").length <= 4)
+  ) {
+    return wantsDetails ? stateContext.detailedReply : stateContext.shortReply;
+  }
+
+  if (hasAnyKeyword(normalizedPrompt, guestIncentiveKeywords)) {
+    if (!wantsDetails) {
+      return "Incentives usually depend on your state, utility, and timing. Federal credits, local programs, and utility rules can all matter. If you tell me your state, I can keep it practical.";
+    }
+    return (
+      "Incentives are usually a mix of federal credits, state programs, utility rebates, and net-metering or export rules.\n" +
+      "- The exact stack depends on your state and utility\n" +
+      "- Some programs change over time or have qualification rules\n" +
+      "- That is why the same system can look different from one market to another\n" +
+      "If you tell me your state, I can explain the big factors that usually matter there."
+    );
+  }
+
+  if (hasAnyKeyword(normalizedPrompt, guestSavingsKeywords)) {
+    if (!wantsDetails) {
+      return "Whether solar is worth it usually comes down to your bill, roof conditions, and local incentives. Homes with higher bills and good sun exposure often have more to gain. If you want, tell me your state or rough bill range.";
+    }
+    return (
+      "Whether solar is worth it usually comes down to a few basics:\n" +
+      "- your current electric bill and rate pressure\n" +
+      "- usable roof space and shading\n" +
+      "- local incentives and utility rules\n" +
+      "- whether you want the lowest monthly cost or the best long-term ROI\n" +
+      "Aveyo's approach is to design around the home's real usage and long-term fit, not just add more panels. " +
+      "If you tell me your state or rough bill range, I can make this more concrete."
+    );
+  }
+
+  if (hasAnyKeyword(normalizedPrompt, guestTrustKeywords)) {
+    if (!wantsDetails) {
+      return "That concern is fair. A good solar company should be clear about sizing, costs, timeline, and what happens if you move. Aveyo's public messaging leans hard on transparency and guided support.";
+    }
+    return (
+      "That concern is fair. A lot of homeowners are cautious because solar can feel opaque or overly salesy.\n" +
+      "- A good installer should explain sizing, costs, warranties, timeline, and what happens if you move\n" +
+      "- Aveyo's public messaging leans on transparency and guiding homeowners from start to finish\n" +
+      "- You should never feel rushed into a system or plan you do not understand\n" +
+      "If you want, I can help you build a smart checklist for comparing installers."
+    );
   }
 
   if (hasAnyKeyword(normalizedPrompt, guestCompanyInfoKeywords)) {
-    return "Aveyo's approach is to guide homeowners through the full process, from consultation and system design through permitting, installation, and post-install support. The goal is a system that fits the home, usage, and long-term savings plan, not just a quick sale. I can share general Aveyo and solar information here, and if you sign in I can help with project-specific details.";
+    if (!wantsDetails) {
+      return "Aveyo's public approach is to guide homeowners from design through installation and support, with an emphasis on thoughtful system design and transparency. If you want, I can also tell you what to compare when choosing between installers.";
+    }
+    return (
+      "Aveyo's public approach is to guide homeowners from consultation and system design through permitting, installation, activation, and support. " +
+      "The emphasis is on thoughtful system design, transparency, and helping people choose a plan that actually fits the home and their goals.\n" +
+      "If you're comparing installers, I can also help you think through what questions are worth asking."
+    );
   }
 
   if (hasAnyKeyword(normalizedPrompt, guestSolarInfoKeywords)) {
-    return "In general, solar performance depends on roof orientation, shading, system size, household usage, and local utility rates. Homeowners usually look at panel output, battery backup options, available incentives, and estimated payback. Aveyo typically focuses on designing around the home's real usage and site conditions so the system is practical, not oversized. Sign in if you'd like project-specific guidance.";
+    if (!wantsDetails) {
+      return "Solar performance mostly comes down to roof direction, shade, energy usage, and local utility rules. If you want, tell me your state or biggest concern and I can keep it specific.";
+    }
+    return (
+      "At a high level, solar performance depends on roof direction, shade, system size, household usage, battery strategy, and local utility rules. " +
+      "Homes with higher bills and good sun exposure usually have more to gain.\n" +
+      "If you want, tell me your state or biggest concern and I can make that more specific."
+    );
   }
 
-  return "I can help with general questions about how solar works, batteries, incentives, savings, roof fit, and how Aveyo approaches home solar. If you need details about your exact project or account, please sign in and I can help with that too.";
+  return (
+    "Happy to help. I can answer questions about solar savings, batteries, incentives, timelines, plan options, or what going solar with Aveyo typically looks like.\n" +
+    "What are you most curious about?"
+  );
 }
 
 function buildGuestReplyHistory(thread: ConversationThread): GuestReplyMessageInput[] {
