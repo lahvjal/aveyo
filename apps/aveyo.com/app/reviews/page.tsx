@@ -145,7 +145,7 @@ export default function ReviewsPage() {
         description:
           "When you are ready, our team can walk you through your options and build a plan around your roof, goals, and budget.",
         actionLabel: "Pick A Plan",
-        actionHref: "/contact#sales-form"
+        actionHref: "/#pricing"
       }}
     >
       <SiteHero

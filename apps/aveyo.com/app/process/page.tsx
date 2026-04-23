@@ -202,7 +202,7 @@ export default function ProcessPage() {
         title: "Find A Plan That Is Right For You.\nSee What You Can Save.",
         description: "Ready to move forward? Start with a conversation and we will map out the next step clearly.",
         actionLabel: "Pick A Plan",
-        actionHref: "/contact#sales-form"
+        actionHref: "/#pricing"
       }}
     >
       <SiteHero

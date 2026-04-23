@@ -23,6 +23,15 @@ interface UseWidgetAuthSessionOptions {
 }
 
 const DEFAULT_POLL_INTERVAL_MS = 30000;
+const PARENT_SESSION_RESPONSE_WAIT_MS = 750;
+const LOCAL_HOST_PATTERN =
+  /^(localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|::1|.+\.localhost|.+\.local)$/i;
+
+interface HostSessionSnapshotMessageData {
+  source?: string;
+  type?: string;
+  payload?: unknown;
+}
 
 const loadingSession: WidgetAuthSession = {
   loading: true,
@@ -46,6 +55,33 @@ function toSignedOutSession(): WidgetAuthSession {
   return toSession(createSignedOutSnapshot());
 }
 
+function isTrustedParentOrigin(origin: string) {
+  try {
+    const parsed = new URL(origin);
+    const host = parsed.hostname.trim().toLowerCase();
+    if (!host) {
+      return false;
+    }
+    return host === "aveyo.com" || host.endsWith(".aveyo.com") || LOCAL_HOST_PATTERN.test(host);
+  } catch {
+    return false;
+  }
+}
+
+function requestParentSessionSnapshot() {
+  if (typeof window === "undefined" || window.parent === window) {
+    return;
+  }
+
+  window.parent.postMessage(
+    {
+      source: "ava-widget",
+      type: "request-auth-session"
+    },
+    "*"
+  );
+}
+
 export function useWidgetAuthSession({
   apiBaseUrl,
   pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
@@ -60,6 +96,7 @@ export function useWidgetAuthSession({
     }
     return loadingSession;
   });
+  const [hasParentSnapshot, setHasParentSnapshot] = useState(false);
 
   useEffect(() => {
     if (sessionSnapshot) {
@@ -75,15 +112,64 @@ export function useWidgetAuthSession({
     if (sessionSnapshot !== undefined) {
       return;
     }
-
-    let cancelled = false;
-    const resolvedApiBaseUrl = apiBaseUrl ?? resolveDefaultApiBaseUrl();
-    if (!resolvedApiBaseUrl) {
-      setSession(toSignedOutSession());
+    if (typeof window === "undefined" || window.parent === window) {
       return;
     }
 
+    const handleMessage = (event: MessageEvent) => {
+      if (event.source !== window.parent || !isTrustedParentOrigin(event.origin)) {
+        return;
+      }
+      if (!event.data || typeof event.data !== "object") {
+        return;
+      }
+
+      const data = event.data as HostSessionSnapshotMessageData;
+      if (data.source !== "aveyo-host" || data.type !== "auth-session-snapshot") {
+        return;
+      }
+
+      const normalized = normalizeHostSessionSnapshot(data.payload);
+      if (!normalized) {
+        return;
+      }
+
+      setHasParentSnapshot(true);
+      setSession(toSession(normalized));
+    };
+
+    const onFocus = () => {
+      requestParentSessionSnapshot();
+    };
+
+    window.addEventListener("message", handleMessage);
+    window.addEventListener("focus", onFocus);
+    requestParentSessionSnapshot();
+
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [sessionSnapshot]);
+
+  useEffect(() => {
+    if (sessionSnapshot !== undefined) {
+      return;
+    }
+
+    let cancelled = false;
+    let fallbackTimerId: number | null = null;
+    let intervalId: number | null = null;
+    let onFocus: (() => void) | null = null;
+    const isEmbedded = typeof window !== "undefined" && window.parent !== window;
+    const resolvedApiBaseUrl = apiBaseUrl ?? resolveDefaultApiBaseUrl();
+
     const loadSession = async () => {
+      if (!resolvedApiBaseUrl) {
+        setSession(toSignedOutSession());
+        return;
+      }
+
       try {
         const response = await fetch(`${resolvedApiBaseUrl}/api/auth/session`, {
           method: "GET",
@@ -113,22 +199,45 @@ export function useWidgetAuthSession({
       }
     };
 
-    void loadSession();
-    const intervalId = window.setInterval(() => {
-      void loadSession();
-    }, pollIntervalMs);
+    const startDirectSessionSync = () => {
+      if (hasParentSnapshot) {
+        return;
+      }
 
-    const onFocus = () => {
       void loadSession();
+      intervalId = window.setInterval(() => {
+        void loadSession();
+      }, pollIntervalMs);
+
+      onFocus = () => {
+        void loadSession();
+      };
+      window.addEventListener("focus", onFocus);
     };
-    window.addEventListener("focus", onFocus);
+
+    if (isEmbedded) {
+      fallbackTimerId = window.setTimeout(() => {
+        if (!cancelled && !hasParentSnapshot) {
+          startDirectSessionSync();
+        }
+      }, PARENT_SESSION_RESPONSE_WAIT_MS);
+    } else {
+      startDirectSessionSync();
+    }
 
     return () => {
       cancelled = true;
-      window.clearInterval(intervalId);
-      window.removeEventListener("focus", onFocus);
+      if (fallbackTimerId !== null) {
+        window.clearTimeout(fallbackTimerId);
+      }
+      if (intervalId !== null) {
+        window.clearInterval(intervalId);
+      }
+      if (onFocus) {
+        window.removeEventListener("focus", onFocus);
+      }
     };
-  }, [apiBaseUrl, pollIntervalMs, sessionSnapshot]);
+  }, [apiBaseUrl, hasParentSnapshot, pollIntervalMs, sessionSnapshot]);
 
   return session;
 }

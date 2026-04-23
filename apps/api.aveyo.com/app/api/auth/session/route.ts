@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAuthSessionResultWithOptions } from "@/lib/auth/session";
-import { applyAuthSessionCookies, clearAuthSessionCookies } from "@/lib/auth/session-cookies";
+import { applyAuthSessionCookies } from "@/lib/auth/session-cookies";
 import { extractAuthTokensFromRequest } from "@/lib/auth/token";
 
 function buildSessionResponsePayload(session: Awaited<ReturnType<typeof getAuthSessionResultWithOptions>>) {
@@ -43,15 +43,8 @@ export async function GET(request: Request) {
 
   if (!session.authenticated) {
     const response = NextResponse.json(sessionPayload, { status: 401 });
-    // Only clear cookies when the client actually sent session material. Anonymous 401s
-    // (missing cookies in iframes, prefetch, or racey first paint) must not emit
-    // Set-Cookie clears — those responses can still apply to the shared cookie jar and
-    // wipe a valid top-level session (redirect loops, embeds polling session).
     const tokens = extractAuthTokensFromRequest(request);
     const sentSessionMaterial = Boolean(tokens.accessToken || tokens.refreshToken);
-    if (sentSessionMaterial) {
-      clearAuthSessionCookies(response, request);
-    }
     if (process.env.NODE_ENV !== "production" && session.failure?.reason) {
       response.headers.set("x-ava-auth-reason", session.failure.reason);
     }

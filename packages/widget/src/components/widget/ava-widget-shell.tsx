@@ -231,6 +231,27 @@ const guestIncentiveKeywords = [
   "illinois shines"
 ];
 
+const guestSensitiveInfoKeywords = [
+  "employee",
+  "employees",
+  "staff",
+  "team member",
+  "team members",
+  "people at aveyo",
+  "person at aveyo",
+  "rep name",
+  "sales rep",
+  "manager",
+  "phone number",
+  "direct number",
+  "direct line",
+  "cell",
+  "cell number",
+  "email address",
+  "personal email",
+  "contact info"
+];
+
 const guestBroadIntroKeywords = [
   "new to solar",
   "first time hearing about it",
@@ -324,6 +345,20 @@ function isGuestProjectSpecificQuestion(normalizedText: string) {
   );
 }
 
+function isSensitiveAveyoInfoQuestion(normalizedText: string) {
+  const mentionsSensitiveInfo = hasAnyKeyword(normalizedText, guestSensitiveInfoKeywords);
+  if (!mentionsSensitiveInfo) {
+    return false;
+  }
+
+  return (
+    normalizedText.includes("aveyo") ||
+    normalizedText.includes("employee") ||
+    normalizedText.includes("staff") ||
+    normalizedText.includes("team")
+  );
+}
+
 function getGuestStateContext(normalizedText: string) {
   return guestStateContexts.find((state) =>
     state.keywords.some((keyword) => normalizedText.includes(keyword))
@@ -377,6 +412,13 @@ function buildGuestAvaReply(prompt: string) {
     }
 
     return "Happy to help. What do you want to start with: how it works, savings, batteries, or timing?";
+  }
+
+  if (isSensitiveAveyoInfoQuestion(normalizedPrompt)) {
+    return (
+      "That sounds like the kind of thing that gets me sent to an imaginary HR meeting. " +
+      "I can't share private employee details or direct contact info, but I can help point you to a public Aveyo contact path if you tell me what you're trying to reach."
+    );
   }
 
   if (isGuestProjectSpecificQuestion(normalizedPrompt)) {

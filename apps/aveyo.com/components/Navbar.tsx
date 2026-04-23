@@ -260,7 +260,7 @@ export default function Navbar() {
             {/* Right Side: CTA Button + Menu Icon */}
             <div className="flex items-center gap-5">
               <Link
-                href="/contact#sales-form"
+                href="/#pricing"
                 className="inline-flex items-center justify-center rounded-[var(--home-button-radius)] bg-[color:var(--home-white)] px-[var(--home-button-px)] py-[var(--home-button-py)] text-[length:var(--home-h7)] font-extrabold text-[color:var(--home-black)] transition-colors hover:bg-white/90"
               >
                 Pick a plan
@@ -420,7 +420,7 @@ export default function Navbar() {
             )
           )}
           <Link
-            href="/contact#sales-form"
+            href="/#pricing"
             className="mt-4 inline-flex w-full items-center justify-center rounded-[var(--home-button-radius)] bg-[color:var(--home-white)] px-[var(--home-button-px)] py-[var(--home-button-py)] text-[length:var(--home-h7)] font-extrabold text-[color:var(--home-black)]"
             onClick={() => setIsMobileMenuOpen(false)}
           >

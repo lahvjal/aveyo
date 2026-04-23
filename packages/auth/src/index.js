@@ -484,6 +484,7 @@ export function createPlatformSessionStore({
   initialSnapshot,
   loadSnapshot,
   pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
+  shouldPoll,
   runtimeWindow
 }) {
   let snapshot = initialSnapshot;
@@ -500,20 +501,40 @@ export function createPlatformSessionStore({
 
   const getActiveWindow = () => getRuntimeWindow(runtimeWindow);
 
+  const syncPolling = () => {
+    const activeWindow = getActiveWindow();
+    if (!activeWindow) {
+      return;
+    }
+
+    const shouldUseInterval = shouldPoll ? shouldPoll(snapshot) : true;
+    if (shouldUseInterval) {
+      if (intervalId === null) {
+        intervalId = activeWindow.setInterval(() => {
+          void refresh();
+        }, pollIntervalMs);
+      }
+      return;
+    }
+
+    if (intervalId !== null) {
+      activeWindow.clearInterval(intervalId);
+      intervalId = null;
+    }
+  };
+
   const start = () => {
     const activeWindow = getActiveWindow();
-    if (!activeWindow || intervalId !== null) {
+    if (!activeWindow || focusHandler) {
       return;
     }
 
     void refresh();
-    intervalId = activeWindow.setInterval(() => {
-      void refresh();
-    }, pollIntervalMs);
     focusHandler = () => {
       void refresh();
     };
     activeWindow.addEventListener("focus", focusHandler);
+    syncPolling();
   };
 
   const stop = () => {
@@ -537,6 +558,9 @@ export function createPlatformSessionStore({
       .then((nextSnapshot) => {
         snapshot = nextSnapshot;
         emit();
+        if (listeners.size > 0) {
+          syncPolling();
+        }
         return snapshot;
       })
       .finally(() => {
@@ -569,6 +593,9 @@ export function createPlatformSessionStore({
     setSnapshot(nextSnapshot) {
       snapshot = nextSnapshot;
       emit();
+      if (listeners.size > 0) {
+        syncPolling();
+      }
     }
   };
 }

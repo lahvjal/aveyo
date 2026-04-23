@@ -96,6 +96,9 @@ function toSessionState(payload: unknown, requestOk: boolean): MarketingSiteAuth
 
 const marketingSiteSessionStore = createPlatformSessionStore({
   initialSnapshot: defaultSession,
+  shouldPoll(currentSession) {
+    return currentSession.authenticated;
+  },
   async loadSnapshot() {
     try {
       const result = await fetchPlatformSession({

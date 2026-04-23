@@ -99,7 +99,7 @@ export default function AboutPage() {
         title: "Find A Plan That Is Right For You.\nSee What Solar Can Save.",
         description: "Let our team walk you through options built around your home, your goals, and your budget.",
         actionLabel: "Pick A Plan",
-        actionHref: "/contact#sales-form"
+        actionHref: "/#pricing"
       }}
     >
       <SiteHero

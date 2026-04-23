@@ -56,7 +56,7 @@ export default function WhySolarPage() {
         title: "Find A Plan That Is Right For You.\nSee What You Can Save.",
         description: "Let us map out the solar plan that fits your usage, your home, and your long-term goals.",
         actionLabel: "Pick A Plan",
-        actionHref: "/contact#sales-form"
+        actionHref: "/#pricing"
       }}
     >
       <SiteHero
@@ -70,7 +70,7 @@ export default function WhySolarPage() {
         }
         description="Aveyo makes going solar simple. Sustainability comes standard, and the savings become easier to understand when the system is designed around your real usage."
         actions={[
-          { href: "/contact#sales-form", label: "Pick A Plan", variant: "light" },
+          { href: "/#pricing", label: "Pick A Plan", variant: "light" },
           { href: "/process", label: "How It Works", variant: "outline" }
         ]}
         spotlight="radial-gradient(circle at top right, rgba(255, 255, 255, 0.08), transparent 45%)"

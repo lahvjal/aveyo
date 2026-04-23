@@ -1,6 +1,9 @@
 import OpenAI from "openai";
 import { type ConversationThread } from "@ava/chat-domain";
 import { getOpenAiApiKey } from "@/lib/ai/config";
+import { buildEmployeeAvaContext, type EmployeeAvaContext } from "@/lib/ava/employee-context";
+import type { AppRole, SessionAccessContext } from "@/lib/auth/types";
+import { buildAvaSystemPrompt } from "@/lib/ava/personality";
 import { createInstrumentedFetch } from "@/lib/perf/metrics";
 
 export interface AvaReplyContext {
@@ -64,8 +67,19 @@ function getPhaseTwoProjectSelection(metadata: Record<string, unknown>) {
   return selection;
 }
 
+function hasMeaningfulCustomerOrProjectContext(context: AvaReplyContext) {
+  const hasCustomerData = Object.values(context.customer).some((value) => value !== null);
+  const hasProjectData =
+    context.project.projectRef !== null ||
+    context.project.projectStatus !== null ||
+    context.project.siteAddress !== null ||
+    Object.keys(context.project.metadata ?? {}).length > 0;
+
+  return context.handoffState !== "none" || hasCustomerData || hasProjectData;
+}
+
 function buildContextSystemMessage(context: AvaReplyContext | undefined) {
-  if (!context) {
+  if (!context || !hasMeaningfulCustomerOrProjectContext(context)) {
     return undefined;
   }
 
@@ -102,6 +116,47 @@ function buildContextSystemMessage(context: AvaReplyContext | undefined) {
       "Use this context when relevant. If a non-critical value is missing or null, continue with the best available answer. " +
       "Only offer to connect the customer with customer care if the customer asks for a human " +
       "or if a critical missing value prevents answering their request."
+  };
+}
+
+function buildEmployeeContextSystemMessage(employeeContext: EmployeeAvaContext | undefined) {
+  if (!employeeContext) {
+    return undefined;
+  }
+
+  const promptContext: Record<string, unknown> = {
+    actor: {
+      role: employeeContext.actor.role,
+      departmentName: employeeContext.actor.departmentName
+    },
+    accessPolicy: {
+      canAccessDirectory: employeeContext.actor.policy.canAccessDirectory,
+      canAccessNews: employeeContext.actor.policy.canAccessNews,
+      kpiScope: employeeContext.actor.policy.kpiScope,
+      kpiScopeLabel: employeeContext.actor.policy.kpiScopeLabel
+    },
+    latestQuestion: employeeContext.latestQuestion,
+    detectedIntents: employeeContext.detectedIntents
+  };
+
+  if (employeeContext.directory) {
+    promptContext.directory = employeeContext.directory;
+  }
+  if (employeeContext.news) {
+    promptContext.news = employeeContext.news;
+  }
+  if (employeeContext.kpis) {
+    promptContext.kpis = employeeContext.kpis;
+  }
+
+  return {
+    role: "system" as const,
+    content:
+      "Approved employee knowledge context for this chat:\n" +
+      `${JSON.stringify(promptContext, null, 2)}\n` +
+      "Use only this approved internal context when answering employee questions. " +
+      "If a provider says data is restricted, unavailable, or no match was found, say that briefly instead of guessing. " +
+      "Never reveal private phone numbers, direct email addresses, personal schedules, or KPI data outside the approved scope."
   };
 }
 
@@ -234,7 +289,7 @@ export function getGuestStarterReplyOverride(thread: ConversationThread) {
   return undefined;
 }
 
-function buildPromptMessages(
+export function buildPromptMessages(
   thread: ConversationThread,
   context?: AvaReplyContext
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
@@ -249,25 +304,7 @@ function buildPromptMessages(
   const baseMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
     {
       role: "system",
-      content:
-        "You are Ava, Aveyo's support assistant. Be concise, practical, and warm. " +
-        "Use plain language. Format answers for a plain-text chat bubble (no markdown renderer). " +
-        "Do not use markdown syntax like **bold**, headers, or backticks. " +
-        "When presenting project information, use short section titles and dash bullets with 'Label: value' lines in the same inline message. " +
-        "If account-specific data is unavailable, say so clearly " +
-        "and suggest handing off to a customer care agent only when truly needed. " +
-        "Prioritize solving the question with the data you do have before offering escalation. " +
-        "Do not add generic lines that suggest contacting customer care at the end of otherwise complete answers. " +
-        "Only offer customer care when the customer asks for a human, or when critical missing data prevents you from answering the request. " +
-        "Prioritize answering as many customer questions as possible before escalating. " +
-        "If a human handoff is needed, first ask whether they want to speak with a customer care agent " +
-        "using natural language. " +
-        "Do not ask the customer to reply with specific words or a specific phrase. " +
-        "When asking for consent, do not mention internal control names like 'Talk to a rep form'. " +
-        "Only mention the request form after the customer confirms they want to speak with customer care. " +
-        "Never claim you directly connected the customer to an agent. Never say you submitted " +
-        "or will submit a request on the customer's behalf. Explain that Ava can open/show a short " +
-        "request form, and the customer must complete and submit it themselves."
+      content: buildAvaSystemPrompt("customer")
     }
   ];
 
@@ -277,6 +314,65 @@ function buildPromptMessages(
   }
 
   return [...baseMessages, ...history];
+}
+
+export function buildEmployeePromptMessages(
+  thread: ConversationThread,
+  employeeContext: EmployeeAvaContext,
+  context?: AvaReplyContext
+): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
+  const history = thread.messages
+    .filter((message) => message.kind === "customer" || message.kind === "ava")
+    .slice(-12)
+    .map<OpenAI.Chat.Completions.ChatCompletionMessageParam>((message) => ({
+      role: message.kind === "customer" ? "user" : "assistant",
+      content: message.text
+    }));
+
+  const baseMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
+    {
+      role: "system",
+      content: buildAvaSystemPrompt("employee")
+    }
+  ];
+
+  const employeeContextMessage = buildEmployeeContextSystemMessage(employeeContext);
+  if (employeeContextMessage) {
+    baseMessages.push(employeeContextMessage);
+  }
+
+  const customerContextMessage = buildContextSystemMessage(context);
+  if (customerContextMessage) {
+    baseMessages.push(customerContextMessage);
+  }
+
+  return [...baseMessages, ...history];
+}
+
+export async function buildAuthenticatedPromptMessages(
+  thread: ConversationThread,
+  options: {
+    context?: AvaReplyContext;
+    actorUserId?: string;
+    actorRole?: AppRole;
+    actorAccess?: SessionAccessContext;
+    allowEmployeeAudience?: boolean;
+  } = {}
+): Promise<OpenAI.Chat.Completions.ChatCompletionMessageParam[]> {
+  if (options.allowEmployeeAudience !== false && options.actorUserId) {
+    const employeeContext = await buildEmployeeAvaContext({
+      actorUserId: options.actorUserId,
+      actorRole: options.actorRole,
+      actorAccess: options.actorAccess,
+      thread
+    });
+
+    if (employeeContext) {
+      return buildEmployeePromptMessages(thread, employeeContext, options.context);
+    }
+  }
+
+  return buildPromptMessages(thread, options.context);
 }
 
 export function buildGuestPromptMessages(
@@ -293,29 +389,7 @@ export function buildGuestPromptMessages(
   return [
     {
       role: "system",
-      content:
-        "You are Ava, Aveyo's friendly solar guide for visitors who are not signed in. " +
-        "Be conversational, concise, practical, warm, and relatable. " +
-        "Sound like a calm expert talking to a homeowner, not a script. " +
-        "Answer the visitor's question directly before suggesting any next step. " +
-        "Ask at most one short follow-up question when it would materially improve the answer. " +
-        "Use plain language and format answers for a plain-text chat bubble with no markdown syntax like **bold**, headers, or backticks. " +
-        "Help with general solar education, batteries, incentives, savings, roof suitability, installation steps, timelines, maintenance, warranties, financing, plan tradeoffs, and the typical homeowner decision process. " +
-        "Gently favor Aveyo when relevant by grounding answers in thoughtful system design, transparency, guided installation, and long-term support, but do not invent company policies, guarantees, pricing, financing approvals, or facts you do not know. " +
-        "Do not claim access to project, account, contract, pricing, permit, schedule, or status data for signed-out visitors. " +
-        "If the visitor asks for project-specific, account-specific, or quote-specific details, explain that those details require signing in, then keep helping with general guidance or next-step expectations. " +
-        "If the visitor is broad or vague, or says they are new to solar, prefer a short clarifying question instead of a general explanation. " +
-        "A brief line like 'Totally fair. What have you heard so far?' is better than a mini-primer. " +
-        "Handle common homeowner concerns naturally, especially savings, cost, roof fit, batteries, timelines, transferability, and trust. " +
-        "When visitors are unsure, reduce pressure: teach, clarify tradeoffs, and suggest one soft next step only if it fits the moment. " +
-        "If a question depends on utility, state, rebate, or jurisdiction-specific rules and you do not know the exact answer, explain that it varies locally and answer at a high level using only approved public-site context. " +
-        "Do not repeatedly tell visitors to sign in unless the question is specifically about their own project or account. " +
-        "Prefer clear, useful answers over generic sales copy. " +
-        "Default to brief replies, usually 1-2 short sentences. " +
-        "Only go longer when the visitor explicitly asks for more detail, a comparison, or a walkthrough. " +
-        "Avoid headings and avoid bullet lists unless the visitor asks for a list, comparison, or more detail. " +
-        "Do not give a multi-point primer to a vague first message. " +
-        "When appropriate, include 2-4 short bullet lines using '- ' in plain text."
+      content: buildAvaSystemPrompt("guest")
     },
     buildGuestPublicSiteContextMessage(),
     ...history
@@ -403,19 +477,33 @@ function normalizeAssistantContent(
 export async function generateAvaReplyText(
   thread: ConversationThread,
   context?: AvaReplyContext,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options?: {
+    actorUserId?: string;
+    actorRole?: AppRole;
+    actorAccess?: SessionAccessContext;
+    allowEmployeeAudience?: boolean;
+  }
 ) {
   const openAiClient = getOpenAiClient();
   if (!openAiClient) {
     return undefined;
   }
 
+  const messages = await buildAuthenticatedPromptMessages(thread, {
+    context,
+    actorUserId: options?.actorUserId,
+    actorRole: options?.actorRole,
+    actorAccess: options?.actorAccess,
+    allowEmployeeAudience: options?.allowEmployeeAudience
+  });
+
   const completion = await openAiClient.chat.completions.create(
     {
       model: "gpt-4o-mini",
       temperature: 0.4,
       max_tokens: 220,
-      messages: buildPromptMessages(thread, context)
+      messages
     },
     { signal }
   );

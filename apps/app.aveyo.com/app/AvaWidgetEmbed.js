@@ -1,7 +1,23 @@
 "use client";
 
-import { AvaWidgetEmbedBridge } from "@ava/widget";
+import { useMemo } from "react";
+import { AvaWidgetEmbedBridge, createSignedOutSnapshot } from "@ava/widget";
+import { useAuthSession } from "../lib/auth/use-auth-session";
 
 export default function AvaWidgetEmbed() {
-  return <AvaWidgetEmbedBridge registerGlobalApi />;
+  const authSession = useAuthSession();
+  const hostSessionSnapshot = useMemo(() => {
+    if (!authSession.authenticated) {
+      return createSignedOutSnapshot();
+    }
+
+    return {
+      authenticated: true,
+      role: authSession.role,
+      userType: authSession.userType,
+      user: authSession.user
+    };
+  }, [authSession.authenticated, authSession.role, authSession.userType, authSession.user]);
+
+  return <AvaWidgetEmbedBridge hostSessionSnapshot={hostSessionSnapshot} registerGlobalApi />;
 }

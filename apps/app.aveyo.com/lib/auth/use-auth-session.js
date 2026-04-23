@@ -41,6 +41,9 @@ function toSessionState(payload, requestOk) {
 
 const sessionStore = createPlatformSessionStore({
   initialSnapshot: defaultSession,
+  shouldPoll(currentSession) {
+    return currentSession.authenticated;
+  },
   async loadSnapshot() {
     try {
       const result = await fetchAuthSession();

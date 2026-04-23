@@ -18,4 +18,5 @@ export interface WidgetMessagePayload {
   source?: string;
   type?: string;
   open?: boolean;
+  payload?: unknown;
 }

@@ -1,7 +1,12 @@
 "use client";
 
-import { AvaWidgetEmbedBridge } from "@ava/widget";
+import { AvaWidgetEmbedBridge, createSignedOutSnapshot } from "@ava/widget";
 
 export default function AvaWidgetEmbed() {
-  return <AvaWidgetEmbedBridge registerGlobalApi />;
+  return (
+    <AvaWidgetEmbedBridge
+      hostSessionSnapshot={createSignedOutSnapshot()}
+      registerGlobalApi
+    />
+  );
 }

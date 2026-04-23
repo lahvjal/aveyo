@@ -58,6 +58,7 @@ export interface PlatformSessionStoreOptions<TSnapshot> {
   initialSnapshot: TSnapshot;
   loadSnapshot: (currentSnapshot: TSnapshot) => Promise<TSnapshot> | TSnapshot;
   pollIntervalMs?: number;
+  shouldPoll?: (currentSnapshot: TSnapshot) => boolean;
   runtimeWindow?: Window | null;
 }
 

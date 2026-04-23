@@ -33,9 +33,11 @@ const defaultSession: PlatformAuthSession = {
 };
 
 const sessionPollIntervalMs = 30000;
+const transientAuthFailureGraceMs = 5000;
 const LOCAL_HOST_PATTERN =
   /^(localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|::1|.+\.local)$/i;
 let parentSnapshotBridgeUsers = 0;
+let lastConfirmedAuthenticatedAt = 0;
 
 interface AuthSessionSnapshotMessageData {
   source?: string;
@@ -67,6 +69,42 @@ function toSessionState(
     user: normalizedPayload.user,
     access: normalizedPayload.access
   };
+}
+
+function preserveRecentAuthenticatedSession(previousSession: PlatformAuthSession) {
+  return {
+    ...previousSession,
+    loading: false
+  };
+}
+
+function shouldGracefullyRetainAuthenticatedSession(
+  previousSession: PlatformAuthSession,
+  payload: PlatformSessionPayload | null | undefined,
+  requestOk: boolean
+) {
+  if (!previousSession.authenticated) {
+    return false;
+  }
+
+  if (Date.now() - lastConfirmedAuthenticatedAt > transientAuthFailureGraceMs) {
+    return false;
+  }
+
+  if (requestOk) {
+    return false;
+  }
+
+  const normalizedPayload = payload ? normalizePlatformSessionPayload(payload) : null;
+  const failureReason = normalizedPayload?.failure?.reason;
+
+  return (
+    !failureReason ||
+    failureReason === "missing_access_token" ||
+    failureReason === "invalid_access_token" ||
+    failureReason === "refresh_failed" ||
+    failureReason === "refreshed_access_token_invalid"
+  );
 }
 
 function isTrustedParentOrigin(origin: string) {
@@ -105,11 +143,25 @@ function requestParentSessionSnapshot() {
 const sessionStore = createPlatformSessionStore({
   initialSnapshot: defaultSession,
   pollIntervalMs: sessionPollIntervalMs,
-  async loadSnapshot() {
+  shouldPoll(currentSession) {
+    return currentSession.authenticated;
+  },
+  async loadSnapshot(previousSession) {
     try {
       const result = await fetchAuthSession();
-      return toSessionState(result.payload, result.ok);
+      const nextSession = toSessionState(result.payload, result.ok);
+      if (nextSession.authenticated) {
+        lastConfirmedAuthenticatedAt = Date.now();
+        return nextSession;
+      }
+      if (shouldGracefullyRetainAuthenticatedSession(previousSession, result.payload, result.ok)) {
+        return preserveRecentAuthenticatedSession(previousSession);
+      }
+      return nextSession;
     } catch {
+      if (shouldGracefullyRetainAuthenticatedSession(previousSession, null, false)) {
+        return preserveRecentAuthenticatedSession(previousSession);
+      }
       return toSessionState(null, false);
     }
   }
@@ -134,6 +186,9 @@ function onParentSessionMessage(event: MessageEvent) {
     return;
   }
 
+  if (payload.authenticated) {
+    lastConfirmedAuthenticatedAt = Date.now();
+  }
   sessionStore.setSnapshot(toSessionState(payload, payload.authenticated));
 }
 

@@ -29,6 +29,7 @@ import {
   CUSTOMER_CARE_OUTSIDE_WORKING_HOURS_REPLY,
   isCustomerCareAvailable
 } from "@/lib/customer-care-hours";
+import type { AppRole, SessionAccessContext } from "@/lib/auth/types";
 import { incrementPerfCounter, runWithPerfContext, setPerfMeta } from "@/lib/perf/metrics";
 import { ServiceError } from "@/lib/service-error";
 
@@ -56,6 +57,11 @@ export interface AvaReplyJobSweepResult {
   completedJobs: number;
   cancelledJobs: number;
   failedJobs: number;
+}
+
+interface AvaReplyActorContext {
+  actorRole?: AppRole;
+  actorAccess?: SessionAccessContext;
 }
 
 const AVA_REPLY_JOB_PAYLOAD_SOURCE = "ava_reply_job_v1";
@@ -378,6 +384,8 @@ async function tryGenerateAvaReplyInternal(params: {
   actorUserId: string;
   triggerMessageId?: string;
   replyJobId?: string;
+  actorRole?: AppRole;
+  actorAccess?: SessionAccessContext;
 }): Promise<AvaReplyAttemptResult> {
   const publishAvaTyping = async (isTyping: boolean) => {
     try {
@@ -428,12 +436,13 @@ async function tryGenerateAvaReplyInternal(params: {
           .reverse()
           .find((message) => message.kind === "ava")
       : undefined;
+  const impersonationConversation = await isAgentImpersonationConversation(
+    params.conversationId,
+    params.actorUserId
+  );
   let customerCareAvailable = isCustomerCareAvailable();
   if (!customerCareAvailable) {
-    customerCareAvailable = await isAgentImpersonationConversation(
-      params.conversationId,
-      params.actorUserId
-    );
+    customerCareAvailable = impersonationConversation;
   }
 
   if (
@@ -510,7 +519,12 @@ async function tryGenerateAvaReplyInternal(params: {
     }
     setPerfMeta("avaReplyHasContext", Boolean(context));
 
-    const replyText = await generateAvaReplyText(thread, context, abortController.signal);
+    const replyText = await generateAvaReplyText(thread, context, abortController.signal, {
+      actorUserId: params.actorUserId,
+      actorRole: params.actorRole,
+      actorAccess: params.actorAccess,
+      allowEmployeeAudience: !impersonationConversation
+    });
     if (!replyText) {
       incrementPerfCounter("avaReply.empty");
       return {
@@ -569,6 +583,8 @@ async function tryGenerateAvaReply(params: {
   actorUserId: string;
   triggerMessageId?: string;
   replyJobId?: string;
+  actorRole?: AppRole;
+  actorAccess?: SessionAccessContext;
 }): Promise<AvaReplyAttemptResult> {
   const perfResult = await runWithPerfContext(
     "ava.reply",
@@ -594,6 +610,8 @@ async function tryGenerateAvaReply(params: {
 export async function runAvaReplyJobSweep(options?: {
   limit?: number;
   conversationId?: string;
+  actorRole?: AppRole;
+  actorAccess?: SessionAccessContext;
 }): Promise<AvaReplyJobSweepResult> {
   const owner = createAvaReplyWorkerId();
   const claimedJobs = await claimAvaReplyJobs({
@@ -614,7 +632,9 @@ export async function runAvaReplyJobSweep(options?: {
         conversationId: job.conversationId,
         actorUserId: job.requestedByAuthUserId,
         triggerMessageId: job.triggerMessageId,
-        replyJobId: job.id
+        replyJobId: job.id,
+        actorRole: options?.actorRole,
+        actorAccess: options?.actorAccess
       });
       if (result.status === "completed") {
         await completeAvaReplyJob({
@@ -787,7 +807,11 @@ export async function getRepresentativeReplySuggestionResult(
   }
 }
 
-export async function createMessageResult(body: MessageBody, actorUserId: string) {
+export async function createMessageResult(
+  body: MessageBody,
+  actorUserId: string,
+  actorContext?: AvaReplyActorContext
+) {
   if (!body.conversationId || !body.kind || !body.text?.trim()) {
     throw new ServiceError(400, "conversationId, kind, and text are required.");
   }
@@ -820,7 +844,9 @@ export async function createMessageResult(body: MessageBody, actorUserId: string
         void tryGenerateAvaReply({
           conversationId,
           actorUserId,
-          triggerMessageId: message.id
+          triggerMessageId: message.id,
+          actorRole: actorContext?.actorRole,
+          actorAccess: actorContext?.actorAccess
         }).catch(() => {
           // Keep customer messaging reliable even if fallback AI generation fails.
         });
@@ -836,7 +862,9 @@ export async function createMessageResult(body: MessageBody, actorUserId: string
         // Do not block customer send latency on background reply processing.
         void runAvaReplyJobSweep({
           limit: 1,
-          conversationId
+          conversationId,
+          actorRole: actorContext?.actorRole,
+          actorAccess: actorContext?.actorAccess
         }).catch((error) => {
           if (isAvaReplyJobsUnavailableError(error)) {
             fallbackToDirectReply();

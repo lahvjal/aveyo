@@ -10,7 +10,11 @@ export async function POST(request: Request) {
     const timedResult = await runPerfRoute(
       request,
       "api.messages.create",
-      () => createMessageResult(body, auth.user.id),
+      () =>
+        createMessageResult(body, auth.user.id, {
+          actorRole: auth.role,
+          actorAccess: auth.access
+        }),
       {
         kind: body.kind ?? null
       }
