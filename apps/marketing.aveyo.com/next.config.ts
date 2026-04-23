@@ -4,7 +4,7 @@ import { loadCentralEnv } from "@ava/config/runtime/load-central-env";
 loadCentralEnv();
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@ava/auth"]
+  transpilePackages: ["@ava/auth", "@ava/ui"]
 };
 
 export default nextConfig;

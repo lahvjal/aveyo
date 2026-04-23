@@ -4,6 +4,7 @@ import { CarouselIndicators } from "@/components/ui/carousel-indicators";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
 import { useCarouselAutoplay } from "@/components/ui/use-carousel-autoplay";
 import { useCarouselWheelNavigation } from "@/components/ui/use-carousel-wheel-navigation";
+import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
 import Link from "next/link";
@@ -103,7 +104,7 @@ export default function Hero() {
           preload="auto"
           className="absolute inset-0 w-full h-full object-cover"
         >
-          <source src="https://wg22fhqtugwjii3h.public.blob.vercel-storage.com/video/hero-vid.mp4" type="video/mp4" />
+          <source src="https://vz-bd3d2939-ded.b-cdn.net/c9675c67-889d-4806-8f16-9afd092addcb/play_1080p.mp4" type="video/mp4" />
         </video>
         {/* Dark radial gradient overlay for text readability */}
         <div 
@@ -118,7 +119,10 @@ export default function Hero() {
       <div className="relative z-10 w-full max-w-[1920px] mx-auto px-8 pt-[30vh] pb-[80px] flex flex-col justify-between flex-1">
         
         {/* Main Content - Left Aligned */}
-        <div className="flex flex-col gap-[50px] items-start w-[656px] max-w-full">
+        <ViewportReveal
+          className="flex flex-col gap-[50px] items-start w-[656px] max-w-full"
+          delayMs={80}
+        >
           {/* Headline */}
           <h1 className="font-normal text-5xl sm:text-6xl md:text-7xl lg:text-[length:var(--home-h1)] text-white leading-none capitalize">
             Power What
@@ -152,12 +156,15 @@ export default function Hero() {
               </svg>
             </Link>
           </div>
-        </div>
+        </ViewportReveal>
 
         {/* Bottom Section */}
         <div className="flex flex-col md:flex-row items-end justify-between w-full gap-8 mt-auto max-w-[1920px] mx-auto">
           {/* Trust Badge - Left */}
-          <div className="flex items-end gap-4 pb-5">
+          <ViewportReveal
+            className="flex items-end gap-4 pb-5"
+            delayMs={180}
+          >
             {/* Avatar Stack */}
             <div className="flex items-center pr-2.5">
               <div className="relative w-[43px] h-[43px] rounded-full overflow-hidden -mr-2.5">
@@ -190,11 +197,12 @@ export default function Hero() {
               <p>Trusted By Over</p>
               <p>+5k Homeowners</p>
             </div>
-          </div>
+          </ViewportReveal>
 
           {/* Testimonial Carousel - Right */}
-          <div
+          <ViewportReveal
             className="flex flex-col gap-2.5 items-start w-[353px]"
+            delayMs={260}
             onWheel={handleCarouselWheel}
           >
             <div className="relative w-full overflow-hidden">
@@ -257,7 +265,7 @@ export default function Hero() {
                 pauseLabel="Pause hero testimonial autoplay"
               />
             </div>
-          </div>
+          </ViewportReveal>
         </div>
       </div>
     </section>

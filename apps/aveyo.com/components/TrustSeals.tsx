@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
+import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 
 type TrustSeal = {
@@ -103,7 +104,10 @@ export default function TrustSeals() {
   return (
     <section className="bg-[color:var(--home-white)] px-5 pb-20 lg:pb-28" style={homepageStyleVars}>
       <div className="mx-auto max-w-[1200px]">
-        <div className="mx-auto max-w-[760px] text-center">
+        <ViewportReveal
+          className="mx-auto max-w-[760px] text-center"
+          delayMs={40}
+        >
           <h2 className="font-telegraf text-[40px] leading-[1.05] text-[color:var(--home-black)] sm:text-[55px] lg:text-[length:var(--home-h2)]">
             Recognition That Reflects The Standard We Build To
           </h2>
@@ -111,13 +115,15 @@ export default function TrustSeals() {
             From homeowner reviews to independent accreditation and local business recognition, these seals reinforce
             the trust Aveyo works to earn on every project.
           </p>
-        </div>
+        </ViewportReveal>
 
         <div className="mt-12 grid gap-5 lg:grid-cols-3">
-          {trustSeals.map((seal) => (
-            <article
+          {trustSeals.map((seal, index) => (
+            <ViewportReveal
               key={seal.title}
+              as="article"
               className="relative h-full overflow-hidden rounded-[var(--home-card-radius)] border border-black/[0.05] bg-[color:var(--home-gray-light-5)] px-6 py-8 shadow-[0_20px_50px_rgba(15,23,42,0.06)] sm:px-8"
+              delayMs={120 + index * 90}
             >
               <CardGradientBorder className="rounded-[var(--home-card-radius)]" />
               <div
@@ -139,7 +145,7 @@ export default function TrustSeals() {
                   {seal.description}
                 </p>
               </div>
-            </article>
+            </ViewportReveal>
           ))}
         </div>
       </div>

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import RouteLoadingOverlay from "./route-loading-overlay";
 
 export const metadata: Metadata = {
   title: "Aveyo Marketing",
@@ -11,7 +12,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <RouteLoadingOverlay />
+        {children}
+      </body>
     </html>
   );
 }

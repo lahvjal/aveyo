@@ -13,6 +13,7 @@
   "dependencies": {
     "@ava/auth": "workspace:*",
     "@ava/config": "workspace:*",
+    "@ava/ui": "workspace:*",
     "@ava/widget": "workspace:*",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",

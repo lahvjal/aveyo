@@ -21,7 +21,7 @@ function authApiRewriteDestination() {
 }
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@ava/auth", "@ava/widget"],
+  transpilePackages: ["@ava/auth", "@ava/ui", "@ava/widget"],
   eslint: {
     ignoreDuringBuilds: true
   },

@@ -3,7 +3,7 @@
 import { AppLoadingOverlay } from "@ava/ui";
 import { usePathname } from "next/navigation";
 
-export function SiteLoadOverlay() {
+export default function RouteLoadingOverlay() {
   const pathname = usePathname() ?? "";
   return <AppLoadingOverlay routeKey={pathname} />;
 }

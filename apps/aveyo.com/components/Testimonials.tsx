@@ -4,6 +4,7 @@ import { CarouselIndicators } from "@/components/ui/carousel-indicators";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
 import { useCarouselAutoplay } from "@/components/ui/use-carousel-autoplay";
 import { useCarouselWheelNavigation } from "@/components/ui/use-carousel-wheel-navigation";
+import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import { customerReviews, type CustomerReview } from "@/lib/customer-reviews";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -203,7 +204,10 @@ export default function Testimonials() {
       style={homepageStyleVars}
     >
       <div className="mx-auto mb-12 max-w-7xl px-4 sm:mb-16 sm:px-6 lg:px-8">
-        <div className="text-center">
+        <ViewportReveal
+          className="text-center"
+          delayMs={40}
+        >
           <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[color:var(--home-gray-light-5)] px-4 py-2 text-sm font-semibold text-[color:var(--home-black)] shadow-[0_8px_24px_rgba(15,23,42,0.06)] ring-1 ring-black/[0.04]">
             <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--home-testimonial-star)]" aria-hidden />
             4.7 stars on Google
@@ -215,10 +219,13 @@ export default function Testimonials() {
             See why people love Aveyo. Here&apos;s what they have to say.
           </p>
      
-        </div>
+        </ViewportReveal>
       </div>
 
-      <div className="relative flex flex-col items-center">
+      <ViewportReveal
+        className="relative flex flex-col items-center"
+        delayMs={140}
+      >
         <p className="sr-only" aria-live="polite">
           Showing {visibleCount} review card{visibleCount === 1 ? "" : "s"} in the main area, with part of the
           previous and next cards visible on the sides. Use the controls to change slides or pause autoplay.
@@ -252,7 +259,7 @@ export default function Testimonials() {
             pauseLabel="Pause review carousel autoplay"
           />
         </div>
-      </div>
+      </ViewportReveal>
     </section>
   );
 }

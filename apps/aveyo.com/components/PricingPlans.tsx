@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import { AVEYO_PLAN_OPTIONS, buildPlansFormHref } from "@/lib/plans-lead";
 
@@ -50,7 +51,10 @@ export default function PricingPlans({
       style={homepageStyleVars}
     >
       <div className="mx-auto w-full max-w-[1240px]">
-        <div className="mx-auto mb-12 max-w-[720px] text-center md:mb-14">
+        <ViewportReveal
+          className="mx-auto mb-12 max-w-[720px] text-center md:mb-14"
+          delayMs={40}
+        >
           <h2 className="text-[clamp(2.2rem,6vw,4.375rem)] leading-[0.98] text-[color:var(--home-black)]">
             Find A Plan That
             <br />
@@ -59,10 +63,10 @@ export default function PricingPlans({
           <p className="mt-5 text-[length:var(--home-text-large)] leading-[1.4] text-[color:var(--home-gray-dark-4)] md:text-[length:var(--home-h5)]">
             Choose from our most popular options:
           </p>
-        </div>
+        </ViewportReveal>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-[30px]">
-          {AVEYO_PLAN_OPTIONS.map((plan) => {
+          {AVEYO_PLAN_OPTIONS.map((plan, index) => {
             const planHref = buildPlansFormHref({
               currentQueryString,
               selectedPlanId: plan.id,
@@ -73,9 +77,11 @@ export default function PricingPlans({
             });
 
             return (
-              <article
+              <ViewportReveal
                 key={plan.id}
+                as="article"
                 className="flex h-full flex-col justify-between rounded-[var(--home-card-radius)] bg-gradient-to-b from-[#f4faff] to-[#d8d8d8] px-6 py-8 md:p-[var(--home-card-padding)]"
+                delayMs={120 + index * 90}
               >
                 <div>
                   {plan.badge ? (
@@ -126,7 +132,7 @@ export default function PricingPlans({
                     Learn More →
                   </Link>
                 </div>
-              </article>
+              </ViewportReveal>
             );
           })}
         </div>

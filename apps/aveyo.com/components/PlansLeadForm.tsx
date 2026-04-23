@@ -1,6 +1,6 @@
 "use client";
 
-import { BrandLoader } from "@/components/ui/brand-loader";
+import { BrandLoader } from "@ava/ui";
 import { useMemo, useState, type FormEvent } from "react";
 import { SiteButtonLink } from "@/components/site/site-button-link";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";

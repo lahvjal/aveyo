@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import AvaWidgetEmbed from "@/components/ava-widget-embed";
+import RouteLoadingOverlay from "./route-loading-overlay";
 
 export const metadata: Metadata = {
   title: "Ava Rep Dashboard",
@@ -13,6 +14,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <RouteLoadingOverlay />
         {children}
         <AvaWidgetEmbed />
       </body>

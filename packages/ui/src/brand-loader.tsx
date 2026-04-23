@@ -1,3 +1,5 @@
+import styles from "./brand-loader.module.css";
+
 interface BrandLoaderProps {
   size?: number;
   tone?: "dark" | "light";
@@ -10,6 +12,18 @@ const LOGO_LOADER_PATH =
 const VIEWBOX_WIDTH = 161.66;
 const VIEWBOX_HEIGHT = 133.97;
 
+const screenReaderOnlyStyle = {
+  position: "absolute",
+  width: "1px",
+  height: "1px",
+  padding: 0,
+  margin: "-1px",
+  overflow: "hidden",
+  clip: "rect(0, 0, 0, 0)",
+  whiteSpace: "nowrap",
+  border: 0
+} as const;
+
 export function BrandLoader({
   size = 153,
   tone = "dark",
@@ -20,7 +34,9 @@ export function BrandLoader({
 
   return (
     <div
-      className={["brand-loader", `brand-loader--${tone}`, className].filter(Boolean).join(" ")}
+      className={[styles.root, tone === "light" ? styles.light : "", className]
+        .filter(Boolean)
+        .join(" ")}
       role="status"
       aria-live="polite"
     >
@@ -31,12 +47,13 @@ export function BrandLoader({
         viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
         fill="none"
         xmlns="http://www.w3.org/2000/svg"
+        className={styles.svg}
       >
-        <path className="brand-loader__outline" d={LOGO_LOADER_PATH} />
-        <path className="brand-loader__segment" d={LOGO_LOADER_PATH} />
+        <path className={styles.outline} d={LOGO_LOADER_PATH} />
+        <path className={styles.segment} d={LOGO_LOADER_PATH} />
       </svg>
 
-      <span className="sr-only">{label}</span>
+      <span style={screenReaderOnlyStyle}>{label}</span>
     </div>
   );
 }

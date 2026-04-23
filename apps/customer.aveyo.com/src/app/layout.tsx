@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { AuthProvider } from '@/context/AuthContext';
 import AvaWidgetEmbed from '@/components/AvaWidgetEmbed';
+import RouteLoadingOverlay from "./route-loading-overlay";
 import { customerPortalStyleVars } from '@/lib/customer-design-system';
 import "./globals.css";
 
@@ -32,6 +33,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <RouteLoadingOverlay />
         <AuthProvider>
           {children}
           <AvaWidgetEmbed />

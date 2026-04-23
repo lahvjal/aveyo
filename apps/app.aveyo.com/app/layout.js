@@ -1,5 +1,6 @@
 import "./globals.css";
 import AvaWidgetEmbed from "./AvaWidgetEmbed";
+import RouteLoadingOverlay from "./route-loading-overlay";
 
 
 
@@ -12,6 +13,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body>
+        <RouteLoadingOverlay />
         {children}
         <AvaWidgetEmbed />
       </body>

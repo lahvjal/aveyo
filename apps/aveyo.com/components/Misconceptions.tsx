@@ -1,4 +1,5 @@
 import { homepageStyleVars } from "@/lib/homepage-design-system";
+import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import type { ReactNode } from "react";
 
 export type MisconceptionItem = {
@@ -54,7 +55,10 @@ export default function Misconceptions({ myths: mythsProp }: { myths?: Misconcep
             "radial-gradient(65.78% 62.03% at 50% 0%, rgba(244, 244, 244, 0.20) 0%, rgba(142, 142, 142, 0.00) 100%), radial-gradient(67.23% 23.5% at 50% 108.93%, rgba(107, 146, 188, 0.40) 0%, rgba(33, 33, 32, 0.40) 100%), #212120",
         }}
       >
-        <div className="flex flex-col items-center text-center">
+        <ViewportReveal
+          className="flex flex-col items-center text-center"
+          delayMs={40}
+        >
           <p
             className="mb-[-14px] bg-clip-text text-[96px] font-light leading-none text-transparent sm:text-[130px] lg:mb-[-40px] lg:text-[270px]"
             style={{ backgroundImage: "linear-gradient(rgb(255, 255, 255) 0%, rgb(153 153 153 / 10%) 70%)" }}
@@ -66,11 +70,15 @@ export default function Misconceptions({ myths: mythsProp }: { myths?: Misconcep
             <br />
             About Going Solar
           </h2>
-        </div>
+        </ViewportReveal>
 
         <div className="mt-16 grid grid-cols-1 gap-[70px] md:grid-cols-3 lg:gap-[70px] lg:mt-[140px]">
           {myths.map((myth, index) => (
-            <div key={index} className="flex flex-col items-center gap-9 text-center text-white">
+            <ViewportReveal
+              key={index}
+              className="flex flex-col items-center gap-9 text-center text-white"
+              delayMs={140 + index * 90}
+            >
               <div className="flex h-12 w-12 items-center justify-center">{ICONS[index % ICONS.length]}</div>
               <div className="flex flex-col items-center gap-6 lg:gap-10">
                 <h3 className="whitespace-pre-line text-[length:var(--home-h4)] capitalize leading-[1.15]">
@@ -80,7 +88,7 @@ export default function Misconceptions({ myths: mythsProp }: { myths?: Misconcep
                   {myth.description}
                 </p>
               </div>
-            </div>
+            </ViewportReveal>
           ))}
         </div>
       </div>

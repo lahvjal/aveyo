@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@ava/config": "workspace:*",
+    "@ava/ui": "workspace:*",
     "@ava/widget": "workspace:*",
     "@supabase/supabase-js": "^2.99.1",
     "next": "^16.1.6",

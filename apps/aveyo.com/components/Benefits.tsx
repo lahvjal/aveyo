@@ -8,6 +8,7 @@ import {
 import { CarouselIndicators } from "@/components/ui/carousel-indicators";
 import { useCarouselAutoplay } from "@/components/ui/use-carousel-autoplay";
 import { useCarouselWheelNavigation } from "@/components/ui/use-carousel-wheel-navigation";
+import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -284,7 +285,10 @@ export default function Benefits() {
             }}
           />
 
-          <div className="relative z-10 flex max-w-[980px] flex-col items-center gap-8 lg:gap-[60px]">
+          <ViewportReveal
+            className="relative z-10 flex max-w-[980px] flex-col items-center gap-8 lg:gap-[60px]"
+            delayMs={40}
+          >
             <div className="flex flex-col items-center gap-5">
               <h2 className="text-white text-[40px] leading-[1.2] capitalize sm:text-[55px] lg:text-[length:var(--home-h2)]">
                 How Much Could You
@@ -319,12 +323,13 @@ export default function Benefits() {
                 </div>
               </div>
             </div>
-          </div>
+          </ViewportReveal>
         </div>
 
         {/* Row 2 - Benefits Carousel */}
-        <div
+        <ViewportReveal
           className="relative rounded-[var(--home-card-radius)]"
+          delayMs={120}
           style={{ height: `${slideHeight}px` }}
           onWheel={handleCarouselWheel}
         >
@@ -369,11 +374,14 @@ export default function Benefits() {
               pauseLabel="Pause benefits carousel autoplay"
             />
           </div>
-        </div>
+        </ViewportReveal>
         
         {/* Row 3 - Image Grid */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <div className="relative h-[545px] overflow-hidden rounded-[var(--home-card-radius)]">
+          <ViewportReveal
+            className="relative h-[545px] overflow-hidden rounded-[var(--home-card-radius)]"
+            delayMs={180}
+          >
             <Image
               src="/images/c71bbfe115affc201a1c2f1a5878d801dcfcaa9a.png"
               alt=""
@@ -388,8 +396,11 @@ export default function Benefits() {
               className="object-cover"
               sizes="(min-width: 1024px) calc((100vw - 60px) / 2), 100vw"
             />
-          </div>
-          <div className="relative h-[545px] overflow-hidden rounded-[var(--home-card-radius)]">
+          </ViewportReveal>
+          <ViewportReveal
+            className="relative h-[545px] overflow-hidden rounded-[var(--home-card-radius)]"
+            delayMs={260}
+          >
             <Image
               src="/images/6101f18224076c77286f18820dfd5c3e40ad55fb.png"
               alt="Family preparing food in a bright kitchen"
@@ -397,7 +408,7 @@ export default function Benefits() {
               className="object-cover"
               sizes="(min-width: 1024px) calc((100vw - 60px) / 2), 100vw"
             />
-          </div>
+          </ViewportReveal>
         </div>
       </div>
     </section>

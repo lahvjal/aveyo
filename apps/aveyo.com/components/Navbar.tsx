@@ -1,6 +1,6 @@
 "use client";
 
-import { BrandLoader } from "@/components/ui/brand-loader";
+import { BrandLoader } from "@ava/ui";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import { useEffect, useState } from "react";
@@ -41,7 +41,16 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [openDesktopGroup, setOpenDesktopGroup] = useState<string | null>(null);
   const [openMobileGroup, setOpenMobileGroup] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
   const authSession = useMarketingSiteAuthSession();
+  const displayAuthSession = isHydrated
+    ? authSession
+    : {
+        ...authSession,
+        loading: true,
+        authenticated: false,
+        user: null
+      };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -50,6 +59,10 @@ export default function Navbar() {
     handleScroll();
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
+    setIsHydrated(true);
   }, []);
 
   useEffect(() => {
@@ -65,7 +78,7 @@ export default function Navbar() {
   }, [pathname]);
 
   const avatarInitial =
-    (authSession.user?.name?.trim()?.charAt(0).toUpperCase() || "A");
+    (displayAuthSession.user?.name?.trim()?.charAt(0).toUpperCase() || "A");
 
   const handleAuthButtonClick = () => {
     if (typeof window === "undefined") return;
@@ -256,19 +269,19 @@ export default function Navbar() {
                 className="flex h-[55px] w-[55px] items-center justify-center rounded-full border border-white bg-[color:var(--home-white)] text-[color:var(--home-black)] transition-colors hover:bg-white/90"
                 type="button"
                 onClick={handleAuthButtonClick}
-                aria-label={authSession.authenticated ? "Open account" : "Login"}
-                title={authSession.authenticated ? "Open account" : "Login"}
+                aria-label={displayAuthSession.authenticated ? "Open account" : "Login"}
+                title={displayAuthSession.authenticated ? "Open account" : "Login"}
               >
-                {authSession.authenticated ? (
-                  authSession.user?.avatarUrl ? (
+                {displayAuthSession.authenticated ? (
+                  displayAuthSession.user?.avatarUrl ? (
                     <div
                       className="h-full w-full rounded-full bg-cover bg-center"
-                      style={{ backgroundImage: `url("${authSession.user.avatarUrl}")` }}
+                      style={{ backgroundImage: `url("${displayAuthSession.user.avatarUrl}")` }}
                     />
                   ) : (
                     <span className="text-base font-extrabold">{avatarInitial}</span>
                   )
-                ) : authSession.loading ? (
+                ) : displayAuthSession.loading ? (
                   <BrandLoader size={34} tone="dark" label="Loading account" />
                 ) : (
                   <svg

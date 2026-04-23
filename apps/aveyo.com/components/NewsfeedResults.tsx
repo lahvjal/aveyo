@@ -1,6 +1,6 @@
 "use client";
 
-import { BrandLoader } from "@/components/ui/brand-loader";
+import { BrandLoader } from "@ava/ui";
 import { useEffect, useState } from "react";
 import { SiteArticleCard } from "@/components/site/page-kit";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";

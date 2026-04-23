@@ -43,6 +43,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
+        <noscript>
+          <style>{`.viewport-reveal{opacity:1!important;transform:none!important;}`}</style>
+        </noscript>
         <SiteLoadOverlay />
         {children}
         <AvaWidgetEmbed />

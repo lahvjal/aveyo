@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
+import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import designSystem from "@/design-system.json";
 import {
   AVEYO_ADDRESS,
@@ -236,48 +237,53 @@ export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: 
           style={{ background: footerTokens.backgrounds.rootGradient }}
         />
 
-        <div className="absolute inset-x-0 left-1/2 top-[88px] z-20 w-[calc(100%-2rem)] max-w-[1200px] -translate-x-1/2 text-center sm:top-[132px] xl:top-[var(--footer-cta-top)] xl:w-[var(--footer-cta-width)]">
-          <h2 className="mx-auto max-w-[1000px] text-[42px] leading-[0.96] tracking-[-0.04em] sm:text-[56px] xl:text-[var(--footer-h2)]">
-            {titleLines.map((line, index) => (
-              <span key={`${line}-${index}`}>
-                {index > 0 ? <br /> : null}
-                {line}
-              </span>
-            ))}
-          </h2>
+        <div className="absolute inset-x-0 left-1/2 top-[88px] z-20 w-[calc(100%-2rem)] max-w-[1200px] -translate-x-1/2 sm:top-[132px] xl:top-[var(--footer-cta-top)] xl:w-[var(--footer-cta-width)]">
+          <ViewportReveal
+            className="text-center"
+            delayMs={40}
+          >
+            <h2 className="mx-auto max-w-[1000px] text-[42px] leading-[0.96] tracking-[-0.04em] sm:text-[56px] xl:text-[var(--footer-h2)]">
+              {titleLines.map((line, index) => (
+                <span key={`${line}-${index}`}>
+                  {index > 0 ? <br /> : null}
+                  {line}
+                </span>
+              ))}
+            </h2>
 
-          <p className="mx-auto mt-8 max-w-[600px] text-base leading-[1.4] text-[var(--footer-black)]/88 sm:text-[20px] xl:w-[600px] xl:text-[var(--footer-h5)]">
-            {descriptionLines.map((line, index) => (
-              <span key={`${line}-${index}`}>
-                {index > 0 ? <br /> : null}
-                {line}
-              </span>
-            ))}
-          </p>
+            <p className="mx-auto mt-8 max-w-[600px] text-base leading-[1.4] text-[var(--footer-black)]/88 sm:text-[20px] xl:w-[600px] xl:text-[var(--footer-h5)]">
+              {descriptionLines.map((line, index) => (
+                <span key={`${line}-${index}`}>
+                  {index > 0 ? <br /> : null}
+                  {line}
+                </span>
+              ))}
+            </p>
 
-          <div className="mt-10 flex justify-center sm:mt-12 xl:mt-[60px]">
-            <button
-              type="button"
-              onClick={() => handleFooterAction(resolvedCta.actionHref)}
-              className={`inline-flex min-h-[54px] items-center whitespace-nowrap rounded-[var(--footer-button-radius)] bg-[var(--footer-black)] px-[var(--footer-button-px)] py-[var(--footer-button-py)] text-[var(--footer-h7)] font-medium leading-none tracking-[-0.01em] text-white transition-transform duration-200 hover:scale-[1.01] xl:h-[var(--footer-button-height)] ${
-                usesAskAvaPill ? "justify-between" : "justify-center gap-2"
-              }`}
-              style={usesAskAvaPill ? { width: `${footerTokens.button.width}px` } : undefined}
-            >
-              {usesAskAvaPill ? (
-                <>
-                  <span className="leading-none font-bold text-white">Ask</span>
-                  <AskAvaBadge />
-                  <ArrowGlyph />
-                </>
-              ) : (
-                <>
-                  <span className="leading-none text-white">{resolvedCta.actionLabel}</span>
-                  <ArrowGlyph />
-                </>
-              )}
-            </button>
-          </div>
+            <div className="mt-10 flex justify-center sm:mt-12 xl:mt-[60px]">
+              <button
+                type="button"
+                onClick={() => handleFooterAction(resolvedCta.actionHref)}
+                className={`inline-flex min-h-[54px] items-center whitespace-nowrap rounded-[var(--footer-button-radius)] bg-[var(--footer-black)] px-[var(--footer-button-px)] py-[var(--footer-button-py)] text-[var(--footer-h7)] font-medium leading-none tracking-[-0.01em] text-white transition-transform duration-200 hover:scale-[1.01] xl:h-[var(--footer-button-height)] ${
+                  usesAskAvaPill ? "justify-between" : "justify-center gap-2"
+                }`}
+                style={usesAskAvaPill ? { width: `${footerTokens.button.width}px` } : undefined}
+              >
+                {usesAskAvaPill ? (
+                  <>
+                    <span className="leading-none font-bold text-white">Ask</span>
+                    <AskAvaBadge />
+                    <ArrowGlyph />
+                  </>
+                ) : (
+                  <>
+                    <span className="leading-none text-white">{resolvedCta.actionLabel}</span>
+                    <ArrowGlyph />
+                  </>
+                )}
+              </button>
+            </div>
+          </ViewportReveal>
         </div>
 
         <div className="absolute inset-x-0 bottom-0 top-[460px] sm:top-[560px] xl:top-[var(--footer-image-top)]">
@@ -330,7 +336,10 @@ export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: 
             />
           </div>
 
-          <div className="relative flex h-full flex-col border-t border-[rgba(255,255,255,0.28)] px-6 py-10 sm:px-8 xl:px-[var(--footer-footer-px)] xl:py-[var(--footer-footer-py)]">
+          <ViewportReveal
+            className="relative flex h-full flex-col border-t border-[rgba(255,255,255,0.28)] px-6 py-10 sm:px-8 xl:px-[var(--footer-footer-px)] xl:py-[var(--footer-footer-py)]"
+            delayMs={160}
+          >
             <div className="grid flex-1 gap-10 sm:gap-12 lg:grid-cols-[minmax(0,1fr)_160px_160px_160px] xl:gap-14">
               <div className="max-w-[520px]">
                 <Link href="/" className="inline-flex items-center">
@@ -399,7 +408,7 @@ export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: 
                 ))}
               </div>
             </div>
-          </div>
+          </ViewportReveal>
         </div>
       </div>
     </footer>

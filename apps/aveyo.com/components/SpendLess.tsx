@@ -3,6 +3,7 @@
 import { CarouselIndicators } from "@/components/ui/carousel-indicators";
 import { useCarouselAutoplay } from "@/components/ui/use-carousel-autoplay";
 import { useCarouselWheelNavigation } from "@/components/ui/use-carousel-wheel-navigation";
+import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import Image from "next/image";
 import { useState, useEffect, useCallback, useRef, useMemo, type MutableRefObject } from "react";
@@ -68,12 +69,15 @@ function VideoSlide({ slide, isActive, logicalIndex, playbackPositionsRef }: Vid
   }, [isActive, logicalIndex, playbackPositionsRef]);
 
   useEffect(() => {
+    const playbackPositions = playbackPositionsRef.current;
+    const video = videoRef.current;
+
     return () => {
-      if (!videoRef.current) {
+      if (!video) {
         return;
       }
 
-      playbackPositionsRef.current[logicalIndex] = videoRef.current.currentTime;
+      playbackPositions[logicalIndex] = video.currentTime;
     };
   }, [logicalIndex, playbackPositionsRef]);
 
@@ -106,7 +110,6 @@ export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [slideWidth, setSlideWidth] = useState(1200);
   const [gap] = useState(20);
-  const containerRef = useRef<HTMLDivElement>(null);
   const playbackPositionsRef = useRef<Record<number, number>>({});
 
   // Update slide width on resize
@@ -259,16 +262,23 @@ export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
       style={homepageStyleVars}
     >
       {/* Heading */}
-      <div className="max-w-[1200px] mx-auto px-5 mb-[70px]">
+      <ViewportReveal
+        className="max-w-[1200px] mx-auto px-5 mb-[70px]"
+        delayMs={40}
+      >
         <h2 className="text-[40px] leading-none capitalize text-[color:var(--home-black)] sm:text-[55px] md:text-[length:var(--home-h2)]">
           Spend Less On Power.
           <br />
           Spend More On Life
         </h2>
-      </div>
+      </ViewportReveal>
 
       {/* Carousel */}
-      <div className="relative" ref={containerRef} onWheel={handleCarouselWheel}>
+      <ViewportReveal
+        className="relative"
+        delayMs={140}
+        onWheel={handleCarouselWheel}
+      >
         <div 
           className="flex items-center"
           style={{
@@ -293,7 +303,7 @@ export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
             pauseLabel="Pause spend less carousel autoplay"
           />
         </div>
-      </div>
+      </ViewportReveal>
     </section>
   );
 }

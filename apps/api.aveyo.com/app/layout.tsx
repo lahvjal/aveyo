@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import RouteLoadingOverlay from "./route-loading-overlay";
 
 export const metadata: Metadata = {
   title: "Ava API",
@@ -10,7 +11,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        <RouteLoadingOverlay />
+        {children}
+      </body>
     </html>
   );
 }

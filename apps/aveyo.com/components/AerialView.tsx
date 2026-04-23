@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/media-has-caption */
 "use client";
 
+import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import type { AerialViewContent } from "@/lib/state-page-data";
 import { useEffect, useRef, useState } from "react";
@@ -232,7 +233,10 @@ export default function AerialView({ content }: { content?: AerialViewContent })
             </svg>
           </div> */}
 
-          <div className="flex flex-col items-center gap-4 lg:gap-[30px]">
+          <ViewportReveal
+            className="flex flex-col items-center gap-4 lg:gap-[30px]"
+            delayMs={40}
+          >
             <h2 className="text-[44px] leading-[1.02] tracking-[-0.01em] text-[color:var(--home-black)] sm:text-[56px] lg:w-[646px] lg:text-[length:var(--home-h2)]">
               {c.headingLine1}
               <br />
@@ -241,21 +245,26 @@ export default function AerialView({ content }: { content?: AerialViewContent })
             <p className="text-lg leading-[1.4] text-[color:var(--home-black)] sm:text-xl lg:text-[length:var(--home-h5)]">
               {c.subtitle}
             </p>
-          </div>
+          </ViewportReveal>
 
-          <p className="w-full max-w-[700px] text-center text-sm leading-[1.7] text-[color:var(--home-foreground-primary)] sm:text-[15px] lg:text-base">
+          <ViewportReveal
+            as="p"
+            className="w-full max-w-[700px] text-center text-sm leading-[1.7] text-[color:var(--home-foreground-primary)] sm:text-[15px] lg:text-base"
+            delayMs={120}
+          >
             {c.body}
-          </p>
+          </ViewportReveal>
         </div>
 
         <div className={`mx-auto mt-10 grid w-full max-w-[1880px] grid-cols-1 gap-5 px-5 lg:mt-[40px] ${c.cards.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
-          {c.cards.map((card) => (
-            <div
+          {c.cards.map((card, index) => (
+            <ViewportReveal
               key={card.boldLine1}
               className="rounded-[var(--home-card-radius)] bg-gradient-to-b from-[#f4faff] to-[#d8d8d8] px-6 py-10 text-center sm:px-8 lg:px-10 lg:py-[60px]"
+              delayMs={180 + index * 80}
             >
               <p className="text-[length:var(--home-h7)] leading-[1.5] text-[color:var(--home-gray-dark-2)]">
-         
+        
                 {card.topText}
               </p>
               <div className="my-6 text-[color:var(--home-black)]">
@@ -271,7 +280,7 @@ export default function AerialView({ content }: { content?: AerialViewContent })
               <p className="text-[length:var(--home-h7)] leading-[1.5] text-[color:var(--home-gray-dark-2)]">
                 {card.bottomText}
               </p>
-            </div>
+            </ViewportReveal>
           ))}
         </div>
       </div>

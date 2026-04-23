@@ -37,6 +37,7 @@ function readLocalInterfaceHosts() {
 
 /** @type {import("next").NextConfig} */
 const nextConfig = {
+  transpilePackages: ["@ava/ui"],
   allowedDevOrigins: Array.from(
     new Set([...readLocalInterfaceHosts(), ...readConfiguredOrigins()])
   )
