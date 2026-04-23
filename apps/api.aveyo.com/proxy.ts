@@ -9,6 +9,7 @@ const publicApiPaths = new Set([
   "/api/auth/session",
   "/api/auth/session/bootstrap",
   "/api/auth/session/logout",
+  "/api/public/ava/guest-reply",
   "/api/marketing/news/posts"
 ]);
 const publicApiPathPrefixes = ["/api/marketing/news/posts/slug/"];
