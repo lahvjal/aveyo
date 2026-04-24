@@ -1793,6 +1793,7 @@ export function AvaWidgetShell({
           <section
             ref={panelRef}
             className={`widget-panel ${isPanelVisible ? "is-open" : "is-closed"}`}
+            style={{ width: "100%" }}
             aria-hidden={!isPanelVisible}
           >
             {canUseTestMode && isTestModeEnabled ? (

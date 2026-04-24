@@ -8,17 +8,17 @@ export type MisconceptionItem = {
 };
 
 const ICONS: ReactNode[] = [
-  <svg key="battery" className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg key="battery" className="h-full w-full text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <rect x="3.5" y="8" width="14" height="8" rx="1.5" strokeWidth={1.7} />
     <rect x="18.5" y="10" width="2" height="4" rx="0.6" strokeWidth={1.7} />
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M6 12h4" />
   </svg>,
-  <svg key="money" className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg key="money" className="h-full w-full text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <rect x="3" y="7" width="18" height="10" rx="2" strokeWidth={1.7} />
     <circle cx="12" cy="12" r="2.2" strokeWidth={1.7} />
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M6.5 10h0.01M17.5 14h0.01" />
   </svg>,
-  <svg key="transfer" className="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+  <svg key="transfer" className="h-full w-full text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <circle cx="8" cy="9" r="2.5" strokeWidth={1.7} />
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M3.5 17c1.1-2.2 3-3.3 4.5-3.3 1.6 0 3.5 1.1 4.6 3.3" />
     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M14 8h7m0 0-2.8-2.8M21 8l-2.8 2.8" />
@@ -79,7 +79,7 @@ export default function Misconceptions({ myths: mythsProp }: { myths?: Misconcep
               className="flex flex-col items-center gap-9 text-center text-white"
               delayMs={140 + index * 90}
             >
-              <div className="flex h-12 w-12 items-center justify-center">{ICONS[index % ICONS.length]}</div>
+              <div className="flex h-[55px] w-[55px] items-center justify-center">{ICONS[index % ICONS.length]}</div>
               <div className="flex flex-col items-center gap-6 lg:gap-10">
                 <h3 className="whitespace-pre-line text-[length:var(--home-h4)] capitalize leading-[1.15]">
                   {myth.title}

@@ -9,6 +9,7 @@ import {
   SiteSplitSection
 } from "@/components/site/page-kit";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
+import { OPEN_AVA_WIDGET_HREF } from "@/lib/ava-widget";
 import { getCustomerPortalUrl } from "@/lib/site-config";
 
 type PortalMilestone = { title: string; description: string };
@@ -216,7 +217,7 @@ export default function ProcessPage() {
         }
         description="Full transparency creates a better experience. Our process is designed so you always know what happens next and who is owning it."
         actions={[
-          { href: "/contact#sales-form", label: "Talk To Sales", variant: "light" },
+          { href: OPEN_AVA_WIDGET_HREF, label: "Ask Ava", variant: "light" },
           { href: getCustomerPortalUrl(), label: "Portal Login", variant: "outline" }
         ]}
         backgroundSrc="/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT5.jpg"

@@ -247,7 +247,7 @@ export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: 
       className="relative overflow-hidden bg-[var(--footer-gray-light)] text-[var(--footer-black)]"
       style={footerStyleVars}
     >
-      <div className="relative min-h-[1480px] sm:min-h-[1660px] xl:h-[var(--footer-height)]">
+      <div className="relative min-h-[1480px] sm:min-h-[1660px] xl:min-h-[var(--footer-height)]">
         <div
           className="absolute inset-0"
           style={{ background: footerTokens.backgrounds.rootGradient }}
@@ -336,7 +336,7 @@ export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: 
           </div>
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 z-30 h-[420px] text-white sm:h-[430px] xl:h-[var(--footer-panel-height)]">
+        <div className="absolute inset-x-0 bottom-0 z-30 text-white">
           <div
             className="absolute inset-0 overflow-hidden backdrop-blur-[var(--footer-panel-blur)]"
             style={{ background: footerTokens.backgrounds.panelOverlay }}
@@ -355,7 +355,7 @@ export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: 
           </div>
 
           <ViewportReveal
-            className="relative flex h-full flex-col border-t border-[rgba(255,255,255,0.28)] px-6 py-10 sm:px-8 xl:px-[var(--footer-footer-px)] xl:py-[var(--footer-footer-py)]"
+            className="relative flex min-h-[420px] flex-col border-t border-[rgba(255,255,255,0.28)] px-6 py-10 sm:min-h-[430px] sm:px-8 xl:min-h-[var(--footer-panel-height)] xl:px-[var(--footer-footer-px)] xl:py-[var(--footer-footer-py)]"
             delayMs={160}
           >
             <div className="grid flex-1 gap-10 sm:gap-12 lg:grid-cols-[minmax(0,1fr)_160px_160px_160px] xl:gap-14">

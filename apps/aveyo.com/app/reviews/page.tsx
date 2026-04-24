@@ -159,8 +159,8 @@ export default function ReviewsPage() {
         }
         description="Browse the stories behind the switch to solar, with room for every review highlight to become a full customer video testimonial."
         actions={[
-          { href: "#review-gallery", label: "Browse Reviews", variant: "light" },
-          { href: "/contact#sales-form", label: "Talk To Sales", variant: "outline" }
+          { href: "/#pricing", label: "See Plans", variant: "light" },
+          { href: "#review-gallery", label: "Browse Reviews", variant: "outline" }
         ]}
         backgroundSrc="/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone3.jpg"
         backgroundAlt="Solar home exterior with mountains in the distance"

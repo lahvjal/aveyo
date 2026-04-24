@@ -9,6 +9,7 @@ import {
   isHomePath,
   isPricingSectionHref
 } from "@/lib/pricing-navigation";
+import { OPEN_AVA_WIDGET_HREF, openAvaWidget } from "@/lib/ava-widget";
 
 type SiteButtonVariant = "dark" | "light" | "outline" | "ghost";
 type SiteButtonSize = "sm" | "md";
@@ -85,6 +86,18 @@ export function SiteButtonLink({
   ]
     .filter(Boolean)
     .join(" ");
+
+  if (href === OPEN_AVA_WIDGET_HREF) {
+    return (
+      <button
+        type="button"
+        className={composedClassName}
+        onClick={() => openAvaWidget()}
+      >
+        {children}
+      </button>
+    );
+  }
 
   if (isExternalHref(href)) {
     return (

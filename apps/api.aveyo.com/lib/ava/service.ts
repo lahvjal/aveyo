@@ -180,7 +180,7 @@ const guestPublicSiteContext = {
       plan: "Aveyo Subscription Plan",
       bestFor: "Homeowners who want a simpler monthly path with low upfront friction",
       highlights: [
-        "Public plan page says it can reduce or eliminate most of the utility bill",
+        "Public plan page says it can meaningfully reduce utility costs, but exact savings depend on usage, system size, and local utility rules",
         "Public plan page highlights 25 years of warranties and insurance",
         "Public plan page says the system transfers with the sale of the home"
       ]
@@ -189,7 +189,7 @@ const guestPublicSiteContext = {
       plan: "Solar Panels Ownership",
       bestFor: "Homeowners who want the highest lifetime ROI and full ownership",
       highlights: [
-        "Public plan page says it can reduce or eliminate most of the utility bill",
+        "Public plan page says it can meaningfully reduce utility costs, but exact savings depend on usage, system size, and local utility rules",
         "Public plan page highlights battery and roof warranty coverage",
         "Public plan page highlights financing options and home-value upside"
       ]

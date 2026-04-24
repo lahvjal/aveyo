@@ -19,7 +19,7 @@ const DEFAULTS: AerialViewContent = {
   subtitle: "Redefining What Home Solar Should Feel Like",
   body: "We built Aveyo specifically for you. To give you meaningful savings, better service, and a hassle-free experience the entire way through. We understand all too well why solar has a bad name, which is why everything we do is focused on providing you with the best service possible.",
   cards: [
-    { topText: "An Industry-Exclusive", boldLine1: "Stress-Free", boldLine2: "Guarantee", bottomText: "On Every System We Install" },
+    { topText: "An industry-exclusive", boldLine1: "Guided From", boldLine2: "Start to Finish", bottomText: "on every system we install" },
     { topText: "We\u2019re Always", boldLine1: "100%", boldLine2: "Transparent", bottomText: "Through The Entire Process" },
   ],
 };

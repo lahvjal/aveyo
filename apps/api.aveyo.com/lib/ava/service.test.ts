@@ -107,6 +107,7 @@ describe("buildGuestPromptMessages", () => {
     expect(systemPrompt.content).toContain("better than a mini-primer");
     expect(systemPrompt.content).toContain("private employee details");
     expect(systemPrompt.content).toContain("gentle awkward humor");
+    expect(systemPrompt.content).toContain("Never say solar will eliminate");
 
     expect(publicSiteContext?.role).toBe("system");
     expect(typeof publicSiteContext?.content).toBe("string");
@@ -117,6 +118,8 @@ describe("buildGuestPromptMessages", () => {
     expect(publicSiteContext.content).toContain("Permission to operate");
     expect(publicSiteContext.content).toContain("NEM 3.0");
     expect(publicSiteContext.content).toContain("American Fork");
+    expect(publicSiteContext.content).toContain("meaningfully reduce utility costs");
+    expect(publicSiteContext.content).not.toContain("eliminate most of the utility bill");
   });
 
   it("shares Ava's core personality between guest, customer, and employee prompts", () => {
@@ -148,6 +151,9 @@ describe("buildGuestPromptMessages", () => {
     expect(customerSystemPrompt.content).toContain("Ask at most one short follow-up question");
     expect(guestSystemPrompt.content).toContain("Ask at most one short follow-up question");
     expect(employeeSystemPrompt.content).toContain("Ask at most one short follow-up question");
+    expect(customerSystemPrompt.content).toContain("Never say solar will eliminate");
+    expect(guestSystemPrompt.content).toContain("Never say solar will eliminate");
+    expect(employeeSystemPrompt.content).toContain("Never say solar will eliminate");
     expect(customerSystemPrompt.content).toContain("gentle awkward humor");
     expect(guestSystemPrompt.content).toContain("gentle awkward humor");
     expect(employeeSystemPrompt.content).toContain("gentle awkward humor");
