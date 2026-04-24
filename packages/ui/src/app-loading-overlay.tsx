@@ -45,6 +45,7 @@ export function AppLoadingOverlay({
   const routeSequenceRef = useRef(0);
   const pendingHashRef = useRef("");
   const skipCurrentRouteRef = useRef(false);
+  const isScrollLocked = phase === "visible";
 
   useLayoutEffect(() => {
     routeSequenceRef.current += 1;
@@ -54,9 +55,7 @@ export function AppLoadingOverlay({
   }, [routeKey, skipWhenHashPresent]);
 
   useEffect(() => {
-    if (phase === "hidden") {
-      document.documentElement.style.removeProperty("overflow");
-      document.body.style.removeProperty("overflow");
+    if (!isScrollLocked) {
       return;
     }
 
@@ -70,7 +69,7 @@ export function AppLoadingOverlay({
       document.documentElement.style.overflow = previousHtmlOverflow;
       document.body.style.overflow = previousBodyOverflow;
     };
-  }, [phase]);
+  }, [isScrollLocked]);
 
   useEffect(() => {
     if (skipCurrentRouteRef.current) {
