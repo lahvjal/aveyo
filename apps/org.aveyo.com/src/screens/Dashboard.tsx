@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react'
 import { useProfiles, useProfile } from '../hooks/useProfile'
 import { usePermissions } from '../hooks/usePermissions'
 import { useAuth } from '../hooks/useAuth'
@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isFlashMode, setIsFlashMode] = useState(false)
   const hasInitializedDepartment = useRef(false)
 
   const { data: allProfiles, isLoading: allProfilesLoading, error: allProfilesError } = useProfiles()
@@ -56,6 +57,10 @@ export default function Dashboard() {
 
   const selectedProfile = allProfiles?.find((p) => p.id === selectedProfileId)
   const profileBeingEdited = allProfiles?.find((p) => p.id === editingProfile) ?? null
+  const handleViewModeChange = useCallback((viewMode: 'chart' | 'flash') => {
+    const nextIsFlashMode = viewMode === 'flash'
+    setIsFlashMode((current) => current === nextIsFlashMode ? current : nextIsFlashMode)
+  }, [])
 
   if (isLoading) {
     return (
@@ -83,7 +88,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row">
+    <div className="flex h-full min-h-0 flex-col md:flex-row">
       {/* Mobile: filter toggle bar */}
       <div className="md:hidden flex items-center gap-2 px-4 py-2 border-b bg-white shrink-0">
         <Button
@@ -105,7 +110,7 @@ export default function Dashboard() {
       {/* Sidebar */}
       <div
         className={`
-          bg-white border-b md:border-b-0 md:border-r md:w-80 p-4 overflow-y-auto shrink-0
+          bg-white border-b md:border-b-0 md:border-r md:w-80 md:h-full p-4 overflow-y-auto shrink-0
           ${sidebarOpen ? 'block' : 'hidden md:block'}
         `}
       >
@@ -155,11 +160,13 @@ export default function Dashboard() {
             selectedDepartment={selectedDepartment}
             allDepartments={allDepartments || []}
             savedPositions={savedPositions}
+            enableFlashMode
+            onViewModeChange={handleViewModeChange}
           />
         )}
 
         {/* Selected profile detail */}
-        {selectedProfile && (
+        {selectedProfile && !isFlashMode && (
           <div className="absolute top-2 right-2 left-2 md:left-auto md:top-4 md:right-4 md:w-96 max-h-[calc(100%-1rem)] overflow-y-auto z-10">
             <div className="relative bg-white shadow-lg rounded-lg">
               <Button

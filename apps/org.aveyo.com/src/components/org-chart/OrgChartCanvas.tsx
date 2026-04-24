@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactFlow, {
   Background,
   Controls,
@@ -15,24 +15,29 @@ import ReactFlow, {
 import type { NodeTypes, Connection, Node as RFNode, Edge as RFEdge } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { EmployeeNode } from './EmployeeNode'
+import { OrgChartFlashDeck } from './OrgChartFlashDeck'
 import type { OrgChartProfile, Department, OrgChartPosition } from '../../types'
 import { useOrgChart } from '../../hooks/useOrgChart'
 import { useUpdatePosition, getDepartmentDescendantIds, useClearAllPositions, useBatchSavePositions } from '../../lib/queries'
 import { Button } from '../ui/button'
-import { Save, Loader2 } from 'lucide-react'
+import { Save, Loader2, ChevronLeft, ChevronRight, Shuffle } from 'lucide-react'
 
 interface OrgChartCanvasProps {
   profiles: OrgChartProfile[]
   isAdmin: boolean
   currentUserId?: string
   currentUserDepartmentId?: string
-  onNodeClick?: (profileId: string) => void
+  onNodeClick?: (profileId: string | null) => void
   selectedProfileId?: string | null
   searchQuery?: string
   selectedDepartment?: string | null
   allDepartments?: Department[]
   savedPositions?: OrgChartPosition[]
+  enableFlashMode?: boolean
+  onViewModeChange?: (viewMode: OrgChartViewMode) => void
 }
+
+export type OrgChartViewMode = 'chart' | 'flash'
 
 const nodeTypes: NodeTypes = {
   employee: EmployeeNode,
@@ -117,6 +122,51 @@ function pickTopClusterForViewport(flowNodes: RFNode[], edges: RFEdge[], maxNode
   return out
 }
 
+function profileMatchesActiveFilters(
+  profile: OrgChartProfile,
+  departmentMatchIds: Set<string> | null,
+  normalizedSearchQuery: string,
+) {
+  const matchesDepartment = departmentMatchIds
+    ? !!(profile.department_id && departmentMatchIds.has(profile.department_id))
+    : true
+
+  const matchesSearch = normalizedSearchQuery
+    ? (
+        profile.full_name.toLowerCase().includes(normalizedSearchQuery) ||
+        profile.job_title.toLowerCase().includes(normalizedSearchQuery) ||
+        profile.email.toLowerCase().includes(normalizedSearchQuery)
+      )
+    : true
+
+  return matchesDepartment && matchesSearch
+}
+
+function areStringArraysEqual(current: string[], next: string[]) {
+  if (current.length !== next.length) return false
+  return current.every((value, index) => value === next[index])
+}
+
+function reconcileFlashOrder(current: string[], nextProfiles: OrgChartProfile[]) {
+  const nextIds = nextProfiles.map((profile) => profile.id)
+  const nextIdSet = new Set(nextIds)
+  const preserved = current.filter((id) => nextIdSet.has(id))
+  const preservedSet = new Set(preserved)
+  const appended = nextIds.filter((id) => !preservedSet.has(id))
+  return [...preserved, ...appended]
+}
+
+function shuffleValues<T>(values: T[]) {
+  const shuffled = [...values]
+  for (let i = shuffled.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1))
+    const currentValue = shuffled[i]
+    shuffled[i] = shuffled[j]
+    shuffled[j] = currentValue
+  }
+  return shuffled
+}
+
 function OrgChartCanvasInner({ 
   profiles, 
   isAdmin, 
@@ -128,8 +178,13 @@ function OrgChartCanvasInner({
   selectedDepartment,
   allDepartments,
   savedPositions,
+  enableFlashMode = false,
+  onViewModeChange,
 }: OrgChartCanvasProps) {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  const [viewMode, setViewMode] = useState<OrgChartViewMode>('chart')
+  const [flashOrder, setFlashOrder] = useState<string[]>([])
+  const [activeFlashIndex, setActiveFlashIndex] = useState(0)
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768)
@@ -150,10 +205,24 @@ function OrgChartCanvasInner({
   const batchSavePositions = useBatchSavePositions()
   const { fitView, getNodes, getEdges } = useReactFlow()
   const storeApi = useStoreApi()
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase()
+  const departmentMatchIds = useMemo(
+    () => (
+      selectedDepartment && allDepartments?.length
+        ? new Set(getDepartmentDescendantIds(selectedDepartment, allDepartments))
+        : null
+    ),
+    [selectedDepartment, allDepartments],
+  )
+  const filteredFlashProfiles = useMemo(
+    () => profiles.filter((profile) => profileMatchesActiveFilters(profile, departmentMatchIds, normalizedSearchQuery)),
+    [profiles, departmentMatchIds, normalizedSearchQuery],
+  )
 
   // Keep a ref to current nodes so fitView effects don't need nodes in their dep arrays
   const nodesRef = useRef(nodes)
   useEffect(() => { nodesRef.current = nodes }, [nodes])
+  const previousSelectedProfileIdRef = useRef<string | null | undefined>(selectedProfileId)
 
   // Store fixed Y positions for each node to enforce horizontal-only dragging
   const nodeYPositions = useRef<Record<string, number>>({})
@@ -163,6 +232,19 @@ function OrgChartCanvasInner({
 
   // Constants for grid snapping
   const SLOT_WIDTH = 320 // 220px node width + 100px gap (matches dagre nodesep)
+
+  const orderedFlashProfiles = useMemo(() => {
+    const byId = new Map(filteredFlashProfiles.map((profile) => [profile.id, profile]))
+    const ordered = flashOrder
+      .map((id) => byId.get(id))
+      .filter(Boolean) as OrgChartProfile[]
+
+    if (ordered.length === filteredFlashProfiles.length) return ordered
+
+    const orderedIds = new Set(ordered.map((profile) => profile.id))
+    return [...ordered, ...filteredFlashProfiles.filter((profile) => !orderedIds.has(profile.id))]
+  }, [filteredFlashProfiles, flashOrder])
+  const activeFlashProfile = orderedFlashProfiles[activeFlashIndex] ?? null
 
   // Update nodes when profiles change
   useEffect(() => {
@@ -176,6 +258,57 @@ function OrgChartCanvasInner({
     })
     nodeYPositions.current = yPositions
   }, [initialNodes, initialEdges, setNodes, setEdges])
+
+  useEffect(() => {
+    if (!enableFlashMode && viewMode !== 'chart') {
+      setViewMode('chart')
+    }
+  }, [enableFlashMode, viewMode])
+
+  useEffect(() => {
+    onViewModeChange?.(viewMode)
+  }, [viewMode, onViewModeChange])
+
+  useEffect(() => {
+    setFlashOrder((current) => {
+      const next = reconcileFlashOrder(current, filteredFlashProfiles)
+      return areStringArraysEqual(current, next) ? current : next
+    })
+  }, [filteredFlashProfiles])
+
+  useEffect(() => {
+    if (!orderedFlashProfiles.length) {
+      setActiveFlashIndex(0)
+      return
+    }
+
+    setActiveFlashIndex((current) => Math.min(current, orderedFlashProfiles.length - 1))
+  }, [orderedFlashProfiles.length])
+
+  useEffect(() => {
+    if (selectedProfileId === previousSelectedProfileIdRef.current) return
+
+    previousSelectedProfileIdRef.current = selectedProfileId
+    if (!selectedProfileId || !orderedFlashProfiles.length) return
+
+    const selectedIndex = orderedFlashProfiles.findIndex((profile) => profile.id === selectedProfileId)
+    if (selectedIndex >= 0) {
+      setActiveFlashIndex(selectedIndex)
+    }
+  }, [selectedProfileId, orderedFlashProfiles])
+
+  useEffect(() => {
+    if (viewMode !== 'flash') return
+
+    if (!activeFlashProfile) {
+      if (selectedProfileId !== null) onNodeClick?.(null)
+      return
+    }
+
+    if (selectedProfileId !== activeFlashProfile.id) {
+      onNodeClick?.(activeFlashProfile.id)
+    }
+  }, [viewMode, activeFlashProfile, selectedProfileId, onNodeClick])
 
   // Pan to selected profile when it changes (e.g. clicked in sidebar search)
   useEffect(() => {
@@ -191,33 +324,20 @@ function OrgChartCanvasInner({
 
   // Dim nodes that don't match the active department filter and/or search query
   useEffect(() => {
-    const deptMatchIds = selectedDepartment && allDepartments
-      ? new Set(getDepartmentDescendantIds(selectedDepartment, allDepartments))
-      : null
-
     setNodes((nds) =>
       nds.map((n) => {
         const profile = n.data?.profile as OrgChartProfile
 
-        const matchesDept = deptMatchIds
-          ? !!(profile.department_id && deptMatchIds.has(profile.department_id))
-          : true
-
-        const matchesSearch = searchQuery
-          ? (() => {
-              const q = searchQuery.toLowerCase()
-              return (
-                profile.full_name.toLowerCase().includes(q) ||
-                profile.job_title.toLowerCase().includes(q) ||
-                profile.email.toLowerCase().includes(q)
-              )
-            })()
-          : true
-
-        return { ...n, style: { ...n.style, opacity: matchesDept && matchesSearch ? 1 : 0.15 } }
+        return {
+          ...n,
+          style: {
+            ...n.style,
+            opacity: profileMatchesActiveFilters(profile, departmentMatchIds, normalizedSearchQuery) ? 1 : 0.15,
+          },
+        }
       })
     )
-  }, [searchQuery, selectedDepartment, allDepartments, setNodes])
+  }, [departmentMatchIds, normalizedSearchQuery, setNodes])
 
   // Auto-focus the org for the active department filter (or all employees).
   // React Flow clamps `fitView` to `minZoom`; for huge selections the "ideal" zoom is below
@@ -415,57 +535,153 @@ function OrgChartCanvasInner({
     }
   }, [clearAllPositions, batchSavePositions])
 
+  const handleToggleFlashMode = useCallback(() => {
+    setViewMode((current) => current === 'flash' ? 'chart' : 'flash')
+  }, [])
+
+  const handlePreviousFlashCard = useCallback(() => {
+    setActiveFlashIndex((current) => {
+      if (!orderedFlashProfiles.length) return 0
+      return current === 0 ? orderedFlashProfiles.length - 1 : current - 1
+    })
+  }, [orderedFlashProfiles.length])
+
+  const handleNextFlashCard = useCallback(() => {
+    setActiveFlashIndex((current) => {
+      if (!orderedFlashProfiles.length) return 0
+      return (current + 1) % orderedFlashProfiles.length
+    })
+  }, [orderedFlashProfiles.length])
+
+  const handleShuffleFlashCards = useCallback(() => {
+    setFlashOrder((current) => {
+      const source = current.length > 0 ? current : filteredFlashProfiles.map((profile) => profile.id)
+      return shuffleValues(source)
+    })
+    setActiveFlashIndex(0)
+  }, [filteredFlashProfiles])
+
   return (
-    <div className="w-full h-full">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onNodeDragStart={handleNodeDragStart}
-        onNodeDrag={handleNodeDrag}
-        onNodeDragStop={handleNodeDragStop}
-        onNodeClick={handleNodeClick}
-        nodeTypes={nodeTypes}
-        nodesDraggable={isAdmin}
-        nodesConnectable={false}
-        elementsSelectable={true}
-        minZoom={0.1}
-        maxZoom={1.5}
-        defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background />
-        <Controls />
-        {isAdmin && (
-          <Panel position="top-left" className="bg-white rounded-lg shadow-md p-2 m-2">
+    <div className="w-full h-full relative">
+      {enableFlashMode && (
+        <div
+          className={`pointer-events-none absolute left-2 z-20 md:left-4 ${
+            isAdmin && viewMode === 'chart' ? 'top-16 md:top-20' : 'top-2 md:top-4'
+          }`}
+        >
+          <div className="pointer-events-auto flex items-center gap-1 rounded-lg border border-gray-200 bg-white/95 p-1.5 shadow-md backdrop-blur">
             <Button
-              onClick={handleSaveCleanLayout}
-              variant="outline"
+              onClick={handleToggleFlashMode}
+              variant={viewMode === 'flash' ? 'default' : 'outline'}
               size="sm"
-              disabled={clearAllPositions.isPending || batchSavePositions.isPending}
-              className="flex items-center gap-2"
+              aria-pressed={viewMode === 'flash'}
             >
-              {(clearAllPositions.isPending || batchSavePositions.isPending) ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="h-4 w-4" />
-              )}
-              Save Clean Layout
+              Flash Mode
             </Button>
-          </Panel>
-        )}
-        {!isMobile && (
-          <MiniMap 
-            nodeColor={(node: any) => {
-              const profile = node.data?.profile as OrgChartProfile
-              return profile?.department?.color || '#94a3b8'
-            }}
-            maskColor="rgba(0, 0, 0, 0.1)"
-          />
-        )}
-      </ReactFlow>
+            {viewMode === 'flash' && (
+              <>
+                <Button
+                  onClick={handlePreviousFlashCard}
+                  variant="ghost"
+                  size="icon"
+                  disabled={orderedFlashProfiles.length <= 1}
+                  title="Previous card"
+                  aria-label="Previous card"
+                  className="h-9 w-9"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  onClick={handleShuffleFlashCards}
+                  variant="ghost"
+                  size="icon"
+                  disabled={orderedFlashProfiles.length <= 1}
+                  title="Shuffle cards"
+                  aria-label="Shuffle cards"
+                  className="h-9 w-9"
+                >
+                  <Shuffle className="h-4 w-4" />
+                </Button>
+                <Button
+                  onClick={handleNextFlashCard}
+                  variant="ghost"
+                  size="icon"
+                  disabled={orderedFlashProfiles.length <= 1}
+                  title="Next card"
+                  aria-label="Next card"
+                  className="h-9 w-9"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <span className="px-2 text-xs text-muted-foreground whitespace-nowrap">
+                  {orderedFlashProfiles.length === 0
+                    ? '0 cards'
+                    : `${activeFlashIndex + 1} / ${orderedFlashProfiles.length}`}
+                </span>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {viewMode === 'chart' ? (
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onNodeDragStart={handleNodeDragStart}
+          onNodeDrag={handleNodeDrag}
+          onNodeDragStop={handleNodeDragStop}
+          onNodeClick={handleNodeClick}
+          nodeTypes={nodeTypes}
+          nodesDraggable={isAdmin}
+          nodesConnectable={false}
+          elementsSelectable={true}
+          minZoom={0.1}
+          maxZoom={1.5}
+          defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background />
+          <Controls />
+          {isAdmin && (
+            <Panel position="top-left" className="bg-white rounded-lg shadow-md p-2 m-2">
+              <Button
+                onClick={handleSaveCleanLayout}
+                variant="outline"
+                size="sm"
+                disabled={clearAllPositions.isPending || batchSavePositions.isPending}
+                className="flex items-center gap-2"
+              >
+                {(clearAllPositions.isPending || batchSavePositions.isPending) ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Save Clean Layout
+              </Button>
+            </Panel>
+          )}
+          {!isMobile && (
+            <MiniMap 
+              nodeColor={(node: any) => {
+                const profile = node.data?.profile as OrgChartProfile
+                return profile?.department?.color || '#94a3b8'
+              }}
+              maskColor="rgba(0, 0, 0, 0.1)"
+            />
+          )}
+        </ReactFlow>
+      ) : (
+        <OrgChartFlashDeck
+          profiles={orderedFlashProfiles}
+          activeIndex={activeFlashIndex}
+          onPrevious={handlePreviousFlashCard}
+          onNext={handleNextFlashCard}
+        />
+      )}
     </div>
   )
 }

@@ -212,15 +212,23 @@ button {
 
   background: var(--org-bg);
   display: flex;
+  height: 100vh;
   min-height: 100vh;
 }
 
 .org-workspace {
   background: var(--org-bg);
+  display: flex;
   flex: 1 1 auto;
-  min-height: 100vh;
+  flex-direction: column;
+  height: 100vh;
   min-width: 0;
   overflow: auto;
+}
+
+.org-workspace > * {
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 @media (max-width: 980px) {
@@ -229,6 +237,7 @@ button {
   }
 
   .org-workspace {
+    height: 100vh;
     min-height: 0;
   }
 }
