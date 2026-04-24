@@ -159,10 +159,10 @@ export default function Hero() {
         </ViewportReveal>
 
         {/* Bottom Section */}
-        <div className="flex flex-col md:flex-row items-end justify-between w-full gap-8 mt-auto max-w-[1920px] mx-auto">
+        <div className="mt-auto flex w-full max-w-[1920px] mx-auto flex-col items-start justify-between gap-8 md:flex-row md:items-end">
           {/* Trust Badge - Left */}
           <ViewportReveal
-            className="flex items-end gap-4 pb-5"
+            className="self-start flex items-end gap-4 pb-0 md:pb-5"
             delayMs={180}
           >
             {/* Avatar Stack */}
@@ -201,7 +201,7 @@ export default function Hero() {
 
           {/* Testimonial Carousel - Right */}
           <ViewportReveal
-            className="flex flex-col gap-2.5 items-start w-[353px]"
+            className="hidden w-[353px] flex-col items-start gap-2.5 md:flex"
             delayMs={260}
             onWheel={handleCarouselWheel}
           >

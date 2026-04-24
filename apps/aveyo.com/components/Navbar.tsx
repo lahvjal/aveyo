@@ -80,6 +80,12 @@ export default function Navbar() {
 
   const avatarInitial =
     (displayAuthSession.user?.name?.trim()?.charAt(0).toUpperCase() || "A");
+  const authButtonLabel = displayAuthSession.authenticated ? "Open account" : "Login";
+
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false);
+    setOpenMobileGroup(null);
+  };
 
   const handleAuthButtonClick = () => {
     if (typeof window === "undefined") return;
@@ -87,6 +93,11 @@ export default function Navbar() {
       ? getEmployeeAppUrl()
       : buildAuthLoginUrl(window.location.href);
     window.location.assign(destination);
+  };
+
+  const handleMobileAuthButtonClick = () => {
+    closeMobileMenu();
+    handleAuthButtonClick();
   };
 
   const navItems: NavItem[] = [
@@ -267,8 +278,8 @@ export default function Navbar() {
                 className="flex h-[55px] w-[55px] items-center justify-center rounded-full border border-white bg-[color:var(--home-white)] text-[color:var(--home-black)] transition-colors hover:bg-white/90"
                 type="button"
                 onClick={handleAuthButtonClick}
-                aria-label={displayAuthSession.authenticated ? "Open account" : "Login"}
-                title={displayAuthSession.authenticated ? "Open account" : "Login"}
+                aria-label={authButtonLabel}
+                title={authButtonLabel}
               >
                 {displayAuthSession.authenticated ? (
                   displayAuthSession.user?.avatarUrl ? (
@@ -390,8 +401,7 @@ export default function Navbar() {
                             isActiveLink(link.href) ? "bg-white/10" : "hover:bg-white/5"
                           }`}
                           onClick={() => {
-                            setIsMobileMenuOpen(false);
-                            setOpenMobileGroup(null);
+                            closeMobileMenu();
                           }}
                         >
                           {link.name}
@@ -409,8 +419,7 @@ export default function Navbar() {
                   isActiveLink(item.href) ? "bg-white/10" : "hover:bg-white/10"
                 }`}
                 onClick={() => {
-                  setIsMobileMenuOpen(false);
-                  setOpenMobileGroup(null);
+                  closeMobileMenu();
                 }}
               >
                 {item.name}
@@ -419,10 +428,53 @@ export default function Navbar() {
           )}
           <PricingEntryLink
             className="mt-4 inline-flex w-full items-center justify-center rounded-[var(--home-button-radius)] bg-[color:var(--home-white)] px-[var(--home-button-px)] py-[var(--home-button-py)] text-[length:var(--home-h7)] font-extrabold text-[color:var(--home-black)]"
-            onClick={() => setIsMobileMenuOpen(false)}
+            onClick={closeMobileMenu}
           >
             Pick a plan
           </PricingEntryLink>
+          <button
+            type="button"
+            className="inline-flex w-full items-center justify-center gap-3 rounded-[var(--home-button-radius)] border border-white/10 bg-white/5 px-[var(--home-button-px)] py-[var(--home-button-py)] text-[length:var(--home-h7)] font-extrabold text-white transition-colors hover:bg-white/10"
+            onClick={handleMobileAuthButtonClick}
+            aria-label={authButtonLabel}
+            title={authButtonLabel}
+          >
+            {displayAuthSession.authenticated ? (
+              displayAuthSession.user?.avatarUrl ? (
+                <div
+                  className="h-6 w-6 rounded-full bg-cover bg-center"
+                  style={{ backgroundImage: `url("${displayAuthSession.user.avatarUrl}")` }}
+                />
+              ) : (
+                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-white text-xs font-extrabold text-[color:var(--home-black)]">
+                  {avatarInitial}
+                </span>
+              )
+            ) : displayAuthSession.loading ? (
+              <BrandLoader size={20} tone="light" label="Loading account" />
+            ) : (
+              <svg
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M4 21C4 17.6863 7.58172 15 12 15C16.4183 15 20 17.6863 20 21"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            )}
+            <span>{authButtonLabel}</span>
+          </button>
         </div>
       </div>
     </nav>
