@@ -248,7 +248,7 @@ export default function Benefits() {
 
   return (
     <section
-      className="overflow-x-hidden bg-[color:var(--home-white)] px-5 py-5"
+      className="overflow-x-hidden overflow-y-hidden bg-[color:var(--home-white)] px-5 py-5"
       style={homepageStyleVars}
     >
       <div className="flex flex-col gap-5">
