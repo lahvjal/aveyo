@@ -159,10 +159,10 @@ export default function Hero() {
         </ViewportReveal>
 
         {/* Bottom Section */}
-        <div className="mt-auto flex w-full max-w-[1920px] mx-auto flex-col items-start justify-between gap-8 md:flex-row md:items-end">
+        <div className="mt-auto flex w-full max-w-[1920px] mx-auto flex-col items-end justify-between gap-8 md:flex-row md:items-end">
           {/* Trust Badge - Left */}
           <ViewportReveal
-            className="self-start flex items-end gap-4 pb-0 md:pb-5"
+            className="self-start md:self-auto flex items-end gap-4 pb-0 md:pb-5"
             delayMs={180}
           >
             {/* Avatar Stack */}
