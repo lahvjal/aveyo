@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import '@/styles/brand-colors.css';
 import Link from 'next/link';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
-import { Project } from '@/types';
+import CustomerVideoModal from '@/components/ui/CustomerVideoModal';
 import { getProjectHomePhotoUrl } from '@/utils/projectUtils';
 import { getNextMilestoneDisplayName } from '@/utils/milestoneUtils';
 import { useProjects } from '@/context/ProjectsContext';
@@ -15,6 +15,9 @@ import {
   getNextMilestoneDescription,
   getProjectStatusSnapshot
 } from '@/utils/customerDashboardUtils';
+
+const PROCESS_WALKTHROUGH_VIDEO_URL =
+  'https://vz-bd3d2939-ded.b-cdn.net/8d7b88c4-51aa-4305-8c93-8b09ffffb071/play_1080p.mp4';
 
 function formatDate(dateString: string) {
   const date = new Date(dateString);
@@ -94,6 +97,7 @@ export default function DashboardPage() {
     scopeKey: '',
     projectId: null
   });
+  const [isProcessVideoOpen, setIsProcessVideoOpen] = useState(false);
 
   const projectScopeKey =
     customerPortalView?.effectiveCustomerEmail?.trim().toLowerCase() ??
@@ -279,10 +283,23 @@ export default function DashboardPage() {
             key={`stages-${selectedProject?.id ?? 'none'}`}
             className="customer-panel customer-panel-soft flex min-h-[620px] flex-col overflow-hidden xl:min-h-[931px]"
           >
-            <div className="border-b border-[var(--customer-color-border-muted)] p-[var(--customer-space-panel-padding)]">
+            <div className="flex items-center justify-between gap-4 border-b border-[var(--customer-color-border-muted)] p-[var(--customer-space-panel-padding)]">
               <h2 className="text-[length:var(--customer-font-h7)] font-bold text-[var(--customer-color-text-primary)]">
                 Stages
               </h2>
+              <button
+                type="button"
+                className="brand-button-secondary inline-flex items-center gap-2 px-4 py-2 text-sm"
+                onClick={() => setIsProcessVideoOpen(true)}
+              >
+                <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path
+                    d="M5.25 4.1c0-.65.71-1.04 1.25-.68l4.33 2.9a.82.82 0 0 1 0 1.36l-4.33 2.9c-.54.36-1.25-.03-1.25-.68V4.1Z"
+                    fill="currentColor"
+                  />
+                </svg>
+                <span>Learn more</span>
+              </button>
             </div>
 
             <div className="flex min-h-0 flex-1 flex-col">
@@ -411,6 +428,16 @@ export default function DashboardPage() {
           </Link>
         </div>
       )}
+
+      <CustomerVideoModal
+        isOpen={isProcessVideoOpen}
+        onClose={() => setIsProcessVideoOpen(false)}
+        eyebrow="Stages"
+        title="How the solar installation process works"
+        description="Watch this walkthrough any time for a step-by-step overview of what to expect as your project moves through each stage."
+        videoSrc={PROCESS_WALKTHROUGH_VIDEO_URL}
+        closeLabel="Close video"
+      />
     </div>
   );
 }

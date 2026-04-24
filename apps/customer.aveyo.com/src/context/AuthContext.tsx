@@ -75,6 +75,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [customerPortalView, setCustomerPortalView] = useState<CustomerPortalViewState | null>(null);
   const previousAuthenticatedRef = useRef(false);
 
+  const consumeWelcomeVideo = useCallback(async () => {
+    try {
+      const response = await fetch('/api/customer-portal/welcome-video', {
+        method: 'POST',
+        credentials: 'include',
+        cache: 'no-store'
+      });
+      const payload = (await response.json().catch(() => null)) as { showWelcomeVideo?: boolean } | null;
+
+      setShowWelcomeModal(Boolean(response.ok && payload?.showWelcomeVideo));
+    } catch (error) {
+      console.error('Error resolving welcome video state:', error);
+      setShowWelcomeModal(false);
+    }
+  }, []);
+
   const syncSession = useCallback(async () => {
     try {
       const result = await fetchPlatformAuthSession();
@@ -145,24 +161,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCustomerPortalView(null);
       }
 
-      if (typeof window !== 'undefined') {
-        const isAuthenticated = Boolean(nextUser);
+      const isAuthenticated = Boolean(nextUser);
+      const wasAuthenticated = previousAuthenticatedRef.current;
+      previousAuthenticatedRef.current = isAuthenticated;
 
-        if (isAuthenticated && !previousAuthenticatedRef.current) {
-          const isInternalViewer = nextUserType === 'employee';
-          const hasShownModal = sessionStorage.getItem('aveyo_welcome_modal_shown');
-          if (!isInternalViewer && !hasShownModal) {
-            setShowWelcomeModal(true);
-            sessionStorage.setItem('aveyo_welcome_modal_shown', 'true');
-          }
-        }
+      if (nextUserType === 'employee') {
+        setShowWelcomeModal(false);
+      }
 
-        if (!isAuthenticated && previousAuthenticatedRef.current) {
-          sessionStorage.removeItem('aveyo_welcome_modal_shown');
+      if (isAuthenticated && !wasAuthenticated) {
+        if (nextUserType === 'customer') {
+          await consumeWelcomeVideo();
+        } else {
           setShowWelcomeModal(false);
         }
+      }
 
-        previousAuthenticatedRef.current = isAuthenticated;
+      if (!isAuthenticated && wasAuthenticated) {
+        setShowWelcomeModal(false);
       }
     } catch (error) {
       console.error('Error getting platform auth session:', error);
@@ -170,16 +186,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setRole('unknown');
       setUserType('unknown');
       setCustomerPortalView(null);
-
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('aveyo_welcome_modal_shown');
-      }
       setShowWelcomeModal(false);
       previousAuthenticatedRef.current = false;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [consumeWelcomeVideo]);
 
   useEffect(() => {
     let cancelled = false;
@@ -225,9 +237,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUserType('unknown');
       setCustomerPortalView(null);
       previousAuthenticatedRef.current = false;
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('aveyo_welcome_modal_shown');
-      }
       setShowWelcomeModal(false);
     }
   };
