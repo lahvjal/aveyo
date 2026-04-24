@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import AvaWidgetEmbed from "@/components/AvaWidgetEmbed";
+import { PricingPlansModal } from "@/components/PricingPlansModal";
 import { SiteLoadOverlay } from "@/components/site-load-overlay";
 import { metadataBase, siteDescription, siteName, siteTitle } from "@/lib/site-metadata";
 
@@ -48,6 +49,7 @@ export default function RootLayout({
         </noscript>
         <SiteLoadOverlay />
         {children}
+        <PricingPlansModal />
         <AvaWidgetEmbed />
       </body>
     </html>

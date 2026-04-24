@@ -5,6 +5,7 @@ import {
   DEFAULT_PLANS_PAGE_SLUG,
   type SearchParamRecord
 } from "@/lib/plans-lead";
+import { buildPricingModalHref } from "@/lib/pricing-navigation";
 import { sitePageStyleVars } from "@/lib/site-page-design-system";
 import PlansFormExitButton from "./exit-button";
 
@@ -45,7 +46,7 @@ export default async function PlansFormPage({
     initialState.pageSlug && initialState.pageSlug !== DEFAULT_PLANS_PAGE_SLUG
       ? initialState.pageSlug === "home"
         ? "/#pricing"
-        : `/${initialState.pageSlug}#pricing`
+        : buildPricingModalHref(`/${initialState.pageSlug}`)
       : "/";
   const exitHref =
     normalizeReturnTo(readSearchParam(resolvedSearchParams, "returnTo")) || fallbackExitHref;

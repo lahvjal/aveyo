@@ -10,6 +10,10 @@ interface PricingPlansProps {
   originPath?: string;
   pageSlug?: string;
   offerName?: string;
+  returnToHref?: string;
+  sectionId?: string;
+  className?: string;
+  presentation?: "page" | "modal";
 }
 
 function buildReturnToHref(originPath: string, currentQueryString: string) {
@@ -42,30 +46,52 @@ export default function PricingPlans({
   currentQueryString = "",
   originPath = "/",
   pageSlug,
-  offerName
+  offerName,
+  returnToHref,
+  sectionId = "pricing",
+  className = "",
+  presentation = "page"
 }: PricingPlansProps) {
+  const resolvedReturnToHref = returnToHref ?? buildReturnToHref(originPath, currentQueryString);
+  const isModalPresentation = presentation === "modal";
+  const sectionClassName = isModalPresentation
+    ? "bg-transparent px-2 py-2 font-telegraf sm:px-3 sm:py-3"
+    : "scroll-mt-28 bg-[color:var(--home-white)] px-5 py-20 font-telegraf md:scroll-mt-32 md:py-28";
+  const cardsGridClassName = isModalPresentation
+    ? "grid grid-cols-1 gap-4 lg:grid-cols-2 lg:gap-5"
+    : "grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-[30px]";
+  const cardClassName =
+    "flex h-full flex-col justify-between rounded-[var(--home-card-radius)] bg-gradient-to-b from-[#f4faff] to-[#d8d8d8] px-6 py-8 md:p-[var(--home-card-padding)]";
+
   return (
     <section
-      id="pricing"
-      className="bg-[color:var(--home-white)] px-5 py-20 font-telegraf md:py-28"
+      id={sectionId}
+      className={[
+        sectionClassName,
+        className
+      ]
+        .filter(Boolean)
+        .join(" ")}
       style={homepageStyleVars}
     >
       <div className="mx-auto w-full max-w-[1240px]">
-        <ViewportReveal
-          className="mx-auto mb-12 max-w-[720px] text-center md:mb-14"
-          delayMs={40}
-        >
-          <h2 className="text-[clamp(2.2rem,6vw,4.375rem)] leading-[0.98] text-[color:var(--home-black)]">
-            Find A Plan That
-            <br />
-            Works For You
-          </h2>
-          <p className="mt-5 text-[length:var(--home-text-large)] leading-[1.4] text-[color:var(--home-gray-dark-4)] md:text-[length:var(--home-h5)]">
-            Choose from our most popular options:
-          </p>
-        </ViewportReveal>
+        {!isModalPresentation ? (
+          <ViewportReveal
+            className="mx-auto mb-12 max-w-[720px] text-center md:mb-14"
+            delayMs={40}
+          >
+            <h2 className="text-[clamp(2.2rem,6vw,4.375rem)] leading-[0.98] text-[color:var(--home-black)]">
+              Find A Plan That
+              <br />
+              Works For You
+            </h2>
+            <p className="mt-5 text-[length:var(--home-text-large)] leading-[1.4] text-[color:var(--home-gray-dark-4)] md:text-[length:var(--home-h5)]">
+              Choose from our most popular options:
+            </p>
+          </ViewportReveal>
+        ) : null}
 
-        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2 lg:gap-[30px]">
+        <div className={cardsGridClassName}>
           {AVEYO_PLAN_OPTIONS.map((plan, index) => {
             const planHref = buildPlansFormHref({
               currentQueryString,
@@ -73,16 +99,11 @@ export default function PricingPlans({
               selectedPlanName: plan.title,
               pageSlug,
               offerName,
-              returnTo: buildReturnToHref(originPath, currentQueryString)
+              returnTo: resolvedReturnToHref
             });
 
-            return (
-              <ViewportReveal
-                key={plan.id}
-                as="article"
-                className="flex h-full flex-col justify-between rounded-[var(--home-card-radius)] bg-gradient-to-b from-[#f4faff] to-[#d8d8d8] px-6 py-8 md:p-[var(--home-card-padding)]"
-                delayMs={120 + index * 90}
-              >
+            const cardBody = (
+              <>
                 <div>
                   {plan.badge ? (
                     <span className="mb-7 inline-flex items-center justify-center rounded-[30px] bg-[#70beff] px-5 py-2.5 text-[length:var(--home-h7)] font-semibold text-[color:var(--home-black)]">
@@ -132,6 +153,25 @@ export default function PricingPlans({
                     Learn More →
                   </Link>
                 </div>
+              </>
+            );
+
+            if (isModalPresentation) {
+              return (
+                <article key={plan.id} className={cardClassName}>
+                  {cardBody}
+                </article>
+              );
+            }
+
+            return (
+              <ViewportReveal
+                key={plan.id}
+                as="article"
+                className={cardClassName}
+                delayMs={120 + index * 90}
+              >
+                {cardBody}
               </ViewportReveal>
             );
           })}

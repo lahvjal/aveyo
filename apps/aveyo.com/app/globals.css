@@ -261,6 +261,13 @@ body {
   font-weight: 700;
 }
 
+.widget-route-root .widget-message-link {
+  color: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .widget-route-root .widget-bubble.incoming {
   background: #e6e6e6;
   color: #000000;

@@ -1,4 +1,6 @@
 import { type ConversationThread, type TimelineMessage } from "@ava/chat-domain";
+import { buildAuthLoginUrl } from "@ava/config/runtime/auth-urls";
+import { resolveAppUrl, resolveEnvironment } from "@ava/config/runtime/app-urls";
 import { generateGuestAvaReplyText } from "@/lib/ava/service";
 import { perfErrorJson, runPerfRoute } from "@/lib/perf/route";
 import { ServiceError } from "@/lib/service-error";
@@ -66,14 +68,44 @@ function buildGuestThread(messages: GuestReplyBody["messages"]): ConversationThr
   };
 }
 
-async function getGuestReplyResult(thread: ConversationThread) {
+function resolveGuestRequestEnvironment(request: Request) {
+  const candidates = [request.headers.get("origin"), request.headers.get("referer"), request.url];
+  for (const candidate of candidates) {
+    if (!candidate) {
+      continue;
+    }
+
+    try {
+      const hostname = new URL(candidate).hostname;
+      if (hostname) {
+        return resolveEnvironment(hostname);
+      }
+    } catch {
+      // Ignore malformed origins and keep looking.
+    }
+  }
+
+  return "prod";
+}
+
+function buildGuestProjectLoginUrl(request: Request) {
+  const environment = resolveGuestRequestEnvironment(request);
+  const authAppUrl = resolveAppUrl("auth", environment) || "https://auth.aveyo.com";
+  const customerAppUrl = resolveAppUrl("customer", environment) || "https://customer.aveyo.com";
+  const returnTo = new URL("/dashboard", customerAppUrl).toString();
+  return buildAuthLoginUrl(returnTo, { authAppUrl });
+}
+
+async function getGuestReplyResult(thread: ConversationThread, guestProjectLoginUrl: string) {
   const abortController = new AbortController();
   const timeoutId = setTimeout(() => {
     abortController.abort();
   }, 8000);
 
   try {
-    const replyText = await generateGuestAvaReplyText(thread, abortController.signal);
+    const replyText = await generateGuestAvaReplyText(thread, abortController.signal, {
+      guestProjectLoginUrl
+    });
     if (!replyText) {
       throw new ServiceError(503, "Guest chat is unavailable right now.");
     }
@@ -88,10 +120,11 @@ export async function POST(request: Request) {
   try {
     const body = (await request.json().catch(() => ({}))) as GuestReplyBody;
     const guestThread = buildGuestThread(body.messages);
+    const guestProjectLoginUrl = buildGuestProjectLoginUrl(request);
     const timedResult = await runPerfRoute(
       request,
       "api.public.ava.guestReply",
-      () => getGuestReplyResult(guestThread),
+      () => getGuestReplyResult(guestThread, guestProjectLoginUrl),
       {
         messageCount: guestThread.messages.length
       }

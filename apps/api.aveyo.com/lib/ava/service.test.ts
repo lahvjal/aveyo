@@ -6,6 +6,7 @@ import {
   buildEmployeePromptMessages,
   buildGuestPromptMessages,
   buildPromptMessages,
+  getGuestProjectReplyOverride,
   getGuestStarterReplyOverride
 } from "@/lib/ava/service";
 
@@ -219,6 +220,39 @@ describe("buildGuestPromptMessages", () => {
       { role: "user", content: "message-5" }
     ]);
     expect(messages.at(-1)).toEqual({ role: "assistant", content: "message-14" });
+  });
+
+  it("adds a guest sign-in context message when a project login URL is available", () => {
+    const loginUrl =
+      "https://auth.aveyo.com/login?returnTo=https%3A%2F%2Fcustomer.aveyo.com%2Fdashboard";
+    const thread = createThread([createMessage(1, "customer", "Can you check my project?")]);
+
+    const messages = buildGuestPromptMessages(thread, {
+      guestProjectLoginUrl: loginUrl
+    });
+    const loginContext = messages[2];
+
+    expect(loginContext?.role).toBe("system");
+    expect(typeof loginContext?.content).toBe("string");
+    if (typeof loginContext?.content !== "string") {
+      throw new Error("Expected guest sign-in context content to be a string.");
+    }
+
+    expect(loginContext.content).toContain("Approved sign-in URL");
+    expect(loginContext.content).toContain(loginUrl);
+    expect(messages[3]).toEqual({ role: "user", content: "Can you check my project?" });
+  });
+
+  it("returns a login prompt for project-specific guest questions", () => {
+    const loginUrl =
+      "https://auth.aveyo.com/login?returnTo=https%3A%2F%2Fcustomer.aveyo.com%2Fdashboard";
+    const thread = createThread([createMessage(1, "customer", "What's the status of my project?")]);
+
+    expect(getGuestProjectReplyOverride(thread, loginUrl)).toBe(
+      "I can help with your specific project, quote, or account details once you're signed in.\n" +
+        `Log in here: ${loginUrl}\n` +
+        "I can still explain the usual next step or what typically affects timing if that helps."
+    );
   });
 
   it("returns a short clarifying reply for beginner intros", () => {

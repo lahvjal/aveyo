@@ -12,6 +12,7 @@ import {
   getEmployeeAppUrl,
   useMarketingSiteAuthSession
 } from "@/lib/auth/session";
+import { PricingEntryLink } from "@/components/pricing-entry-link";
 import { stateNavLinks } from "@/lib/state-page-data";
 
 type NavLink = {
@@ -259,12 +260,9 @@ export default function Navbar() {
 
             {/* Right Side: CTA Button + Menu Icon */}
             <div className="flex items-center gap-5">
-              <Link
-                href="/#pricing"
-                className="inline-flex items-center justify-center rounded-[var(--home-button-radius)] bg-[color:var(--home-white)] px-[var(--home-button-px)] py-[var(--home-button-py)] text-[length:var(--home-h7)] font-extrabold text-[color:var(--home-black)] transition-colors hover:bg-white/90"
-              >
+              <PricingEntryLink className="inline-flex items-center justify-center rounded-[var(--home-button-radius)] bg-[color:var(--home-white)] px-[var(--home-button-px)] py-[var(--home-button-py)] text-[length:var(--home-h7)] font-extrabold text-[color:var(--home-black)] transition-colors hover:bg-white/90">
                 Pick a plan
-              </Link>
+              </PricingEntryLink>
               <button
                 className="flex h-[55px] w-[55px] items-center justify-center rounded-full border border-white bg-[color:var(--home-white)] text-[color:var(--home-black)] transition-colors hover:bg-white/90"
                 type="button"
@@ -419,13 +417,12 @@ export default function Navbar() {
               </Link>
             )
           )}
-          <Link
-            href="/#pricing"
+          <PricingEntryLink
             className="mt-4 inline-flex w-full items-center justify-center rounded-[var(--home-button-radius)] bg-[color:var(--home-white)] px-[var(--home-button-px)] py-[var(--home-button-py)] text-[length:var(--home-h7)] font-extrabold text-[color:var(--home-black)]"
             onClick={() => setIsMobileMenuOpen(false)}
           >
             Pick a plan
-          </Link>
+          </PricingEntryLink>
         </div>
       </div>
     </nav>

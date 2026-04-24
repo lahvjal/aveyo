@@ -85,6 +85,65 @@ function stripInlineMarkdown(value: string) {
     .replace(/^#{1,6}\s+/gm, "");
 }
 
+function buildExternalLink(url: string, label: string, key: string) {
+  return (
+    <a
+      key={key}
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="widget-message-link"
+    >
+      {label}
+    </a>
+  );
+}
+
+function renderTextWithLinks(text: string, keyPrefix: string): ReactNode[] {
+  const loginPromptMatch = text.match(/^(log in|login|sign in)\s+here:\s*(https?:\/\/[^\s]+)$/i);
+  if (loginPromptMatch) {
+    const actionLabel = loginPromptMatch[1];
+    const url = loginPromptMatch[2];
+    if (url) {
+      return [
+        `${actionLabel} `,
+        buildExternalLink(url, "HERE", `${keyPrefix}-login-link`)
+      ];
+    }
+  }
+
+  const urlPattern = /(https?:\/\/[^\s]+)/g;
+  const matches = Array.from(text.matchAll(urlPattern));
+  if (matches.length === 0) {
+    return [text];
+  }
+
+  const parts: ReactNode[] = [];
+  let lastIndex = 0;
+  for (const [index, match] of matches.entries()) {
+    const url = match[0];
+    const startIndex = match.index ?? -1;
+    if (!url || startIndex < 0) {
+      continue;
+    }
+
+    if (startIndex > lastIndex) {
+      parts.push(text.slice(lastIndex, startIndex));
+    }
+
+    parts.push(
+      buildExternalLink(url, url, `${keyPrefix}-url-${index}`)
+    );
+    lastIndex = startIndex + url.length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
+}
+
 function renderInlineMessageText(text: string, formatStructuredLines: boolean): ReactNode {
   if (!formatStructuredLines) {
     return text;
@@ -117,21 +176,21 @@ function renderInlineMessageText(text: string, formatStructuredLines: boolean): 
             return (
               <span key={`line-${index}`} className="widget-message-line item">
                 <span className="widget-message-item-label">{labelMatch[1]}:</span>{" "}
-                {labelMatch[2]}
+                {renderTextWithLinks(labelMatch[2], `line-${index}-label`)}
               </span>
             );
           }
 
           return (
             <span key={`line-${index}`} className="widget-message-line item">
-              {itemText}
+              {renderTextWithLinks(itemText, `line-${index}-item`)}
             </span>
           );
         }
 
         return (
           <span key={`line-${index}`} className="widget-message-line">
-            {line}
+            {renderTextWithLinks(line, `line-${index}`)}
           </span>
         );
       })}

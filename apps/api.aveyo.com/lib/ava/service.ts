@@ -236,6 +236,22 @@ function buildGuestPublicSiteContextMessage() {
   };
 }
 
+function buildGuestProjectLoginContextMessage(guestProjectLoginUrl: string | undefined) {
+  if (!guestProjectLoginUrl) {
+    return undefined;
+  }
+
+  return {
+    role: "system" as const,
+    content:
+      "Approved sign-in URL for signed-out visitors who ask about their own project, quote, permit, schedule, or account details:\n" +
+      `${guestProjectLoginUrl}\n` +
+      "Use this URL only when the visitor is asking about their own project or account. " +
+      "When relevant, include the URL once as plain text, ask them to sign in before sharing project-specific details, " +
+      "and then keep helping with general expectations or next steps."
+  };
+}
+
 const guestStarterIntroPhrases = [
   "new to solar",
   "first time hearing about it",
@@ -254,8 +270,36 @@ const guestStarterBroadPhrases = [
   "just curious"
 ];
 
+const guestProjectSpecificKeywords = [
+  "project status",
+  "status update",
+  "project details",
+  "project info",
+  "project information",
+  "project stuff",
+  "my project",
+  "my installation",
+  "my permit",
+  "my timeline",
+  "my account",
+  "my quote",
+  "my proposal",
+  "my payment",
+  "my invoice",
+  "my contract",
+  "project ref",
+  "project reference",
+  "fin number",
+  "site address",
+  "customer portal"
+];
+
 function normalizeGuestText(value: string) {
   return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function hasAnyGuestKeyword(text: string, keywords: readonly string[]) {
+  return keywords.some((keyword) => text.includes(keyword));
 }
 
 function getLatestGuestCustomerText(thread: ConversationThread) {
@@ -266,6 +310,40 @@ function getLatestGuestCustomerText(thread: ConversationThread) {
     }
   }
   return "";
+}
+
+function isGuestProjectSpecificQuestion(normalizedText: string) {
+  const personalProjectPattern =
+    /\b(my|our|me|i|mine)\b.*\b(project|installation|permit|inspection|timeline|status|quote|proposal|design|application|account|payment|invoice|contract|fin)\b/;
+
+  return (
+    hasAnyGuestKeyword(normalizedText, guestProjectSpecificKeywords) ||
+    personalProjectPattern.test(normalizedText)
+  );
+}
+
+function buildGuestProjectLoginReply(guestProjectLoginUrl: string | undefined) {
+  const loginLine = guestProjectLoginUrl
+    ? `Log in here: ${guestProjectLoginUrl}`
+    : "Sign in to your account and I can help with that.";
+
+  return [
+    "I can help with your specific project, quote, or account details once you're signed in.",
+    loginLine,
+    "I can still explain the usual next step or what typically affects timing if that helps."
+  ].join("\n");
+}
+
+export function getGuestProjectReplyOverride(
+  thread: ConversationThread,
+  guestProjectLoginUrl?: string
+) {
+  const latestCustomerText = normalizeGuestText(getLatestGuestCustomerText(thread));
+  if (!latestCustomerText || !isGuestProjectSpecificQuestion(latestCustomerText)) {
+    return undefined;
+  }
+
+  return buildGuestProjectLoginReply(guestProjectLoginUrl);
 }
 
 export function getGuestStarterReplyOverride(thread: ConversationThread) {
@@ -376,7 +454,10 @@ export async function buildAuthenticatedPromptMessages(
 }
 
 export function buildGuestPromptMessages(
-  thread: ConversationThread
+  thread: ConversationThread,
+  options: {
+    guestProjectLoginUrl?: string;
+  } = {}
 ): OpenAI.Chat.Completions.ChatCompletionMessageParam[] {
   const history = thread.messages
     .filter((message) => message.kind === "customer" || message.kind === "ava")
@@ -385,6 +466,9 @@ export function buildGuestPromptMessages(
       role: message.kind === "customer" ? "user" : "assistant",
       content: message.text
     }));
+  const guestProjectLoginContextMessage = buildGuestProjectLoginContextMessage(
+    options.guestProjectLoginUrl
+  );
 
   return [
     {
@@ -392,6 +476,7 @@ export function buildGuestPromptMessages(
       content: buildAvaSystemPrompt("guest")
     },
     buildGuestPublicSiteContextMessage(),
+    ...(guestProjectLoginContextMessage ? [guestProjectLoginContextMessage] : []),
     ...history
   ];
 }
@@ -513,8 +598,16 @@ export async function generateAvaReplyText(
 
 export async function generateGuestAvaReplyText(
   thread: ConversationThread,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  options: {
+    guestProjectLoginUrl?: string;
+  } = {}
 ) {
+  const projectReplyOverride = getGuestProjectReplyOverride(thread, options.guestProjectLoginUrl);
+  if (projectReplyOverride) {
+    return projectReplyOverride;
+  }
+
   const starterReplyOverride = getGuestStarterReplyOverride(thread);
   if (starterReplyOverride) {
     return starterReplyOverride;
@@ -530,7 +623,7 @@ export async function generateGuestAvaReplyText(
       model: "gpt-4o-mini",
       temperature: 0.35,
       max_tokens: 110,
-      messages: buildGuestPromptMessages(thread)
+      messages: buildGuestPromptMessages(thread, options)
     },
     { signal }
   );

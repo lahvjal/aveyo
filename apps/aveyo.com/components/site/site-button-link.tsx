@@ -1,4 +1,13 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import {
+  PRICING_SECTION_HREF,
+  buildPricingModalHref,
+  isHomePath,
+  isPricingSectionHref
+} from "@/lib/pricing-navigation";
 
 type SiteButtonVariant = "dark" | "light" | "outline" | "ghost";
 type SiteButtonSize = "sm" | "md";
@@ -53,6 +62,8 @@ export function SiteButtonLink({
   className = "",
   target
 }: SiteButtonLinkProps) {
+  const pathname = usePathname() ?? "/";
+  const searchParams = useSearchParams();
   const composedClassName = [
     "inline-flex items-center justify-center gap-2 font-bold transition-colors",
     getVariantClasses(variant),
@@ -72,6 +83,26 @@ export function SiteButtonLink({
       >
         {children}
       </a>
+    );
+  }
+
+  if (isPricingSectionHref(href)) {
+    if (isHomePath(pathname)) {
+      return (
+        <Link href={PRICING_SECTION_HREF} className={composedClassName}>
+          {children}
+        </Link>
+      );
+    }
+
+    return (
+      <Link
+        href={buildPricingModalHref(pathname, searchParams)}
+        scroll={false}
+        className={composedClassName}
+      >
+        {children}
+      </Link>
     );
   }
 

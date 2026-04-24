@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type ConversationThread, type TimelineMessage } from "@ava/chat-domain";
-import { getLocalAppUrl } from "@ava/config/runtime/app-urls";
+import { buildAuthLoginUrl } from "@ava/config/runtime/auth-urls";
+import { getLocalAppUrl, resolveAppUrl, resolveEnvironment } from "@ava/config/runtime/app-urls";
 import {
   createWidgetApiClient,
   type GuestReplyMessageInput,
@@ -126,9 +127,22 @@ function personalizeInitialGreeting(
   };
 }
 
+function resolveGuestProjectLoginUrl() {
+  const environment =
+    typeof window === "undefined" ? "prod" : resolveEnvironment(window.location.hostname);
+  const authAppUrl = resolveAppUrl("auth", environment) || "https://auth.aveyo.com";
+  const customerAppUrl = resolveAppUrl("customer", environment) || "https://customer.aveyo.com";
+  const returnTo = new URL("/dashboard", customerAppUrl).toString();
+  return buildAuthLoginUrl(returnTo, { authAppUrl });
+}
+
 const guestProjectSpecificKeywords = [
   "project status",
   "status update",
+  "project details",
+  "project info",
+  "project information",
+  "project stuff",
   "my project",
   "my installation",
   "my permit",
@@ -138,11 +152,12 @@ const guestProjectSpecificKeywords = [
   "my proposal",
   "my payment",
   "my invoice",
-  "my bill",
+  "my contract",
   "project ref",
   "project reference",
   "fin number",
-  "site address"
+  "site address",
+  "customer portal"
 ];
 
 const guestCompanyInfoKeywords = [
@@ -338,7 +353,7 @@ function hasAnyKeyword(text: string, keywords: string[]) {
 
 function isGuestProjectSpecificQuestion(normalizedText: string) {
   const personalProjectPattern =
-    /\b(my|our|me|i|mine)\b.*\b(project|installation|permit|inspection|timeline|status|quote|proposal|design|application|account|payment|invoice|bill|site|address|fin)\b/;
+    /\b(my|our|me|i|mine)\b.*\b(project|installation|permit|inspection|timeline|status|quote|proposal|design|application|account|payment|invoice|contract|fin)\b/;
   return (
     hasAnyKeyword(normalizedText, guestProjectSpecificKeywords) ||
     personalProjectPattern.test(normalizedText)
@@ -397,7 +412,7 @@ function isBroadGuestIntro(normalizedText: string) {
   );
 }
 
-function buildGuestAvaReply(prompt: string) {
+function buildGuestAvaReply(prompt: string, guestProjectLoginUrl: string) {
   const normalizedPrompt = prompt.trim().toLowerCase().replace(/\s+/g, " ");
   const stateContext = getGuestStateContext(normalizedPrompt);
   const wantsDetails = wantsDetailedGuestReply(normalizedPrompt);
@@ -422,16 +437,13 @@ function buildGuestAvaReply(prompt: string) {
   }
 
   if (isGuestProjectSpecificQuestion(normalizedPrompt)) {
-    if (!wantsDetails) {
-      return "I can't see your specific quote, status, or account details while you're signed out. If you sign in, I can help with that. I can still explain the usual next step or what typically affects timing.";
-    }
-    return (
-      "I can't see your specific quote, project status, permits, pricing, or account details while you're signed out. " +
-      "If you sign in, I can help with that.\n" +
-      "- I can still explain what stage usually comes next\n" +
-      "- I can walk through what typically affects timing or pricing\n" +
-      "- I can help you figure out whether sales or customer care is the better next step"
-    );
+    return [
+      "I can help with your specific project, quote, or account details once you're signed in.",
+      `Log in here: ${guestProjectLoginUrl}`,
+      wantsDetails
+        ? "I can still explain what stage usually comes next, what typically affects timing, or what type of support you probably need."
+        : "I can still explain the usual next step or what typically affects timing if that helps."
+    ].join("\n");
   }
 
   if (hasAnyKeyword(normalizedPrompt, guestPlanKeywords)) {
@@ -1164,6 +1176,7 @@ export function AvaWidgetShell({
       const guestConversationId = thread.id;
       const guestCustomerMessage = createLocalTimelineMessage(guestConversationId, "customer", messageText);
       const nextGuestThread = appendMessage(thread, guestCustomerMessage);
+      const guestProjectLoginUrl = resolveGuestProjectLoginUrl();
       setThread((current) =>
         current.id === guestConversationId ? appendMessage(current, guestCustomerMessage) : current
       );
@@ -1175,7 +1188,9 @@ export function AvaWidgetShell({
         const guestResult = await api.generateGuestReply({
           messages: buildGuestReplyHistory(nextGuestThread)
         });
-        const guestReply = normalizeMessageDraft(guestResult.replyText) ?? buildGuestAvaReply(messageText);
+        const guestReply =
+          normalizeMessageDraft(guestResult.replyText) ??
+          buildGuestAvaReply(messageText, guestProjectLoginUrl);
         setThread((current) => {
           if (current.id !== guestConversationId) {
             return current;
@@ -1183,7 +1198,7 @@ export function AvaWidgetShell({
           return appendMessage(current, createLocalTimelineMessage(current.id, "ava", guestReply));
         });
       } catch {
-        const guestFallbackReply = buildGuestAvaReply(messageText);
+        const guestFallbackReply = buildGuestAvaReply(messageText, guestProjectLoginUrl);
         setThread((current) => {
           if (current.id !== guestConversationId) {
             return current;

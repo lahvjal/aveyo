@@ -5,5 +5,5 @@ import { usePathname } from "next/navigation";
 
 export function SiteLoadOverlay() {
   const pathname = usePathname() ?? "";
-  return <AppLoadingOverlay routeKey={pathname} />;
+  return <AppLoadingOverlay routeKey={pathname} skipWhenHashPresent />;
 }

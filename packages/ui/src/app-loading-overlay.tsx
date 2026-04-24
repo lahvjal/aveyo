@@ -10,23 +10,48 @@ export interface AppLoadingOverlayProps {
   minVisibleMs?: number;
   fadeOutMs?: number;
   zIndex?: number;
+  skipWhenHashPresent?: boolean;
 }
 
 const DEFAULT_Z_INDEX = 2_147_483_647;
 
+function getHashTargetElement(hash: string) {
+  const normalizedHash = hash.trim();
+  if (!normalizedHash || normalizedHash === "#") {
+    return null;
+  }
+
+  const rawId = normalizedHash.replace(/^#/, "");
+  if (!rawId) {
+    return null;
+  }
+
+  try {
+    const decodedId = decodeURIComponent(rawId);
+    return document.getElementById(decodedId);
+  } catch {
+    return document.getElementById(rawId);
+  }
+}
+
 export function AppLoadingOverlay({
   routeKey,
-  minVisibleMs = 3000,
-  fadeOutMs = 520,
-  zIndex = DEFAULT_Z_INDEX
+  minVisibleMs = 2000,
+  fadeOutMs = 3220,
+  zIndex = DEFAULT_Z_INDEX,
+  skipWhenHashPresent = false
 }: AppLoadingOverlayProps) {
   const [phase, setPhase] = useState<OverlayPhase>("visible");
   const routeSequenceRef = useRef(0);
+  const pendingHashRef = useRef("");
+  const skipCurrentRouteRef = useRef(false);
 
   useLayoutEffect(() => {
     routeSequenceRef.current += 1;
-    setPhase("visible");
-  }, [routeKey]);
+    pendingHashRef.current = typeof window === "undefined" ? "" : window.location.hash;
+    skipCurrentRouteRef.current = skipWhenHashPresent && pendingHashRef.current.length > 0;
+    setPhase(skipCurrentRouteRef.current ? "hidden" : "visible");
+  }, [routeKey, skipWhenHashPresent]);
 
   useEffect(() => {
     if (phase === "hidden") {
@@ -48,6 +73,10 @@ export function AppLoadingOverlay({
   }, [phase]);
 
   useEffect(() => {
+    if (skipCurrentRouteRef.current) {
+      return;
+    }
+
     const currentSequence = routeSequenceRef.current;
     let cancelled = false;
     let fadeTimer: number | null = null;
@@ -73,6 +102,34 @@ export function AppLoadingOverlay({
       }
     };
   }, [fadeOutMs, minVisibleMs, routeKey]);
+
+  useEffect(() => {
+    if (phase !== "hidden" || typeof window === "undefined") {
+      return;
+    }
+
+    const targetElement = getHashTargetElement(pendingHashRef.current || window.location.hash);
+    if (!targetElement) {
+      return;
+    }
+
+    let timeoutId: number | null = null;
+    const scrollToHashTarget = () => {
+      targetElement.scrollIntoView({ block: "start" });
+    };
+
+    const frameId = window.requestAnimationFrame(() => {
+      scrollToHashTarget();
+      timeoutId = window.setTimeout(scrollToHashTarget, 0);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frameId);
+      if (timeoutId !== null) {
+        window.clearTimeout(timeoutId);
+      }
+    };
+  }, [phase, routeKey]);
 
   if (phase === "hidden") {
     return null;
