@@ -18,11 +18,18 @@ interface MarketingShellProps {
   session: PlatformAuthSession;
   currentPath: string;
   title: string;
+  eyebrow?: string;
   description?: string;
+  hideHeader?: boolean;
   sectionTabs?: Array<{
     label: string;
     href: string;
   }>;
+  renderHeaderMeta?: (context: {
+    roleLabel: string;
+    isSigningOut: boolean;
+    onSignOut: () => void;
+  }) => ReactNode;
   children: ReactNode;
 }
 
@@ -100,8 +107,11 @@ export function MarketingShell({
   session,
   currentPath,
   title,
+  eyebrow = "Aveyo Marketing Workspace",
   description,
+  hideHeader = false,
   sectionTabs,
+  renderHeaderMeta,
   children
 }: MarketingShellProps) {
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -126,6 +136,9 @@ export function MarketingShell({
   const displayName = session.user?.name?.trim() || session.user?.email || "Account";
   const roleLabel = toRoleLabel(session.role);
   const initials = getInitials(displayName);
+  const onSignOut = () => {
+    void handleSignOut();
+  };
 
   async function handleSignOut() {
     if (isSigningOut) {
@@ -180,19 +193,31 @@ export function MarketingShell({
       />
 
       <section className="workspace">
-        <header className="workspace-header">
-          <div className="header-copy">
-            <p>Aveyo Marketing Workspace</p>
-            <h1>{title}</h1>
-            {description ? <p className="workspace-description">{description}</p> : null}
-          </div>
-          <div className="header-meta">
-            <span>{roleLabel}</span>
-            <button type="button" onClick={handleSignOut} disabled={isSigningOut}>
-              {isSigningOut ? "Signing out..." : "Sign out"}
-            </button>
-          </div>
-        </header>
+        {hideHeader ? null : (
+          <header className="workspace-header">
+            <div className="header-copy">
+              <p>{eyebrow}</p>
+              <h1>{title}</h1>
+              {description ? <p className="workspace-description">{description}</p> : null}
+            </div>
+            <div className="header-meta">
+              {renderHeaderMeta ? (
+                renderHeaderMeta({
+                  roleLabel,
+                  isSigningOut,
+                  onSignOut
+                })
+              ) : (
+                <>
+                  <span>{roleLabel}</span>
+                  <button type="button" onClick={onSignOut} disabled={isSigningOut}>
+                    {isSigningOut ? "Signing out..." : "Sign out"}
+                  </button>
+                </>
+              )}
+            </div>
+          </header>
+        )}
         {sectionTabs?.length ? (
           <nav className="workspace-tabs" aria-label="Marketing sections">
             {sectionTabs.map((tab) => {

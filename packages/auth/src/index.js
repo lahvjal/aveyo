@@ -430,7 +430,9 @@ export async function logoutPlatformSession({
 
 export async function platformAuthApiRequest(path, init = {}, options = {}) {
   const headers = new Headers(init.headers);
-  if (!headers.has("Content-Type") && init.method && init.method !== "GET") {
+  const isFormDataBody =
+    typeof FormData !== "undefined" && init.body instanceof FormData;
+  if (!headers.has("Content-Type") && init.method && init.method !== "GET" && !isFormDataBody) {
     headers.set("Content-Type", "application/json");
   }
 

@@ -27,6 +27,29 @@ const dashboardPageStyleVars = {
   "--dashboard-button-radius": `${designSystem.tokens.radius.button}px`
 };
 
+const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  day: "numeric",
+  year: "numeric"
+});
+
+const eventTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit"
+});
+
+const announcementDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit"
+});
+
+const announcementTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit"
+});
+
 function readRuntimeContext() {
   if (typeof window === "undefined") {
     return {
@@ -61,6 +84,70 @@ function getInitials(value) {
 
 function trimTrailingSlash(value) {
   return typeof value === "string" ? value.replace(/\/$/, "") : "";
+}
+
+function isUpcomingCultureEvent(event) {
+  const parsed = Date.parse(`${event?.date}T${event?.time}`);
+  if (Number.isNaN(parsed)) {
+    return false;
+  }
+
+  return parsed >= Date.now();
+}
+
+function sortCultureEvents(events) {
+  return [...events].sort((left, right) => {
+    const leftTime = Date.parse(`${left?.date}T${left?.time}`);
+    const rightTime = Date.parse(`${right?.date}T${right?.time}`);
+    if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
+      return `${left?.title ?? ""}`.localeCompare(`${right?.title ?? ""}`);
+    }
+
+    return leftTime - rightTime;
+  });
+}
+
+function formatCultureEventDateTime(event) {
+  const parsedDate = Date.parse(`${event?.date}T00:00:00`);
+  const parsedTime = Date.parse(`1970-01-01T${event?.time}`);
+  const formattedDate = Number.isNaN(parsedDate)
+    ? event?.date ?? ""
+    : eventDateFormatter.format(new Date(parsedDate));
+  const formattedTime = Number.isNaN(parsedTime)
+    ? event?.time ?? ""
+    : eventTimeFormatter.format(new Date(parsedTime));
+
+  return formattedDate && formattedTime
+    ? `${formattedDate} at ${formattedTime}`
+    : formattedDate || formattedTime || "";
+}
+
+function isSameCalendarDay(left, right) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function formatAnnouncementTimestamp(value) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  const now = new Date();
+  if (isSameCalendarDay(parsed, now)) {
+    return `Today at ${announcementTimeFormatter.format(parsed)}`;
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (isSameCalendarDay(parsed, yesterday)) {
+    return `Yesterday at ${announcementTimeFormatter.format(parsed)}`;
+  }
+
+  return announcementDateTimeFormatter.format(parsed);
 }
 
 function toRoleLabel(role, flags = {}) {
@@ -179,6 +266,12 @@ export default function HomePage() {
   const [isVideoMuted, setIsVideoMuted] = useState(true);
   const [isVideoCursorVisible, setIsVideoCursorVisible] = useState(false);
   const [videoCursorPosition, setVideoCursorPosition] = useState({ x: 0, y: 0 });
+  const [cultureHighlights, setCultureHighlights] = useState({
+    loading: true,
+    error: "",
+    nextEvent: null,
+    latestAnnouncement: null
+  });
   const dashboardVideoRef = useRef(null);
 
   useEffect(() => {
@@ -238,6 +331,56 @@ export default function HomePage() {
       cancelled = true;
     };
   }, [router, runtime.environment, session.authenticated, session.loading, session.role, session.userType]);
+
+  useEffect(() => {
+    if (
+      session.loading ||
+      !session.authenticated ||
+      !onboardingChecked ||
+      session.userType !== "employee"
+    ) {
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadCultureHighlights() {
+      try {
+        const payload = await authApiRequest("/api/marketing/culture", { method: "GET" });
+        if (cancelled) {
+          return;
+        }
+
+        const upcomingEvents = sortCultureEvents(
+          Array.isArray(payload?.events) ? payload.events.filter((event) => isUpcomingCultureEvent(event)) : []
+        );
+        const announcements = Array.isArray(payload?.announcements) ? payload.announcements : [];
+
+        setCultureHighlights({
+          loading: false,
+          error: "",
+          nextEvent: upcomingEvents[0] ?? null,
+          latestAnnouncement: announcements[0] ?? null
+        });
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setCultureHighlights({
+          loading: false,
+          error: error instanceof Error ? error.message : "Unable to load culture highlights.",
+          nextEvent: null,
+          latestAnnouncement: null
+        });
+      }
+    }
+
+    void loadCultureHighlights();
+    return () => {
+      cancelled = true;
+    };
+  }, [onboardingChecked, session.authenticated, session.loading, session.userType]);
 
   const orgAppUrl = useMemo(() => {
     const orgNavItem = PLATFORM_PRIMARY_NAV_ITEMS.find((item) => item.id === "org");
@@ -305,6 +448,8 @@ export default function HomePage() {
     ],
     [orgAppUrl, orgProfileUrl, paychexUrl]
   );
+  const nextEvent = cultureHighlights.nextEvent;
+  const latestAnnouncement = cultureHighlights.latestAnnouncement;
 
   async function handleSignOut() {
     if (isSigningOut) {
@@ -386,83 +531,169 @@ export default function HomePage() {
           </div>
         </header>
 
-        <section className="dashboard-video-card">
-          {dashboardVideoUrl ? (
-            <button
-              type="button"
-              className="dashboard-video-toggle"
-              onClick={handleDashboardVideoToggle}
-              onPointerEnter={() => setIsVideoCursorVisible(true)}
-              onPointerMove={handleDashboardVideoPointerMove}
-              onPointerLeave={() => setIsVideoCursorVisible(false)}
-              aria-label={isVideoMuted ? "Unmute dashboard video" : "Mute dashboard video"}
-            >
-              <video
-                ref={dashboardVideoRef}
-                className="dashboard-video"
-                src={dashboardVideoUrl}
-                autoPlay
-                muted={isVideoMuted}
-                loop
-                playsInline
-                preload="metadata"
-              />
-              <span
-                className={`dashboard-video-cursor${isVideoCursorVisible ? " is-visible" : ""}`}
-                style={{
-                  left: `${videoCursorPosition.x}px`,
-                  top: `${videoCursorPosition.y}px`
-                }}
-                aria-hidden="true"
-              >
-                {isVideoMuted ? "Unmute" : "Mute"}
-              </span>
-              <span className="dashboard-video-hint" aria-hidden="true">
-                Click anywhere to {isVideoMuted ? "turn sound on" : "mute"}
-              </span>
-            </button>
-          ) : (
-            <div className="dashboard-video-empty">
-              <p className="dashboard-video-empty-kicker">External video ready</p>
-              <h2>Paste your Bunny.net video URL into `hardcodedDashboardVideoUrl`.</h2>
-              <p>The dashboard video area is prepared for a CDN-hosted MP4 and will render once that hardcoded URL is in place.</p>
-            </div>
-          )}
-        </section>
+        <div className="dashboard-content-stack">
+          <section className="dashboard-hero-row">
+            <section className="dashboard-video-card">
+              {dashboardVideoUrl ? (
+                <button
+                  type="button"
+                  className="dashboard-video-toggle"
+                  onClick={handleDashboardVideoToggle}
+                  onPointerEnter={() => setIsVideoCursorVisible(true)}
+                  onPointerMove={handleDashboardVideoPointerMove}
+                  onPointerLeave={() => setIsVideoCursorVisible(false)}
+                  aria-label={isVideoMuted ? "Unmute dashboard video" : "Mute dashboard video"}
+                >
+                  <video
+                    ref={dashboardVideoRef}
+                    className="dashboard-video"
+                    src={dashboardVideoUrl}
+                    autoPlay
+                    muted={isVideoMuted}
+                    loop
+                    playsInline
+                    preload="metadata"
+                  />
+                  <span
+                    className={`dashboard-video-cursor${isVideoCursorVisible ? " is-visible" : ""}`}
+                    style={{
+                      left: `${videoCursorPosition.x}px`,
+                      top: `${videoCursorPosition.y}px`
+                    }}
+                    aria-hidden="true"
+                  >
+                    {isVideoMuted ? "Unmute" : "Mute"}
+                  </span>
+                  <span className="dashboard-video-hint" aria-hidden="true">
+                    Click anywhere to {isVideoMuted ? "turn sound on" : "mute"}
+                  </span>
+                </button>
+              ) : (
+                <div className="dashboard-video-empty">
+                  <p className="dashboard-video-empty-kicker">External video ready</p>
+                  <h2>Paste your Bunny.net video URL into `hardcodedDashboardVideoUrl`.</h2>
+                  <p>The dashboard video area is prepared for a CDN-hosted MP4 and will render once that hardcoded URL is in place.</p>
+                </div>
+              )}
+            </section>
 
-        <section className="dashboard-quick-links" aria-label="Quick links">
-          {quickLinks.map((link) =>
-            link.href.startsWith("http://") || link.href.startsWith("https://") ? (
-              <a
-                key={link.id}
-                href={link.href}
-                target={link.newTab ? "_blank" : undefined}
-                rel={link.newTab ? "noreferrer" : undefined}
-                className="dashboard-quick-link"
-              >
-                <span className="dashboard-quick-link-kicker">Quick link</span>
-                <div className="dashboard-quick-link-copy">
-                  <h2>{link.title}</h2>
-                  <p>{link.description}</p>
-                </div>
-                <span className="dashboard-quick-link-arrow" aria-hidden="true">
-                  {link.newTab ? "↗" : "→"}
-                </span>
-              </a>
-            ) : (
-              <Link key={link.id} href={link.href} className="dashboard-quick-link">
-                <span className="dashboard-quick-link-kicker">Quick link</span>
-                <div className="dashboard-quick-link-copy">
-                  <h2>{link.title}</h2>
-                  <p>{link.description}</p>
-                </div>
-                <span className="dashboard-quick-link-arrow" aria-hidden="true">
-                  →
-                </span>
-              </Link>
-            )
-          )}
-        </section>
+            <aside className="dashboard-culture-rail" aria-label="Culture highlights">
+              <div className="dashboard-culture-rail-heading">
+                <p>Next Upcoming Event</p>
+              </div>
+
+              <div className="dashboard-culture-event-slot">
+                {cultureHighlights.loading ? (
+                  <div className="dashboard-culture-event-empty">
+                    <p>Loading next event...</p>
+                  </div>
+                ) : nextEvent?.posterUrl ? (
+                  nextEvent.posterKind === "video" ? (
+                    <video
+                      className="dashboard-culture-event-media"
+                      src={nextEvent.posterUrl}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        className="dashboard-culture-event-media"
+                        src={nextEvent.posterUrl}
+                        alt={`${nextEvent.title} poster`}
+                      />
+                    </>
+                  )
+                ) : nextEvent ? (
+                  <div className="dashboard-culture-event-empty">
+                    <p className="dashboard-culture-event-title">{nextEvent.title}</p>
+                    <p>{nextEvent.location}</p>
+                    <p>{formatCultureEventDateTime(nextEvent)}</p>
+                  </div>
+                ) : (
+                  <div className="dashboard-culture-event-empty">
+                    <p>{cultureHighlights.error ? "Culture highlights unavailable." : "No upcoming event yet."}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="dashboard-culture-rail-heading dashboard-culture-rail-heading-border">
+                <p>Announcements</p>
+              </div>
+
+              <div className="dashboard-culture-announcement-card">
+                {cultureHighlights.loading ? (
+                  <div className="dashboard-culture-announcement-empty">
+                    <p>Loading announcement...</p>
+                  </div>
+                ) : latestAnnouncement ? (
+                  <div className="dashboard-culture-announcement-row">
+                    <span className="dashboard-culture-announcement-avatar" aria-hidden="true">
+                      {latestAnnouncement.authorInitials}
+                    </span>
+                    <div className="dashboard-culture-announcement-copy">
+                      <p className="dashboard-culture-announcement-title">
+                        {latestAnnouncement.title}
+                      </p>
+                      <p className="dashboard-culture-announcement-message">
+                        {latestAnnouncement.message}
+                      </p>
+                      <p className="dashboard-culture-announcement-timestamp">
+                        {formatAnnouncementTimestamp(latestAnnouncement.publishedAt)}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="dashboard-culture-announcement-empty">
+                    <p>
+                      {cultureHighlights.error
+                        ? "Unable to load the latest announcement."
+                        : "No announcements yet."}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </aside>
+          </section>
+
+          <section className="dashboard-quick-links" aria-label="Quick links">
+            {quickLinks.map((link) =>
+              link.href.startsWith("http://") || link.href.startsWith("https://") ? (
+                <a
+                  key={link.id}
+                  href={link.href}
+                  target={link.newTab ? "_blank" : undefined}
+                  rel={link.newTab ? "noreferrer" : undefined}
+                  className="dashboard-quick-link"
+                >
+                  <span className="dashboard-quick-link-kicker">Quick link</span>
+                  <div className="dashboard-quick-link-copy">
+                    <h2>{link.title}</h2>
+                    <p>{link.description}</p>
+                  </div>
+                  <span className="dashboard-quick-link-arrow" aria-hidden="true">
+                    {link.newTab ? "↗" : "→"}
+                  </span>
+                </a>
+              ) : (
+                <Link key={link.id} href={link.href} className="dashboard-quick-link">
+                  <span className="dashboard-quick-link-kicker">Quick link</span>
+                  <div className="dashboard-quick-link-copy">
+                    <h2>{link.title}</h2>
+                    <p>{link.description}</p>
+                  </div>
+                  <span className="dashboard-quick-link-arrow" aria-hidden="true">
+                    →
+                  </span>
+                </Link>
+              )
+            )}
+          </section>
+        </div>
       </section>
     </main>
   );

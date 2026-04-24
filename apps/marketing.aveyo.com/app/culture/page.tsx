@@ -1,85 +1,493 @@
 "use client";
 
-import Link from "next/link";
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { MarketingShell } from "@/components/marketing-shell";
-import { isAdminRole } from "@/lib/auth/roles";
 import { useRequireAuth } from "@/lib/auth/use-require-auth";
-import { readCultureEvents, type CultureEvent } from "@/lib/culture-events";
+import {
+  deleteCultureAnnouncement,
+  deleteCultureEvent,
+  listCultureFeed,
+  type CultureAnnouncement,
+  type CultureEvent
+} from "@/lib/culture";
+import { CreateCultureAnnouncementModal } from "./create-announcement-modal";
+import {
+  CulturePencilIcon,
+  CultureTrashIcon
+} from "./culture-icons";
+import { CultureEventModal } from "./create-event-modal";
+import { EventInfoModal } from "./event-info-modal";
+import styles from "./culture-page.module.css";
 
-function CulturePageContent() {
+const MIN_EVENT_SLOTS = 8;
+const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "long",
+  day: "numeric",
+  year: "numeric"
+});
+const eventTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit"
+});
+const announcementDateTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  hour: "numeric",
+  minute: "2-digit"
+});
+const announcementTimeFormatter = new Intl.DateTimeFormat("en-US", {
+  hour: "numeric",
+  minute: "2-digit"
+});
+
+function formatEventDate(value: string): string {
+  const parsed = Date.parse(`${value}T00:00:00`);
+  if (Number.isNaN(parsed)) {
+    return value;
+  }
+  return eventDateFormatter.format(new Date(parsed));
+}
+
+function formatEventTime(value: string): string {
+  const parsed = Date.parse(`1970-01-01T${value}`);
+  if (Number.isNaN(parsed)) {
+    return value;
+  }
+  return eventTimeFormatter.format(new Date(parsed));
+}
+
+function isUpcomingEvent(event: CultureEvent): boolean {
+  const parsed = Date.parse(`${event.date}T${event.time}`);
+  if (Number.isNaN(parsed)) {
+    return true;
+  }
+  return parsed >= Date.now();
+}
+
+function sortCultureEvents(events: CultureEvent[]) {
+  return [...events].sort((left, right) => {
+    const leftTime = Date.parse(`${left.date}T${left.time}`);
+    const rightTime = Date.parse(`${right.date}T${right.time}`);
+    if (Number.isNaN(leftTime) || Number.isNaN(rightTime)) {
+      return left.title.localeCompare(right.title);
+    }
+    return leftTime - rightTime;
+  });
+}
+
+function buildEventSummary(event: CultureEvent): string {
+  return `${event.title} at ${event.location} on ${formatEventDate(event.date)} at ${formatEventTime(event.time)}. Hosted by ${event.owner}.`;
+}
+
+function isSameCalendarDay(left: Date, right: Date) {
+  return (
+    left.getFullYear() === right.getFullYear() &&
+    left.getMonth() === right.getMonth() &&
+    left.getDate() === right.getDate()
+  );
+}
+
+function formatAnnouncementTimestamp(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+
+  const now = new Date();
+  if (isSameCalendarDay(parsed, now)) {
+    return `Today at ${announcementTimeFormatter.format(parsed)}`;
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (isSameCalendarDay(parsed, yesterday)) {
+    return `Yesterday at ${announcementTimeFormatter.format(parsed)}`;
+  }
+
+  return announcementDateTimeFormatter.format(parsed);
+}
+
+type EventModalState =
+  | {
+      mode: "create";
+      event: null;
+    }
+  | {
+      mode: "edit";
+      event: CultureEvent;
+    }
+  | null;
+
+export default function CulturePage() {
   const session = useRequireAuth();
-  const searchParams = useSearchParams();
   const [events, setEvents] = useState<CultureEvent[]>([]);
+  const [announcements, setAnnouncements] = useState<CultureAnnouncement[]>([]);
+  const [hasLoadedCulture, setHasLoadedCulture] = useState(false);
+  const [loadErrorMessage, setLoadErrorMessage] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [eventModalState, setEventModalState] = useState<EventModalState>(null);
+  const [infoEvent, setInfoEvent] = useState<CultureEvent | null>(null);
+  const [isAnnouncementModalOpen, setIsAnnouncementModalOpen] = useState(false);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const [deletingAnnouncementId, setDeletingAnnouncementId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!session.authenticated) {
       return;
     }
-    setEvents(readCultureEvents());
+
+    let cancelled = false;
+
+    async function loadCulture() {
+      setHasLoadedCulture(false);
+      setLoadErrorMessage("");
+      try {
+        const payload = await listCultureFeed();
+        if (cancelled) {
+          return;
+        }
+
+        setEvents(sortCultureEvents(payload.events));
+        setAnnouncements(payload.announcements);
+        setHasLoadedCulture(true);
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        setEvents([]);
+        setAnnouncements([]);
+        setHasLoadedCulture(true);
+        setLoadErrorMessage(
+          error instanceof Error ? error.message : "Unable to load culture content."
+        );
+      }
+    }
+
+    void loadCulture();
+    return () => {
+      cancelled = true;
+    };
   }, [session.authenticated]);
 
   if (session.loading || !session.authenticated) {
     return <main className="loading-shell">Checking session...</main>;
   }
 
-  const canCreateEvents = isAdminRole(session.role);
-  const wasEventJustCreated = searchParams.get("created") === "1";
+  const canManageCulture = session.access.isAdmin;
+  const upcomingEvents = events.filter((event) => isUpcomingEvent(event));
+  const placeholderCount = Math.max(0, MIN_EVENT_SLOTS - upcomingEvents.length);
+
+  function openCreateModal() {
+    setStatusMessage("");
+    setLoadErrorMessage("");
+    setInfoEvent(null);
+    setEventModalState({
+      mode: "create",
+      event: null
+    });
+  }
+
+  function openEditModal(event: CultureEvent) {
+    setStatusMessage("");
+    setLoadErrorMessage("");
+    setInfoEvent(null);
+    setEventModalState({
+      mode: "edit",
+      event
+    });
+  }
+
+  function openInfoModal(event: CultureEvent) {
+    setInfoEvent(event);
+  }
+
+  function closeEventModal() {
+    setEventModalState(null);
+  }
+
+  function closeInfoModal() {
+    setInfoEvent(null);
+  }
+
+  function openAnnouncementModal() {
+    setStatusMessage("");
+    setLoadErrorMessage("");
+    setIsAnnouncementModalOpen(true);
+  }
+
+  function closeAnnouncementModal() {
+    setIsAnnouncementModalOpen(false);
+  }
+
+  function handleEventSaved(event: CultureEvent, mode: "create" | "edit") {
+    setLoadErrorMessage("");
+    setEvents((currentEvents) =>
+      sortCultureEvents([...currentEvents.filter((entry) => entry.id !== event.id), event])
+    );
+    setInfoEvent((currentEvent) => (currentEvent?.id === event.id ? event : currentEvent));
+    setEventModalState(null);
+    setStatusMessage(
+      mode === "edit"
+        ? "Culture event updated successfully."
+        : "New culture event created successfully."
+    );
+  }
+
+  function handleAnnouncementCreated(announcement: CultureAnnouncement) {
+    setLoadErrorMessage("");
+    setAnnouncements((currentAnnouncements) => [
+      announcement,
+      ...currentAnnouncements.filter((entry) => entry.id !== announcement.id)
+    ]);
+    setIsAnnouncementModalOpen(false);
+    setStatusMessage("Announcement published successfully.");
+  }
+
+  async function handleDeleteEvent(event: CultureEvent) {
+    if (!canManageCulture || deletingEventId || deletingAnnouncementId) {
+      return;
+    }
+
+    const confirmed = window.confirm(`Delete "${event.title}"? This cannot be undone.`);
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingEventId(event.id);
+    setStatusMessage("");
+    setLoadErrorMessage("");
+
+    try {
+      await deleteCultureEvent(event.id);
+      setEvents((currentEvents) => currentEvents.filter((entry) => entry.id !== event.id));
+      if (eventModalState?.event?.id === event.id) {
+        setEventModalState(null);
+      }
+      if (infoEvent?.id === event.id) {
+        setInfoEvent(null);
+      }
+      setStatusMessage("Culture event deleted successfully.");
+    } catch (error) {
+      setLoadErrorMessage(
+        error instanceof Error ? error.message : "Unable to delete culture event."
+      );
+    } finally {
+      setDeletingEventId(null);
+    }
+  }
+
+  async function handleDeleteAnnouncement(announcement: CultureAnnouncement) {
+    if (!canManageCulture || deletingAnnouncementId || deletingEventId) {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete announcement "${announcement.title}"? This cannot be undone.`
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setDeletingAnnouncementId(announcement.id);
+    setStatusMessage("");
+    setLoadErrorMessage("");
+
+    try {
+      await deleteCultureAnnouncement(announcement.id);
+      setAnnouncements((currentAnnouncements) =>
+        currentAnnouncements.filter((entry) => entry.id !== announcement.id)
+      );
+      setStatusMessage("Announcement deleted successfully.");
+    } catch (error) {
+      setLoadErrorMessage(
+        error instanceof Error ? error.message : "Unable to delete announcement."
+      );
+    } finally {
+      setDeletingAnnouncementId(null);
+    }
+  }
 
   return (
     <MarketingShell
       session={session}
       currentPath="/culture"
-      title="Culture Events"
-      description="Company events, updates, and team culture moments."
+      title="Coming Up!"
+      hideHeader
     >
-      {wasEventJustCreated ? (
-        <div className="notice success">New culture event created successfully.</div>
-      ) : null}
+      {statusMessage ? <div className={styles.statusNotice}>{statusMessage}</div> : null}
+      {loadErrorMessage ? <div className="notice warning">{loadErrorMessage}</div> : null}
 
-      <div className="card">
-        <div className="button-row">
-          {canCreateEvents ? (
-            <Link href="/culture/create" className="secondary-button">
-              Create event
-            </Link>
-          ) : (
-            <p className="helper-text">Only admins can create events.</p>
-          )}
-        </div>
+      <div className={styles.pageLayout}>
+        <section className={styles.eventBoard} aria-label="Upcoming culture events">
+          <div className={styles.boardHeader}>
+            <p className={styles.boardCount}>{upcomingEvents.length} Event(s)</p>
+            <div className={styles.boardActions}>
+              {canManageCulture ? (
+                <button
+                  type="button"
+                  className={styles.createEventButton}
+                  onClick={openCreateModal}
+                >
+                  <span className={styles.createEventIcon} aria-hidden="true">
+                    +
+                  </span>
+                  <span>Create Event</span>
+                </button>
+              ) : (
+                <p className={styles.boardHint}>Only admins can create, edit, or delete events.</p>
+              )}
+            </div>
+          </div>
 
-        <div className="events-grid">
-          {events.map((event) => (
-            <article key={event.id} className="event-card">
-              <h3>{event.title}</h3>
-              <div className="event-meta">
-                <span>
-                  <strong>Date:</strong> {event.date}
+          <div className={styles.eventGrid}>
+            {upcomingEvents.map((event) => (
+              <article
+                key={event.id}
+                className={styles.eventCard}
+                aria-label={buildEventSummary(event)}
+              >
+                <button
+                  type="button"
+                  className={styles.eventPosterButton}
+                  onClick={() => openInfoModal(event)}
+                  aria-label={`Open details for ${buildEventSummary(event)}`}
+                >
+                  <div className={styles.eventVisual} aria-hidden="true">
+                    {event.posterUrl ? (
+                      event.posterKind === "video" ? (
+                        <video
+                          className={styles.eventPosterVideo}
+                          src={event.posterUrl}
+                          autoPlay
+                          muted
+                          loop
+                          playsInline
+                          preload="metadata"
+                        />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img className={styles.eventPosterMedia} src={event.posterUrl} alt="" />
+                      )
+                    ) : null}
+                  </div>
+                </button>
+                {canManageCulture ? (
+                  <div className={styles.eventActionOverlay}>
+                    <button
+                      type="button"
+                      className={styles.eventActionIconButton}
+                      onClick={() => openEditModal(event)}
+                      disabled={deletingEventId === event.id}
+                      aria-label={`Edit ${event.title}`}
+                    >
+                      <CulturePencilIcon className={styles.eventActionIcon} />
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.eventActionIconButton}
+                      onClick={() => {
+                        void handleDeleteEvent(event);
+                      }}
+                      disabled={deletingEventId === event.id}
+                      aria-label={`Delete ${event.title}`}
+                    >
+                      <CultureTrashIcon className={styles.eventActionIcon} />
+                    </button>
+                  </div>
+                ) : null}
+              </article>
+            ))}
+
+            {Array.from({ length: placeholderCount }, (_, index) => (
+              <div
+                key={`culture-placeholder-${index}`}
+                className={styles.placeholderCard}
+                aria-hidden="true"
+              />
+            ))}
+          </div>
+        </section>
+
+        <aside className={styles.announcementsPanel} aria-label="Culture announcements">
+          <div className={styles.announcementsHeader}>
+            <h2 className={styles.announcementsTitle}>Announcements</h2>
+            {canManageCulture ? (
+              <button
+                type="button"
+                className={styles.panelAddButton}
+                onClick={openAnnouncementModal}
+                aria-label="Add announcement"
+              >
+                <span className={styles.createEventIcon} aria-hidden="true">
+                  +
                 </span>
-                <span>
-                  <strong>Time:</strong> {event.time}
+              </button>
+            ) : null}
+          </div>
+          <div className={styles.announcementList}>
+            {announcements.map((announcement) => (
+              <article key={announcement.id} className={styles.announcementItem}>
+                <span className={styles.announcementAvatar} aria-hidden="true">
+                  {announcement.authorInitials}
                 </span>
-                <span>
-                  <strong>Location:</strong> {event.location}
-                </span>
-                <span>
-                  <strong>Owner:</strong> {event.owner}
-                </span>
-              </div>
-              <p className="event-description">{event.description}</p>
-            </article>
-          ))}
-        </div>
+                <div className={styles.announcementCopy}>
+                  <div className={styles.announcementTopRow}>
+                    <h3 className={styles.announcementHeading}>{announcement.title}</h3>
+                    {canManageCulture ? (
+                      <button
+                        type="button"
+                        className={styles.announcementDeleteButton}
+                        onClick={() => {
+                          void handleDeleteAnnouncement(announcement);
+                        }}
+                        disabled={deletingAnnouncementId === announcement.id}
+                      >
+                        {deletingAnnouncementId === announcement.id ? "Deleting..." : "Delete"}
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className={styles.announcementMessage}>{announcement.message}</p>
+                  <span className={styles.announcementTimestamp}>
+                    {formatAnnouncementTimestamp(announcement.publishedAt)}
+                  </span>
+                </div>
+              </article>
+            ))}
+            {hasLoadedCulture && !announcements.length ? (
+              <div className={styles.announcementEmptyState}>No announcements yet.</div>
+            ) : null}
+          </div>
+        </aside>
       </div>
-    </MarketingShell>
-  );
-}
 
-export default function CulturePage() {
-  return (
-    <Suspense fallback={<main className="loading-shell">Loading culture page...</main>}>
-      <CulturePageContent />
-    </Suspense>
+      <CultureEventModal
+        isOpen={Boolean(eventModalState)}
+        mode={eventModalState?.mode ?? "create"}
+        event={eventModalState?.event ?? null}
+        canManageEvents={canManageCulture}
+        currentUserName={session.user?.name}
+        onClose={closeEventModal}
+        onSaved={handleEventSaved}
+      />
+      <EventInfoModal
+        isOpen={Boolean(infoEvent)}
+        event={infoEvent}
+        canManageEvents={canManageCulture}
+        isDeleting={deletingEventId === infoEvent?.id}
+        onClose={closeInfoModal}
+        onEdit={openEditModal}
+        onDelete={(event) => {
+          void handleDeleteEvent(event);
+        }}
+      />
+      <CreateCultureAnnouncementModal
+        isOpen={isAnnouncementModalOpen}
+        canCreateAnnouncements={canManageCulture}
+        currentUserName={session.user?.name}
+        onClose={closeAnnouncementModal}
+        onCreated={handleAnnouncementCreated}
+      />
+    </MarketingShell>
   );
 }
