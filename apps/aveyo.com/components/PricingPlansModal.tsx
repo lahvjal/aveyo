@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import PricingPlans from "@/components/PricingPlans";
 import {
@@ -14,7 +14,7 @@ import {
 
 const MODAL_Z_INDEX = 2_147_483_200;
 
-export function PricingPlansModal() {
+function PricingPlansModalContent() {
   const pathname = usePathname() ?? "/";
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -105,5 +105,13 @@ export function PricingPlansModal() {
         </div>
       </div>
     </div>
+  );
+}
+
+export function PricingPlansModal() {
+  return (
+    <Suspense fallback={null}>
+      <PricingPlansModalContent />
+    </Suspense>
   );
 }

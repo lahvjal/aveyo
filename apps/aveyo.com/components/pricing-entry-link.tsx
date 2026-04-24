@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   PRICING_SECTION_HREF,
   buildPricingModalHref,
+  buildPricingModalHrefFromCurrentLocation,
   isHomePath
 } from "@/lib/pricing-navigation";
 
@@ -14,13 +15,25 @@ interface PricingEntryLinkProps {
   onClick?: React.MouseEventHandler<HTMLAnchorElement>;
 }
 
+function shouldPreserveCurrentSearch(event: React.MouseEvent<HTMLAnchorElement>) {
+  return (
+    !event.defaultPrevented &&
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.altKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    (!event.currentTarget.target || event.currentTarget.target === "_self")
+  );
+}
+
 export function PricingEntryLink({
   className = "",
   children,
   onClick
 }: PricingEntryLinkProps) {
   const pathname = usePathname() ?? "/";
-  const searchParams = useSearchParams();
+  const router = useRouter();
 
   if (isHomePath(pathname)) {
     return (
@@ -32,10 +45,18 @@ export function PricingEntryLink({
 
   return (
     <Link
-      href={buildPricingModalHref(pathname, searchParams)}
+      href={buildPricingModalHref(pathname)}
       scroll={false}
       className={className}
-      onClick={onClick}
+      onClick={(event) => {
+        onClick?.(event);
+        if (!shouldPreserveCurrentSearch(event)) {
+          return;
+        }
+
+        event.preventDefault();
+        router.push(buildPricingModalHrefFromCurrentLocation(pathname), { scroll: false });
+      }}
     >
       {children}
     </Link>

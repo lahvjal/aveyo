@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import designSystem from "@/design-system.json";
 import {
@@ -16,7 +16,7 @@ import {
   AVEYO_SALES_PHONE_HREF
 } from "@/lib/site-config";
 import {
-  buildPricingModalHref,
+  buildPricingModalHrefFromCurrentLocation,
   isHomePath,
   isPricingSectionHref
 } from "@/lib/pricing-navigation";
@@ -181,12 +181,11 @@ function openAvaWidget() {
 function handleFooterAction(
   actionHref: string | undefined,
   pathname: string,
-  searchParams: ReturnType<typeof useSearchParams>,
   router: ReturnType<typeof useRouter>
 ) {
   if (actionHref) {
     if (isPricingSectionHref(actionHref) && !isHomePath(pathname)) {
-      router.push(buildPricingModalHref(pathname, searchParams), { scroll: false });
+      router.push(buildPricingModalHrefFromCurrentLocation(pathname), { scroll: false });
       return;
     }
     window.location.assign(actionHref);
@@ -232,7 +231,6 @@ function AskAvaBadge() {
 
 export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: string }) {
   const pathname = usePathname() ?? "/";
-  const searchParams = useSearchParams();
   const router = useRouter();
   const resolvedCta = {
     title: cta?.title ?? defaultCta.title,
@@ -282,7 +280,7 @@ export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: 
               <button
                 type="button"
                 onClick={() =>
-                  handleFooterAction(resolvedCta.actionHref, pathname, searchParams, router)
+                  handleFooterAction(resolvedCta.actionHref, pathname, router)
                 }
                 className={`inline-flex min-h-[54px] items-center whitespace-nowrap rounded-[var(--footer-button-radius)] bg-[var(--footer-black)] px-[var(--footer-button-px)] py-[var(--footer-button-py)] text-[var(--footer-h7)] font-medium leading-none tracking-[-0.01em] text-white transition-transform duration-200 hover:scale-[1.01] xl:h-[var(--footer-button-height)] ${
                   usesAskAvaPill ? "justify-between" : "justify-center gap-2"

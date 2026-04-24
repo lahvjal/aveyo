@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   PRICING_SECTION_HREF,
   buildPricingModalHref,
+  buildPricingModalHrefFromCurrentLocation,
   isHomePath,
   isPricingSectionHref
 } from "@/lib/pricing-navigation";
@@ -45,6 +46,18 @@ function isExternalHref(href: string) {
   );
 }
 
+function shouldPreserveCurrentSearch(event: React.MouseEvent<HTMLAnchorElement>) {
+  return (
+    !event.defaultPrevented &&
+    event.button === 0 &&
+    !event.metaKey &&
+    !event.altKey &&
+    !event.ctrlKey &&
+    !event.shiftKey &&
+    (!event.currentTarget.target || event.currentTarget.target === "_self")
+  );
+}
+
 export interface SiteButtonLinkProps {
   href: string;
   children: React.ReactNode;
@@ -63,7 +76,7 @@ export function SiteButtonLink({
   target
 }: SiteButtonLinkProps) {
   const pathname = usePathname() ?? "/";
-  const searchParams = useSearchParams();
+  const router = useRouter();
   const composedClassName = [
     "inline-flex items-center justify-center gap-2 font-bold transition-colors",
     getVariantClasses(variant),
@@ -87,6 +100,8 @@ export function SiteButtonLink({
   }
 
   if (isPricingSectionHref(href)) {
+    const pricingHref = buildPricingModalHref(pathname);
+
     if (isHomePath(pathname)) {
       return (
         <Link href={PRICING_SECTION_HREF} className={composedClassName}>
@@ -97,9 +112,17 @@ export function SiteButtonLink({
 
     return (
       <Link
-        href={buildPricingModalHref(pathname, searchParams)}
+        href={pricingHref}
         scroll={false}
         className={composedClassName}
+        onClick={(event) => {
+          if (!shouldPreserveCurrentSearch(event)) {
+            return;
+          }
+
+          event.preventDefault();
+          router.push(buildPricingModalHrefFromCurrentLocation(pathname), { scroll: false });
+        }}
       >
         {children}
       </Link>

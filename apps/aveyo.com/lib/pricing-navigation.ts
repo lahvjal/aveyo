@@ -56,6 +56,14 @@ export function buildPricingModalHref(pathname: string | null | undefined, searc
   return queryString ? `${normalizedPathname}?${queryString}` : normalizedPathname;
 }
 
+export function buildPricingModalHrefFromCurrentLocation(pathname: string | null | undefined) {
+  if (typeof window === "undefined") {
+    return buildPricingModalHref(pathname);
+  }
+
+  return buildPricingModalHref(pathname, window.location.search);
+}
+
 export function stripPricingModalParam(searchParams?: SearchParamsLike) {
   const nextSearchParams = createSearchParams(searchParams);
   nextSearchParams.delete(PRICING_MODAL_QUERY_PARAM);
