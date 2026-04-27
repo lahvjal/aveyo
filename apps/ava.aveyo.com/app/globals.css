@@ -118,6 +118,39 @@ body.ava-embed-mode nextjs-portal {
   padding: 8px 10px;
 }
 
+.rep-shell-permission-card {
+  margin: 12px 16px 0;
+  border: 1px solid #d6e3f2;
+  border-radius: 12px;
+  background: #f3f8ff;
+  color: #16324f;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+}
+
+.rep-shell-permission-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.rep-shell-permission-copy strong,
+.rep-shell-permission-copy p {
+  margin: 0;
+}
+
+.rep-shell-permission-copy p {
+  color: rgba(22, 50, 79, 0.82);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.rep-shell-permission-action {
+  flex-shrink: 0;
+}
+
 .rep-shell-toast-layer {
   position: absolute;
   top: 82px;
@@ -5217,7 +5250,8 @@ body.ava-embed-mode nextjs-portal {
   }
 
   .rep-shell-error,
-  .rep-shell-hint {
+  .rep-shell-hint,
+  .rep-shell-permission-card {
     margin: 10px 12px 0;
   }
 
@@ -5314,6 +5348,15 @@ body.ava-embed-mode nextjs-portal {
   .workspace-resolve-button {
     width: 100%;
     text-align: center;
+  }
+
+  .rep-shell-permission-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .rep-shell-permission-action {
+    width: 100%;
   }
 
   .resolved-page-content {

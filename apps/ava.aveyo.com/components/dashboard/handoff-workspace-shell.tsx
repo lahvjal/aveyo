@@ -30,6 +30,10 @@ import {
 import { useAvaReplySuggestion } from "@/lib/dashboard-ava-suggestion";
 import { publishDashboardSyncEvent, subscribeDashboardSyncEvents } from "@/lib/dashboard-sync";
 import { type CustomerPanelDetails, type HistoryNote, type Ticket } from "@/lib/dashboard-types";
+import {
+  useHandoffNotifications,
+  useOpenConversationRegistration
+} from "@/lib/use-handoff-notifications";
 import { AppSideRail } from "@/components/app-side-rail";
 import { AvaSecondaryNav } from "@/components/ava-secondary-nav";
 import { ChatColumn } from "./chat-column";
@@ -103,6 +107,7 @@ export function HandoffWorkspaceShell({
   const router = useRouter();
   const authSession = useAuthSession();
   const seededConversation = useMemo(() => createEmptyConversation(), []);
+  const { permissionState, requestBrowserNotificationPermission } = useHandoffNotifications();
 
   const [queueRecord, setQueueRecord] = useState<QueueRecord | null>(null);
   const [conversation, setConversation] = useState<ConversationThread>(seededConversation);
@@ -126,6 +131,9 @@ export function HandoffWorkspaceShell({
   const representativeTypingLastSentAtMsRef = useRef(0);
 
   const workspaceConversationId = queueRecord?.conversationId ?? initialConversationId ?? null;
+  useOpenConversationRegistration(workspaceConversationId);
+  const showNotificationPermissionPrompt =
+    permissionState === "default" || permissionState === "denied";
   const isConversationLoaded = conversation.id !== seededConversation.id;
   const isAdminLike = authSession.role === "super_admin";
   const isAssignedToCurrentAgent =
@@ -579,6 +587,29 @@ export function HandoffWorkspaceShell({
           canAccessManagerViews={canAccessAvaManagerViews(authSession.role, authSession.access)}
         />
         <div className="rep-main-scroll">
+        {showNotificationPermissionPrompt ? (
+          <div className="rep-shell-permission-card" role="status">
+            <div className="rep-shell-permission-copy">
+              <strong>Turn on browser notifications</strong>
+              <p>
+                {permissionState === "default"
+                  ? "Allow notifications so Ava can alert you about new handoffs, transfer requests, and unread customer replies."
+                  : "Notifications are currently blocked. Enable them in your browser site settings so Ava can alert you about active chats."}
+              </p>
+            </div>
+            {permissionState === "default" ? (
+              <button
+                type="button"
+                className="workspace-nav-button rep-shell-permission-action"
+                onClick={() => {
+                  void requestBrowserNotificationPermission();
+                }}
+              >
+                Allow notifications
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {operationError ? (
           <p className="rep-shell-error" role="alert">
             {operationError}

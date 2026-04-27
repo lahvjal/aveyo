@@ -32,7 +32,10 @@ import {
 import { useAvaReplySuggestion } from "@/lib/dashboard-ava-suggestion";
 import { publishDashboardSyncEvent, subscribeDashboardSyncEvents } from "@/lib/dashboard-sync";
 import { type CustomerPanelDetails, type HistoryNote, type Ticket } from "@/lib/dashboard-types";
-import { useHandoffNotifications } from "@/lib/use-handoff-notifications";
+import {
+  useHandoffNotifications,
+  useOpenConversationRegistration
+} from "@/lib/use-handoff-notifications";
 import { AppSideRail } from "@/components/app-side-rail";
 import { AvaSecondaryNav } from "@/components/ava-secondary-nav";
 import { ChatColumn, ChatComposer } from "./chat-column";
@@ -165,7 +168,13 @@ export function DashboardBoardShell() {
   const seededConversation = useMemo(() => createEmptyConversation(), []);
 
   const { isOnline, syncing: presenceSyncing, toggleOnline } = useSupportPresence(authSession);
-  const { notifyNewPendingHandoffs } = useHandoffNotifications();
+  const {
+    permissionState,
+    requestBrowserNotificationPermission,
+    notifyNewPendingHandoffs,
+    notifyUnreadActiveReplies,
+    notifyTransferRequests
+  } = useHandoffNotifications();
   const [queueRecords, setQueueRecords] = useState<QueueRecord[]>([]);
   const [selectedActiveRequestId, setSelectedActiveRequestId] = useState<string | null>(null);
   const [activeQueueSort, setActiveQueueSort] = useState<ActiveQueueSortOption>("unread");
@@ -209,7 +218,12 @@ export function DashboardBoardShell() {
   );
 
   useEffect(() => {
-    notifyNewPendingHandoffs(pendingRecords.map((record) => record.requestId));
+    notifyNewPendingHandoffs(
+      pendingRecords.map((record) => ({
+        requestId: record.requestId,
+        customerName: record.customerName
+      }))
+    );
   }, [notifyNewPendingHandoffs, pendingRecords]);
 
   const activeRecords = useMemo(
@@ -238,6 +252,38 @@ export function DashboardBoardShell() {
     [activeByRequestId, selectedActiveRequestId]
   );
   const workspaceConversationId = selectedQueueRecord?.conversationId ?? null;
+  useEffect(() => {
+    notifyUnreadActiveReplies({
+      activeChats: activeRecords.map((record) => ({
+        requestId: record.requestId,
+        conversationId: record.conversationId,
+        customerName: record.customerName,
+        claimedByAuthUserId: record.claimedByAuthUserId,
+        hasUnreadCustomerReply: record.hasUnreadCustomerReply,
+        lastMessageAt: record.lastMessageAt
+      })),
+      currentAgentId: agentId,
+      selectedConversationId: workspaceConversationId
+    });
+  }, [activeRecords, agentId, notifyUnreadActiveReplies, workspaceConversationId]);
+  useEffect(() => {
+    notifyTransferRequests({
+      activeChats: activeRecords.map((record) => ({
+        requestId: record.requestId,
+        conversationId: record.conversationId,
+        customerName: record.customerName,
+        claimedByAuthUserId: record.claimedByAuthUserId,
+        hasUnreadCustomerReply: record.hasUnreadCustomerReply,
+        lastMessageAt: record.lastMessageAt,
+        transferRequest: record.transferRequest
+      })),
+      currentAgentId: agentId,
+      selectedConversationId: workspaceConversationId
+    });
+  }, [activeRecords, agentId, notifyTransferRequests, workspaceConversationId]);
+  useOpenConversationRegistration(workspaceConversationId);
+  const showNotificationPermissionPrompt =
+    permissionState === "default" || permissionState === "denied";
   const isConversationLoaded = Boolean(
     workspaceConversationId &&
       conversation.id === workspaceConversationId &&
@@ -1062,6 +1108,29 @@ export function DashboardBoardShell() {
           </div>
         ) : null}
         <div className="rep-main-scroll">
+        {showNotificationPermissionPrompt ? (
+          <div className="rep-shell-permission-card" role="status">
+            <div className="rep-shell-permission-copy">
+              <strong>Turn on browser notifications</strong>
+              <p>
+                {permissionState === "default"
+                  ? "Allow notifications so Ava can alert you about new handoffs, transfer requests, and unread customer replies."
+                  : "Notifications are currently blocked. Enable them in your browser site settings so Ava can alert you about active chats."}
+              </p>
+            </div>
+            {permissionState === "default" ? (
+              <button
+                type="button"
+                className="workspace-nav-button rep-shell-permission-action"
+                onClick={() => {
+                  void requestBrowserNotificationPermission();
+                }}
+              >
+                Allow notifications
+              </button>
+            ) : null}
+          </div>
+        ) : null}
         {operationError ? (
           <p className="rep-shell-error" role="alert">
             {operationError}
