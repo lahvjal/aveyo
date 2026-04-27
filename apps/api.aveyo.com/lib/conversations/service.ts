@@ -16,6 +16,7 @@ import {
   appendAvaMessage,
   appendMessage,
   closeConversationSession,
+  type ConversationIdleAutomationAction,
   createConversation,
   getAvaConversationContext,
   getConversationCustomerDetails,
@@ -23,6 +24,7 @@ import {
   isAgentImpersonationConversation,
   listConversations,
   publishTypingEvent,
+  runConversationSessionIdleAutomation,
   StoreError
 } from "@/lib/store/mock-store";
 import {
@@ -724,6 +726,31 @@ export async function getConversationResult(conversationId: string, actorUserId:
   }
 
   return { conversation };
+}
+
+export async function runConversationIdleCheckResult(conversationId: string, actorUserId: string): Promise<{
+  action: ConversationIdleAutomationAction;
+  conversation: Awaited<ReturnType<typeof getConversation>>;
+}> {
+  try {
+    const action = await runConversationSessionIdleAutomation(conversationId, actorUserId);
+    const conversation = await getConversation(conversationId, actorUserId);
+    if (!conversation) {
+      throw new ServiceError(404, "Conversation not found.");
+    }
+    return {
+      action,
+      conversation
+    };
+  } catch (error) {
+    if (error instanceof StoreError) {
+      throw new ServiceError(error.status, error.message);
+    }
+    if (error instanceof ServiceError) {
+      throw error;
+    }
+    throw new ServiceError(500, "Unable to run conversation idle check.");
+  }
 }
 
 export async function getConversationCustomerDetailsResult(

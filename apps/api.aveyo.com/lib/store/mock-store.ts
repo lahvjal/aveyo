@@ -704,6 +704,8 @@ export interface SessionAutomationBatchResult {
   resolvedFailures: number;
 }
 
+export type ConversationIdleAutomationAction = "none" | "prompt" | "close";
+
 async function listIdleAutomationConversationRows(
   customerAuthUserId: string
 ): Promise<IdleAutomationConversationRow[]> {
@@ -2558,6 +2560,35 @@ export async function runCustomerSessionIdleAutomation(actorUserId: string) {
     await runIdleAutomationForConversation(conversation);
   }
   await runResolvedSessionAutoCloseAutomation(actorUserId, supportAgent);
+}
+
+export async function runConversationSessionIdleAutomation(
+  conversationId: string,
+  actorUserId: string
+): Promise<ConversationIdleAutomationAction> {
+  const supportAgent = await isAvaSupportAgent(actorUserId);
+  const conversation = requireConversationAccess(
+    await getConversationRow(conversationId),
+    actorUserId,
+    supportAgent
+  );
+
+  if (conversation.channel === "agent_impersonation") {
+    return "none";
+  }
+
+  if (conversation.status === "open" && conversation.handoff_state === "none") {
+    return runIdleAutomationForConversation(conversation as IdleAutomationConversationRow);
+  }
+
+  if (conversation.status === "resolved" && conversation.handoff_state === "resolved") {
+    const closed = await runResolvedAutomationForConversation(
+      conversation as ResolvedAutomationConversationRow
+    );
+    return closed ? "close" : "none";
+  }
+
+  return "none";
 }
 
 export async function listRealtimeEvents(

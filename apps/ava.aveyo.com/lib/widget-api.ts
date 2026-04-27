@@ -43,6 +43,15 @@ export function getConversationApi(conversationId: string) {
   });
 }
 
+export function runConversationIdleCheckApi(conversationId: string) {
+  return apiRequest<{ action: "none" | "prompt" | "close"; conversation: ConversationThread }>(
+    `/api/conversations/${conversationId}/idle-check`,
+    {
+      method: "POST"
+    }
+  );
+}
+
 export function createCustomerMessageApi(body: {
   conversationId: string;
   text: string;
