@@ -1,0 +1,12 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+<foreignObject x="-54" y="-54" width="146" height="146"><div xmlns="http://www.w3.org/1999/xhtml" style="backdrop-filter:blur(27px);clip-path:url(#bgblur_0_1039_2613_clip_path);height:100%;width:100%"></div></foreignObject><g id="Frame 1000005728" data-figma-bg-blur-radius="54">
+<path d="M0 19C0 8.50659 8.50659 0 19 0V0C29.4934 0 38 8.50659 38 19V19C38 29.4934 29.4934 38 19 38V38C8.50659 38 0 29.4934 0 19V19Z" fill="var(--fill-0, black)" fill-opacity="0.3"/>
+<g id="Subtract">
+<path d="M16.0117 25.1339C15.9306 25.2149 15.8271 25.2701 15.7147 25.2922L12.8163 25.8615C12.4137 25.9405 12.0595 25.5863 12.1385 25.1837L12.7078 22.2853C12.7299 22.1729 12.7851 22.0694 12.8661 21.9883L20.358 14.4964L23.5036 17.642L16.0117 25.1339Z" fill="var(--fill-0, white)"/>
+<path d="M25.7035 14.6256C25.929 14.851 25.929 15.2166 25.7035 15.4421L24.7283 16.4172L21.5828 13.2717L22.5579 12.2965C22.7834 12.071 23.149 12.071 23.3744 12.2965L25.7035 14.6256Z" fill="var(--fill-0, white)"/>
+</g>
+</g>
+<defs>
+<clipPath id="bgblur_0_1039_2613_clip_path" transform="translate(54 54)"><path d="M0 19C0 8.50659 8.50659 0 19 0V0C29.4934 0 38 8.50659 38 19V19C38 29.4934 29.4934 38 19 38V38C8.50659 38 0 29.4934 0 19V19Z"/>
+</clipPath></defs>
+</svg>

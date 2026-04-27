@@ -1,0 +1,12 @@
+<svg preserveAspectRatio="none" width="100%" height="100%" overflow="visible" style="display: block;" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+<foreignObject x="-54" y="-54" width="146" height="146"><div xmlns="http://www.w3.org/1999/xhtml" style="backdrop-filter:blur(27px);clip-path:url(#bgblur_0_1039_2631_clip_path);height:100%;width:100%"></div></foreignObject><g id="Frame 1000005729" data-figma-bg-blur-radius="54">
+<path d="M0 19C0 8.50659 8.50659 0 19 0V0C29.4934 0 38 8.50659 38 19V19C38 29.4934 29.4934 38 19 38V38C8.50659 38 0 29.4934 0 19V19Z" fill="var(--fill-0, black)" fill-opacity="0.3"/>
+<g id="Subtract">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M24.259 25.8647C24.2321 26.1622 23.9826 26.3902 23.6839 26.3902H14.3161C14.0174 26.3902 13.7679 26.1622 13.741 25.8647L12.7713 15.1303H25.2287L24.259 25.8647ZM14.7175 16.5539L15.2864 24.3774L17.0179 24.3283L16.449 16.5048L14.7175 16.5539ZM20.9827 24.3283L22.7141 24.3774L23.2825 16.5539L21.551 16.5048L20.9827 24.3283ZM18.1343 24.3526H19.8663V16.515H18.1343V24.3526Z" fill="var(--fill-0, white)"/>
+<path d="M24.9147 11.6098C25.2541 11.6098 25.5203 11.901 25.4898 12.239L25.3849 13.3982H12.6151L12.5102 12.239C12.4797 11.901 12.7459 11.6098 13.0853 11.6098H24.9147Z" fill="var(--fill-0, white)"/>
+</g>
+</g>
+<defs>
+<clipPath id="bgblur_0_1039_2631_clip_path" transform="translate(54 54)"><path d="M0 19C0 8.50659 8.50659 0 19 0V0C29.4934 0 38 8.50659 38 19V19C38 29.4934 29.4934 38 19 38V38C8.50659 38 0 29.4934 0 19V19Z"/>
+</clipPath></defs>
+</svg>

@@ -125,8 +125,8 @@ export default function CommercialPage() {
           { href: "/contact#sales-form", label: "Request Evaluation", variant: "light" },
           { href: "/process", label: "Learn How It Works", variant: "outline" }
         ]}
-        backgroundSrc="/images/web_photos/Commercial_02_Ground-Mounted-Array.jpg"
-        backgroundAlt="Large commercial ground-mounted solar array on gravel with clear blue sky"
+        backgroundSrc="/images/web_photos/commercialHero.png"
+        backgroundAlt="A commercial building with solar panels on the roof"
       />
 
       <SiteSection

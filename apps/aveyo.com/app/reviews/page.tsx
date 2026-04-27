@@ -162,8 +162,8 @@ export default function ReviewsPage() {
           { href: "/#pricing", label: "See Plans", variant: "light" },
           { href: "#review-gallery", label: "Browse Reviews", variant: "outline" }
         ]}
-        backgroundSrc="/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone3.jpg"
-        backgroundAlt="Solar home exterior with mountains in the distance"
+        backgroundSrc="/images/web_photos/reviewsHero.webp"
+        backgroundAlt="Homeowner standing outside a solar-powered home in the backyard"
       />
 
       <section
