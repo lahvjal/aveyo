@@ -190,7 +190,7 @@
     "radius": {
       "button": 60,
       "card": 10,
-      "field": 18,
+      "field": 8,
       "stat": 22,
       "faq": 24,
       "siteCard": 26,

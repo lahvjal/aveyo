@@ -8,14 +8,46 @@
 
 :root {
   color-scheme: light;
-  --bg: #ffffff;
-  --line: #e6e6e6;
-  --line-soft: #e2e2e2;
-  --text: #111111;
-  --muted: #b8b8b8;
-  --muted-strong: #7c7c7c;
-  --panel-start: rgba(247, 247, 247, 0.7);
-  --panel-end: rgba(241, 241, 241, 0.7);
+  --marketing-color-canvas: #f4f6f6;
+  --marketing-color-surface: #ffffff;
+  --marketing-color-surface-top: #f9fbfc;
+  --marketing-color-surface-bottom: #eef3f7;
+  --marketing-color-text-primary: #212120;
+  --marketing-color-text-secondary: #4c4e4e;
+  --marketing-color-text-subtle: #7d8081;
+  --marketing-color-border: #dbe2e8;
+  --marketing-color-border-muted: #e9e4db;
+  --marketing-color-border-soft: #f2eee7;
+  --marketing-color-accent: #6eb9fe;
+  --marketing-color-accent-hover: #57aefc;
+  --marketing-color-success-bg: #f0fdf4;
+  --marketing-color-success-border: #86efac;
+  --marketing-color-success-text: #166534;
+  --marketing-color-warning-bg: #fff7ed;
+  --marketing-color-warning-border: #fdba74;
+  --marketing-color-warning-text: #9a3412;
+  --marketing-font-h5: 24px;
+  --marketing-font-h6: 18px;
+  --marketing-font-h7: 16px;
+  --marketing-font-paragraph: 13px;
+  --marketing-space-button-x: 22px;
+  --marketing-space-button-y: 10px;
+  --marketing-space-card-padding: 40px;
+  --marketing-space-card-padding-compact: 20px;
+  --marketing-space-panel-padding: 16px;
+  --marketing-space-grid-gap: 20px;
+  --marketing-radius-button: 60px;
+  --marketing-radius-card: 10px;
+  --marketing-radius-field: 18px;
+  --marketing-shadow-panel: 0 16px 40px rgba(33, 33, 32, 0.04);
+  --bg: var(--marketing-color-canvas);
+  --line: var(--marketing-color-border);
+  --line-soft: var(--marketing-color-border-soft);
+  --text: var(--marketing-color-text-primary);
+  --muted: var(--marketing-color-text-subtle);
+  --muted-strong: var(--marketing-color-text-subtle);
+  --panel-start: color-mix(in srgb, var(--marketing-color-surface-top) 88%, white);
+  --panel-end: color-mix(in srgb, var(--marketing-color-surface-bottom) 90%, white);
 }
 
 * {
@@ -74,7 +106,7 @@ code {
   display: flex;
   flex: 1 1 auto;
   flex-direction: column;
-  gap: 24px;
+  gap: var(--marketing-space-grid-gap);
   min-width: 0;
   padding: 34px;
 }
@@ -88,8 +120,8 @@ code {
 }
 
 .header-copy p {
-  color: #222222;
-  font-size: 16px;
+  color: var(--marketing-color-text-secondary);
+  font-size: var(--marketing-font-h7);
   margin: 0;
 }
 
@@ -104,7 +136,7 @@ code {
 .header-copy .workspace-description {
   margin-top: 10px;
   max-width: 70ch;
-  color: #5a5a5a;
+  color: var(--marketing-color-text-secondary);
   font-size: 14px;
   line-height: 1.45;
 }
@@ -127,7 +159,7 @@ code {
   appearance: none;
   background: transparent;
   border: 0;
-  color: #2e6dba;
+  color: var(--marketing-color-accent);
   cursor: pointer;
   font-size: 14px;
   font-weight: 600;
@@ -152,13 +184,13 @@ code {
 }
 
 .workspace-tab {
-  border: 1px solid #d0d5dd;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #344054;
-  font-size: 13px;
+  border: 1px solid var(--marketing-color-border);
+  border-radius: var(--marketing-radius-button);
+  background: var(--marketing-color-surface);
+  color: var(--marketing-color-text-secondary);
+  font-size: var(--marketing-font-paragraph);
   font-weight: 700;
-  padding: 9px 14px;
+  padding: var(--marketing-space-button-y) var(--marketing-space-button-x);
   transition:
     border-color 160ms ease,
     background-color 160ms ease,
@@ -166,20 +198,25 @@ code {
 }
 
 .workspace-tab:hover {
-  background: #f8f8f8;
+  background: linear-gradient(
+    180deg,
+    var(--marketing-color-surface-top),
+    var(--marketing-color-surface-bottom)
+  );
 }
 
 .workspace-tab.is-active {
-  border-color: #204e71;
-  background: #204e71;
-  color: #ffffff;
+  border-color: var(--marketing-color-text-primary);
+  background: var(--marketing-color-text-primary);
+  color: var(--marketing-color-surface);
 }
 
 .card {
   border: 1px solid var(--line-soft);
-  border-radius: 20px;
+  border-radius: var(--marketing-radius-card);
   background: linear-gradient(180deg, var(--panel-start), var(--panel-end));
-  padding: 20px;
+  box-shadow: var(--marketing-shadow-panel);
+  padding: var(--marketing-space-card-padding-compact);
 }
 
 .form-grid {
@@ -199,21 +236,21 @@ code {
 }
 
 .field label {
-  font-size: 13px;
+  font-size: var(--marketing-font-paragraph);
   font-weight: 600;
-  color: #3d3d3d;
+  color: var(--marketing-color-text-secondary);
 }
 
 .field input,
 .field select,
 .field textarea {
-  border: 1px solid #d0d0d0;
-  border-radius: 12px;
-  padding: 10px 12px;
+  border: 1px solid var(--marketing-color-border);
+  border-radius: var(--marketing-radius-field);
+  padding: 12px 14px;
   font-size: 14px;
   font-family: inherit;
-  color: #151515;
-  background: #ffffff;
+  color: var(--marketing-color-text-primary);
+  background: var(--marketing-color-surface);
 }
 
 .field textarea {
@@ -228,7 +265,7 @@ code {
 .helper-text {
   margin: 12px 0 0;
   font-size: 12px;
-  color: #6e6e6e;
+  color: var(--marketing-color-text-subtle);
 }
 
 .button-row {
@@ -241,21 +278,21 @@ code {
 
 .primary-button,
 .secondary-button {
-  border-radius: 10px;
-  padding: 9px 14px;
-  font-size: 13px;
+  border-radius: var(--marketing-radius-button);
+  padding: var(--marketing-space-button-y) var(--marketing-space-button-x);
+  font-size: var(--marketing-font-paragraph);
   font-weight: 700;
   cursor: pointer;
 }
 
 .primary-button {
-  border: 1px solid #204e71;
-  background: #204e71;
-  color: #ffffff;
+  border: 1px solid var(--marketing-color-text-primary);
+  background: var(--marketing-color-text-primary);
+  color: var(--marketing-color-surface);
 }
 
 .primary-button:hover {
-  background: #173c58;
+  background: color-mix(in srgb, var(--marketing-color-text-primary) 92%, black);
 }
 
 .primary-button:disabled {
@@ -264,53 +301,58 @@ code {
 }
 
 .secondary-button {
-  border: 1px solid #d0d5dd;
-  background: #ffffff;
-  color: #344054;
+  border: 1px solid var(--marketing-color-border);
+  background: var(--marketing-color-surface);
+  color: var(--marketing-color-text-secondary);
 }
 
 .secondary-button:hover {
-  background: #f8f8f8;
+  background: linear-gradient(
+    180deg,
+    var(--marketing-color-surface-top),
+    var(--marketing-color-surface-bottom)
+  );
 }
 
 .inline-link {
-  color: #1e5aa9;
+  color: var(--marketing-color-accent);
   font-weight: 600;
 }
 
 .inline-link:hover {
+  color: var(--marketing-color-accent-hover);
   text-decoration: underline;
 }
 
 .request-summary {
   margin: 10px 0 0;
-  border: 1px solid #d7d7d7;
-  border-radius: 12px;
-  background: #ffffff;
+  border: 1px solid var(--marketing-color-border);
+  border-radius: var(--marketing-radius-field);
+  background: var(--marketing-color-surface);
   padding: 12px;
-  font-size: 13px;
+  font-size: var(--marketing-font-paragraph);
   line-height: 1.45;
   white-space: pre-wrap;
 }
 
 .notice {
   margin-top: 14px;
-  border-radius: 12px;
+  border-radius: var(--marketing-radius-field);
   border: 1px solid transparent;
   padding: 10px 12px;
-  font-size: 13px;
+  font-size: var(--marketing-font-paragraph);
 }
 
 .notice.success {
-  background: #f0fdf4;
-  border-color: #86efac;
-  color: #166534;
+  background: var(--marketing-color-success-bg);
+  border-color: var(--marketing-color-success-border);
+  color: var(--marketing-color-success-text);
 }
 
 .notice.warning {
-  background: #fff7ed;
-  border-color: #fdba74;
-  color: #9a3412;
+  background: var(--marketing-color-warning-bg);
+  border-color: var(--marketing-color-warning-border);
+  color: var(--marketing-color-warning-text);
 }
 
 .events-grid {
@@ -319,10 +361,10 @@ code {
 }
 
 .event-card {
-  border: 1px solid #e2e2e2;
-  border-radius: 16px;
+  border: 1px solid var(--marketing-color-border);
+  border-radius: var(--marketing-radius-field);
   padding: 14px;
-  background: #ffffff;
+  background: var(--marketing-color-surface);
 }
 
 .event-card h3 {
@@ -332,24 +374,24 @@ code {
 
 .event-meta {
   margin: 8px 0;
-  color: #4b4b4b;
+  color: var(--marketing-color-text-secondary);
   display: grid;
   gap: 4px;
-  font-size: 13px;
+  font-size: var(--marketing-font-paragraph);
 }
 
 .event-description {
   margin: 8px 0 0;
-  color: #4b4b4b;
+  color: var(--marketing-color-text-secondary);
   font-size: 14px;
   line-height: 1.42;
 }
 
 .access-denied {
-  border: 1px solid #fecaca;
-  background: #fff1f2;
-  color: #9f1239;
-  border-radius: 12px;
+  border: 1px solid var(--marketing-color-warning-border);
+  background: var(--marketing-color-warning-bg);
+  color: var(--marketing-color-warning-text);
+  border-radius: var(--marketing-radius-card);
   padding: 12px;
   font-size: 14px;
 }
