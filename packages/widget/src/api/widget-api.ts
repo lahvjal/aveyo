@@ -36,6 +36,9 @@ export interface WidgetApiClient {
     greetingText?: string;
   }) => Promise<{ conversation: ConversationThread }>;
   getConversation: (conversationId: string) => Promise<{ conversation: ConversationThread }>;
+  runConversationIdleCheck: (
+    conversationId: string
+  ) => Promise<{ action: "none" | "prompt" | "close"; conversation: ConversationThread }>;
   createCustomerMessage: (body: {
     conversationId: string;
     text: string;
@@ -165,6 +168,15 @@ export function createWidgetApiClient({
         {
           method: "GET",
           cache: "no-store"
+        }
+      ),
+
+    runConversationIdleCheck: (conversationId) =>
+      requestJson<{ action: "none" | "prompt" | "close"; conversation: ConversationThread }>(
+        resolvedBaseUrl,
+        `/api/conversations/${conversationId}/idle-check`,
+        {
+          method: "POST"
         }
       ),
 

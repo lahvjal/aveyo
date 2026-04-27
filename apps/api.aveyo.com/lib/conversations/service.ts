@@ -181,6 +181,36 @@ function isHumanAgentRequest(text: string) {
   );
 }
 
+function isEndConversationRequest(text: string) {
+  const normalized = normalizeIntentText(text);
+  if (!normalized) {
+    return false;
+  }
+
+  const directPhrases = [
+    "close chat",
+    "close the chat",
+    "close this chat",
+    "close conversation",
+    "close the conversation",
+    "close this conversation",
+    "end chat",
+    "end the chat",
+    "end this chat",
+    "end conversation",
+    "end the conversation",
+    "end this conversation"
+  ];
+  if (directPhrases.some((phrase) => normalized.includes(phrase))) {
+    return true;
+  }
+
+  return (
+    /\b(close|end)\b.*\b(chat|conversation|session)\b/.test(normalized) ||
+    /\b(chat|conversation|session)\b.*\b(close|end)\b/.test(normalized)
+  );
+}
+
 function isProjectSpecificQuestion(text: string) {
   const normalized = normalizeIntentText(text);
   if (!normalized) {
@@ -471,6 +501,32 @@ async function tryGenerateAvaReplyInternal(params: {
       await closeConversationSession(params.conversationId, {
         reason: "post_handoff_no_more_help"
       });
+      return {
+        status: "completed",
+        replyMessageId: replyMessage.id
+      };
+    } finally {
+      await publishAvaTyping(false);
+    }
+  }
+
+  if (latestMessage?.kind === "customer" && isEndConversationRequest(latestMessage.text)) {
+    incrementPerfCounter("avaReply.customerRequestedClose");
+    try {
+      const replyMessage = await appendAvaMessage(
+        params.conversationId,
+        "Absolutely. I am closing this chat now.",
+        params.replyJobId
+          ? {
+              automation: {
+                source: AVA_REPLY_JOB_PAYLOAD_SOURCE,
+                replyJobId: params.replyJobId,
+                triggerMessageId: params.triggerMessageId ?? null
+              }
+            }
+          : undefined
+      );
+      await closeConversationSession(params.conversationId);
       return {
         status: "completed",
         replyMessageId: replyMessage.id

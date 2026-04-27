@@ -674,6 +674,7 @@ const REPRESENTATIVE_TYPING_STOP_GRACE_MS = 3_200;
 const HANDOFF_QUEUE_STATUS_DELAY_MS = 5_000;
 const HANDOFF_QUEUE_STATUS_TEXT =
   "An agent is looking into your account. You will be connected soon.";
+const WIDGET_IDLE_CHECK_AFTER_MS = 60_000;
 
 function allowsAvaReplyForThread(thread: ConversationThread) {
   return thread.handoff.state === "none" || thread.handoff.state === "resolved";
@@ -820,6 +821,8 @@ export function AvaWidgetShell({
   const representativeTypingTimeoutRef = useRef<number | null>(null);
   const representativeTypingStopTimeoutRef = useRef<number | null>(null);
   const handoffQueueStatusTimeoutRef = useRef<number | null>(null);
+  const idleCheckTimeoutRef = useRef<number | null>(null);
+  const idleCheckInFlightRef = useRef(false);
   const realtimeBusyRef = useRef(false);
   const modeStatusNoticeRef = useRef<string | null>(null);
   const pendingRepOfferMessageIdRef = useRef<string | null>(null);
@@ -939,6 +942,16 @@ export function AvaWidgetShell({
       window.clearTimeout(handoffQueueStatusTimeoutRef.current);
     }
     handoffQueueStatusTimeoutRef.current = null;
+  }, []);
+
+  const clearIdleCheckTimeout = useCallback(() => {
+    if (idleCheckTimeoutRef.current === null) {
+      return;
+    }
+    if (typeof window !== "undefined") {
+      window.clearTimeout(idleCheckTimeoutRef.current);
+    }
+    idleCheckTimeoutRef.current = null;
   }, []);
 
   const scheduleHandoffQueueStatusMessage = useCallback(
@@ -1333,10 +1346,12 @@ export function AvaWidgetShell({
       clearRepresentativeTypingStopTimeout();
       clearRepresentativeTypingTimeout();
       clearHandoffQueueStatusTimeout();
+      clearIdleCheckTimeout();
     };
   }, [
     clearAvaTypingStopTimeout,
     clearAvaTypingTimeout,
+    clearIdleCheckTimeout,
     clearRepresentativeTypingStopTimeout,
     clearRepresentativeTypingTimeout,
     clearHandoffQueueStatusTimeout
@@ -1353,6 +1368,67 @@ export function AvaWidgetShell({
       clearRepresentativeTypingState();
     }
   }, [conversationReady, clearAvaTypingState, clearRepresentativeTypingState]);
+
+  useEffect(() => {
+    if (
+      !authSession.authenticated ||
+      !conversationReady ||
+      isSubmitting ||
+      testModeBusy ||
+      thread.handoff.state !== "none"
+    ) {
+      clearIdleCheckTimeout();
+      return;
+    }
+
+    const latestMessage = thread.messages[thread.messages.length - 1];
+    if (!latestMessage || isChatClosedSignalMessage(latestMessage)) {
+      clearIdleCheckTimeout();
+      return;
+    }
+
+    const latestMessageMs = toTimestampMs(latestMessage.createdAt);
+    if (latestMessageMs === null) {
+      clearIdleCheckTimeout();
+      return;
+    }
+
+    const delayMs = Math.max(0, latestMessageMs + WIDGET_IDLE_CHECK_AFTER_MS - Date.now());
+    clearIdleCheckTimeout();
+    idleCheckTimeoutRef.current = window.setTimeout(() => {
+      idleCheckTimeoutRef.current = null;
+      if (idleCheckInFlightRef.current) {
+        return;
+      }
+
+      idleCheckInFlightRef.current = true;
+      void api
+        .runConversationIdleCheck(thread.id)
+        .then((result) => {
+          setThread(result.conversation);
+        })
+        .catch((error) => {
+          setRequestError(
+            error instanceof Error ? error.message : "Unable to run idle chat check right now."
+          );
+        })
+        .finally(() => {
+          idleCheckInFlightRef.current = false;
+        });
+    }, delayMs);
+
+    return () => {
+      clearIdleCheckTimeout();
+    };
+  }, [
+    api,
+    authSession.authenticated,
+    clearIdleCheckTimeout,
+    conversationReady,
+    isSubmitting,
+    testModeBusy,
+    thread
+  ]);
 
   useEffect(() => {
     if (typeof window === "undefined" || window.parent === window) {
@@ -1768,6 +1844,7 @@ export function AvaWidgetShell({
   const composerActionDisabled =
     authSession.loading ||
     !conversationReady ||
+    isChatClosedSignalMessage(activeThread.messages[activeThread.messages.length - 1]) ||
     isSubmitting ||
     testModeBusy;
 

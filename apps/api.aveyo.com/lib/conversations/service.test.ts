@@ -5,6 +5,7 @@ import { claimAvaReplyJobs, enqueueAvaReplyJob } from "@/lib/ava/reply-jobs";
 import {
   appendAvaMessage,
   appendMessage,
+  closeConversationSession,
   getConversation,
   isAgentImpersonationConversation,
   publishTypingEvent
@@ -60,6 +61,7 @@ const mockedClaimAvaReplyJobs = vi.mocked(claimAvaReplyJobs);
 const mockedEnqueueAvaReplyJob = vi.mocked(enqueueAvaReplyJob);
 const mockedAppendAvaMessage = vi.mocked(appendAvaMessage);
 const mockedAppendMessage = vi.mocked(appendMessage);
+const mockedCloseConversationSession = vi.mocked(closeConversationSession);
 const mockedGetConversation = vi.mocked(getConversation);
 const mockedIsAgentImpersonationConversation = vi.mocked(isAgentImpersonationConversation);
 const mockedPublishTypingEvent = vi.mocked(publishTypingEvent);
@@ -90,6 +92,8 @@ describe("createMessageResult", () => {
     });
     mockedAppendAvaMessage.mockReset();
     mockedAppendMessage.mockReset();
+    mockedCloseConversationSession.mockReset();
+    mockedCloseConversationSession.mockResolvedValue(true);
     mockedGetConversation.mockReset();
     mockedIsAgentImpersonationConversation.mockReset();
     mockedIsAgentImpersonationConversation.mockResolvedValue(false);
@@ -303,6 +307,63 @@ describe("runAvaReplyJobSweep", () => {
       CUSTOMER_CARE_OUTSIDE_WORKING_HOURS_REPLY,
       expect.anything()
     );
+  });
+
+  it("closes the chat when the customer asks Ava to end the conversation", async () => {
+    mockedClaimAvaReplyJobs.mockResolvedValue([
+      {
+        id: "reply-job-1",
+        conversationId: "c-1",
+        triggerMessageId: "m-customer-1",
+        requestedByAuthUserId: "customer-1",
+        status: "pending",
+        availableAt: "2026-01-01T00:00:00.000Z",
+        claimedBy: null,
+        claimedAt: null,
+        leaseExpiresAt: null,
+        attempts: 0,
+        lastError: null,
+        replyMessageId: null,
+        completedAt: null,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z"
+      }
+    ]);
+    mockedGetConversation.mockResolvedValue({
+      id: "c-1",
+      authenticated: true,
+      updatedAt: "2026-01-01T00:00:00.000Z",
+      handoff: { state: "none" },
+      messages: [
+        {
+          id: "m-customer-1",
+          conversationId: "c-1",
+          kind: "customer",
+          text: "please close this conversation",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          deliveryState: "sent"
+        }
+      ]
+    });
+    mockedAppendAvaMessage.mockResolvedValue({
+      id: "m-ava-1",
+      conversationId: "c-1",
+      kind: "ava",
+      text: "Absolutely. I am closing this chat now.",
+      createdAt: "2026-01-01T00:00:01.000Z",
+      deliveryState: "sent"
+    });
+
+    const result = await runAvaReplyJobSweep({ conversationId: "c-1" });
+
+    expect(result.completedJobs).toBe(1);
+    expect(mockedAppendAvaMessage).toHaveBeenCalledWith(
+      "c-1",
+      "Absolutely. I am closing this chat now.",
+      expect.anything()
+    );
+    expect(mockedCloseConversationSession).toHaveBeenCalledWith("c-1");
+    expect(mockedGenerateAvaReplyText).not.toHaveBeenCalled();
   });
 });
 
