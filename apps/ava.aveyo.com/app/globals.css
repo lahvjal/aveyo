@@ -131,6 +131,11 @@ body.ava-embed-mode nextjs-portal {
   padding: 12px;
 }
 
+.rep-shell-permission-card.is-status {
+  border-color: #d6eadb;
+  background: #f4fbf5;
+}
+
 .rep-shell-permission-copy {
   display: grid;
   gap: 4px;

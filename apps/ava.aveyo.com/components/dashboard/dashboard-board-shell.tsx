@@ -170,7 +170,9 @@ export function DashboardBoardShell() {
   const { isOnline, syncing: presenceSyncing, toggleOnline } = useSupportPresence(authSession);
   const {
     permissionState,
+    notificationsSupported,
     requestBrowserNotificationPermission,
+    sendTestNotification,
     notifyNewPendingHandoffs,
     notifyUnreadActiveReplies,
     notifyTransferRequests
@@ -284,6 +286,7 @@ export function DashboardBoardShell() {
   useOpenConversationRegistration(workspaceConversationId);
   const showNotificationPermissionPrompt =
     permissionState === "default" || permissionState === "denied";
+  const showNotificationStatusCard = permissionState === "granted" || permissionState === "unsupported";
   const isConversationLoaded = Boolean(
     workspaceConversationId &&
       conversation.id === workspaceConversationId &&
@@ -427,6 +430,28 @@ export function DashboardBoardShell() {
     const toastId = nextHintToastIdRef.current;
     setHintToastQueue((current) => [...current, { id: toastId, message: trimmedMessage }]);
   }, []);
+
+  const handleSendTestNotification = useCallback(() => {
+    const result = sendTestNotification();
+    if (result.ok) {
+      enqueueHintToast(
+        "Test notification sent. If no desktop alert appears, check your browser site settings and macOS notification settings."
+      );
+      return;
+    }
+
+    if (result.reason === "permission") {
+      enqueueHintToast("Browser notifications are not enabled for Ava yet.");
+      return;
+    }
+
+    if (result.reason === "unsupported") {
+      enqueueHintToast("This browser session does not support desktop notifications.");
+      return;
+    }
+
+    enqueueHintToast("The browser could not create a desktop notification.");
+  }, [enqueueHintToast, sendTestNotification]);
 
   const refreshQueueData = useCallback(async () => {
     const result = await listQueueApi({ resolvedScope: "agent" });
@@ -1127,6 +1152,35 @@ export function DashboardBoardShell() {
                 }}
               >
                 Allow notifications
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {showNotificationStatusCard ? (
+          <div className="rep-shell-permission-card is-status" role="status">
+            <div className="rep-shell-permission-copy">
+              <strong>
+                {permissionState === "granted"
+                  ? "Browser notifications are on"
+                  : "Browser notifications are unavailable"}
+              </strong>
+              <p>
+                {permissionState === "granted"
+                  ? "Use the test button to confirm your browser and desktop are showing Ava alerts."
+                  : notificationsSupported
+                    ? "Notifications are not available in this browser session."
+                    : "This browser session does not support the Notification API."}
+              </p>
+            </div>
+            {permissionState === "granted" ? (
+              <button
+                type="button"
+                className="workspace-nav-button rep-shell-permission-action"
+                onClick={() => {
+                  handleSendTestNotification();
+                }}
+              >
+                Send test notification
               </button>
             ) : null}
           </div>

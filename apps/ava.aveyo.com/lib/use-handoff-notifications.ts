@@ -7,6 +7,9 @@ const OPEN_CONVERSATION_TTL_MS = 20_000;
 const OPEN_CONVERSATION_HEARTBEAT_MS = 10_000;
 
 type NotificationPermissionState = NotificationPermission | "unsupported";
+type TestNotificationResult =
+  | { ok: true }
+  | { ok: false; reason: "unsupported" | "permission" | "failed" };
 
 interface PendingHandoffNotificationTarget {
   requestId: string;
@@ -240,6 +243,31 @@ export function useHandoffNotifications() {
     return nextPermission;
   }, []);
 
+  const sendTestNotification = useCallback((): TestNotificationResult => {
+    if (typeof window === "undefined" || !("Notification" in window)) {
+      return { ok: false, reason: "unsupported" };
+    }
+
+    if (!canSendNotification()) {
+      return { ok: false, reason: "permission" };
+    }
+
+    try {
+      const notification = new Notification("Ava — Test Notification", {
+        body: "Browser desktop notifications are working for your Ava dashboard.",
+        icon: "/images/aveyo-icon.svg",
+        tag: "ava-test-notification"
+      });
+      notification.onclick = () => {
+        window.focus();
+        notification.close();
+      };
+      return { ok: true };
+    } catch {
+      return { ok: false, reason: "failed" };
+    }
+  }, []);
+
   const notifyNewPendingHandoffs = useCallback(
     (pendingHandoffs: PendingHandoffNotificationTarget[]) => {
       const currentIds = new Set(pendingHandoffs.map((handoff) => handoff.requestId));
@@ -440,6 +468,7 @@ export function useHandoffNotifications() {
     permissionState,
     notificationsSupported: permissionState !== "unsupported",
     requestBrowserNotificationPermission,
+    sendTestNotification,
     notifyNewPendingHandoffs,
     notifyUnreadActiveReplies,
     notifyTransferRequests

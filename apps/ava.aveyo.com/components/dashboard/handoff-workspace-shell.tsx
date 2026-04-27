@@ -107,7 +107,12 @@ export function HandoffWorkspaceShell({
   const router = useRouter();
   const authSession = useAuthSession();
   const seededConversation = useMemo(() => createEmptyConversation(), []);
-  const { permissionState, requestBrowserNotificationPermission } = useHandoffNotifications();
+  const {
+    permissionState,
+    notificationsSupported,
+    requestBrowserNotificationPermission,
+    sendTestNotification
+  } = useHandoffNotifications();
 
   const [queueRecord, setQueueRecord] = useState<QueueRecord | null>(null);
   const [conversation, setConversation] = useState<ConversationThread>(seededConversation);
@@ -134,6 +139,7 @@ export function HandoffWorkspaceShell({
   useOpenConversationRegistration(workspaceConversationId);
   const showNotificationPermissionPrompt =
     permissionState === "default" || permissionState === "denied";
+  const showNotificationStatusCard = permissionState === "granted" || permissionState === "unsupported";
   const isConversationLoaded = conversation.id !== seededConversation.id;
   const isAdminLike = authSession.role === "super_admin";
   const isAssignedToCurrentAgent =
@@ -203,6 +209,28 @@ export function HandoffWorkspaceShell({
     },
     [authSession.authenticated, authSession.user]
   );
+
+  const handleSendTestNotification = useCallback(() => {
+    const result = sendTestNotification();
+    if (result.ok) {
+      setCloseHint(
+        "Test notification sent. If no desktop alert appears, check your browser site settings and macOS notification settings."
+      );
+      return;
+    }
+
+    if (result.reason === "permission") {
+      setCloseHint("Browser notifications are not enabled for Ava yet.");
+      return;
+    }
+
+    if (result.reason === "unsupported") {
+      setCloseHint("This browser session does not support desktop notifications.");
+      return;
+    }
+
+    setCloseHint("The browser could not create a desktop notification.");
+  }, [sendTestNotification]);
 
   const refreshWorkspaceData = useCallback(async () => {
     const queueResult = await listQueueApi({ resolvedScope: "all" });
@@ -606,6 +634,35 @@ export function HandoffWorkspaceShell({
                 }}
               >
                 Allow notifications
+              </button>
+            ) : null}
+          </div>
+        ) : null}
+        {showNotificationStatusCard ? (
+          <div className="rep-shell-permission-card is-status" role="status">
+            <div className="rep-shell-permission-copy">
+              <strong>
+                {permissionState === "granted"
+                  ? "Browser notifications are on"
+                  : "Browser notifications are unavailable"}
+              </strong>
+              <p>
+                {permissionState === "granted"
+                  ? "Use the test button to confirm your browser and desktop are showing Ava alerts."
+                  : notificationsSupported
+                    ? "Notifications are not available in this browser session."
+                    : "This browser session does not support the Notification API."}
+              </p>
+            </div>
+            {permissionState === "granted" ? (
+              <button
+                type="button"
+                className="workspace-nav-button rep-shell-permission-action"
+                onClick={() => {
+                  handleSendTestNotification();
+                }}
+              >
+                Send test notification
               </button>
             ) : null}
           </div>
