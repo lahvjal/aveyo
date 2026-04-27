@@ -388,6 +388,20 @@ export interface ManagerReassignResult {
   reassignedAt: string;
 }
 
+export interface ManagerCleanupSweepResult {
+  acquiredLease: boolean;
+  leaseExpiresAt: string | null;
+  owner: string;
+  durationMs: number;
+  idleCandidates: number;
+  idlePrompted: number;
+  idleClosed: number;
+  idleFailures: number;
+  resolvedCandidates: number;
+  resolvedClosed: number;
+  resolvedFailures: number;
+}
+
 export function getManagerOverviewApi(range?: ManagerDateRangeQuery) {
   return apiRequest<ManagerOverviewResult>(`/api/manager/overview${managerRangeQueryString(range)}`, {
     method: "GET"
@@ -439,6 +453,12 @@ export function reassignManagerHandoffApi(body: {
   return apiRequest<ManagerReassignResult>("/api/manager/handoffs/reassign", {
     method: "POST",
     body: JSON.stringify(body)
+  });
+}
+
+export function runManagerCleanupSweepApi() {
+  return apiRequest<ManagerCleanupSweepResult>("/api/manager/automation/cleanup", {
+    method: "POST"
   });
 }
 

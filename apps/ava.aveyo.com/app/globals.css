@@ -2035,6 +2035,7 @@ body.ava-embed-mode nextjs-portal {
   grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
   max-height: min(70vh, 760px);
+  height: 100%;
   align-self: start;
   overflow: hidden;
 }
@@ -2079,7 +2080,7 @@ body.ava-embed-mode nextjs-portal {
 }
 
 .manager-pipeline-list {
-  min-height: 0;
+  min-height: 91px;
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
@@ -2100,7 +2101,10 @@ body.ava-embed-mode nextjs-portal {
   color: #667085;
   font-size: 13px;
   line-height: 1.4;
+  min-height: 91px;
   padding: 18px 10px;
+  display: flex;
+  align-items: center;
 }
 
 .manager-activity-grid {
@@ -5526,6 +5530,7 @@ body.ava-embed-mode nextjs-portal {
 
   .manager-pipeline-lane {
     max-height: min(62vh, 620px);
+    height: 100%;
   }
 
   .manager-preview-panel {

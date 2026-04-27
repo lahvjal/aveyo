@@ -4,6 +4,7 @@ import {
   RESOLVED_SESSION_AUTO_CLOSE_AFTER_MS,
   SESSION_IDLE_AUTOMATION_SOURCE,
   SESSION_IDLE_CLOSE_AFTER_PROMPT_MS,
+  SESSION_IDLE_FORCE_CLOSE_AFTER_MS,
   SESSION_IDLE_PROMPT_AFTER_MS,
   shouldAutoCloseResolvedConversation
 } from "@/lib/automation/session-automation-logic";
@@ -22,19 +23,28 @@ function automationPayload(kind: "idle_prompt" | "idle_close") {
 }
 
 describe("getIdleAutomationDecision", () => {
-  it("returns none when the conversation never started", () => {
+  it("returns none when there is no participant activity yet", () => {
     const nowMs = Date.UTC(2026, 0, 1, 0, 5, 0);
+    expect(getIdleAutomationDecision([], nowMs)).toEqual({ action: "none" });
+  });
+
+  it("prompts after Ava's initial greeting ages past the idle threshold", () => {
+    const nowMs = Date.UTC(2026, 0, 1, 0, 5, 0);
+    const avaGreetingAt = nowMs - SESSION_IDLE_PROMPT_AFTER_MS - 5_000;
     expect(
       getIdleAutomationDecision(
         [
           {
             senderKind: "ava",
-            createdAt: isoAt(nowMs - 10_000)
+            createdAt: isoAt(avaGreetingAt)
           }
         ],
         nowMs
       )
-    ).toEqual({ action: "none" });
+    ).toEqual({
+      action: "prompt",
+      customerMessageAt: isoAt(avaGreetingAt)
+    });
   });
 
   it("prompts after the latest customer message ages past the idle threshold", () => {
@@ -53,6 +63,27 @@ describe("getIdleAutomationDecision", () => {
     ).toEqual({
       action: "prompt",
       customerMessageAt: isoAt(customerMessageAt)
+    });
+  });
+
+  it("closes immediately when the latest activity is more than one hour old", () => {
+    const nowMs = Date.UTC(2026, 0, 1, 1, 5, 0);
+    const customerMessageAt = nowMs - SESSION_IDLE_FORCE_CLOSE_AFTER_MS - 5_000;
+
+    expect(
+      getIdleAutomationDecision(
+        [
+          {
+            senderKind: "customer",
+            createdAt: isoAt(customerMessageAt)
+          }
+        ],
+        nowMs
+      )
+    ).toEqual({
+      action: "close",
+      customerMessageAt: isoAt(customerMessageAt),
+      promptAt: null
     });
   });
 
@@ -108,6 +139,54 @@ describe("getIdleAutomationDecision", () => {
       action: "close",
       customerMessageAt: isoAt(customerMessageAt),
       promptAt: isoAt(promptAt)
+    });
+  });
+
+  it("closes when an Ava-started conversation stays idle after the prompt", () => {
+    const nowMs = Date.UTC(2026, 0, 1, 0, 5, 0);
+    const avaGreetingAt = nowMs - 3 * 60_000;
+    const promptAt = nowMs - SESSION_IDLE_CLOSE_AFTER_PROMPT_MS - 5_000;
+
+    expect(
+      getIdleAutomationDecision(
+        [
+          {
+            senderKind: "ava",
+            createdAt: isoAt(avaGreetingAt)
+          },
+          {
+            senderKind: "ava",
+            createdAt: isoAt(promptAt),
+            payload: automationPayload("idle_prompt")
+          }
+        ],
+        nowMs
+      )
+    ).toEqual({
+      action: "close",
+      customerMessageAt: isoAt(avaGreetingAt),
+      promptAt: isoAt(promptAt)
+    });
+  });
+
+  it("closes immediately when an Ava-started conversation is more than one hour old", () => {
+    const nowMs = Date.UTC(2026, 0, 1, 1, 5, 0);
+    const avaGreetingAt = nowMs - SESSION_IDLE_FORCE_CLOSE_AFTER_MS - 5_000;
+
+    expect(
+      getIdleAutomationDecision(
+        [
+          {
+            senderKind: "ava",
+            createdAt: isoAt(avaGreetingAt)
+          }
+        ],
+        nowMs
+      )
+    ).toEqual({
+      action: "close",
+      customerMessageAt: isoAt(avaGreetingAt),
+      promptAt: null
     });
   });
 

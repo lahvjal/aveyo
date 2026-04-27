@@ -1,3 +1,4 @@
+import { runAvaSessionAutomationSweep } from "@/lib/automation/session-automation";
 import { type AppRole } from "@/lib/auth/types";
 import { getOnlineSupportAgentIds } from "@/lib/presence/service";
 import { ServiceError } from "@/lib/service-error";
@@ -532,8 +533,8 @@ async function fetchEndedAiConversations(range: ManagerDateRange) {
     .eq("status", "closed")
     .eq("handoff_state", "resolved")
     .neq("channel", "agent_impersonation")
-    .gte("created_at", range.fromIso)
-    .lt("created_at", range.toIso)
+    .gte("updated_at", range.fromIso)
+    .lt("updated_at", range.toIso)
     .order("updated_at", { ascending: false })
     .limit(500);
 
@@ -1557,6 +1558,11 @@ export async function updateManagerConfigResult(
     updatedAt: managerConfigState.updatedAt,
     updatedBy: managerConfigState.updatedBy
   };
+}
+
+export async function runManagerCleanupSweepResult(actorUserId: string, actorRole: AppRole) {
+  await checkManagerAccess(actorUserId, actorRole);
+  return runAvaSessionAutomationSweep();
 }
 
 async function isSupportAgentUser(userId: string) {

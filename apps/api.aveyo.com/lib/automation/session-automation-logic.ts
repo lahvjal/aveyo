@@ -1,5 +1,6 @@
 export const SESSION_IDLE_PROMPT_AFTER_MS = 60_000;
 export const SESSION_IDLE_CLOSE_AFTER_PROMPT_MS = 60_000;
+export const SESSION_IDLE_FORCE_CLOSE_AFTER_MS = 60 * 60 * 1000;
 export const SESSION_IDLE_AUTOMATION_SOURCE = "session_idle_automation_v1";
 export const SESSION_IDLE_PROMPT_MESSAGE =
   "Are you still there? If I don't hear from you, I'll close this conversation.";
@@ -28,7 +29,7 @@ export type IdleAutomationDecision =
   | {
       action: "close";
       customerMessageAt: string;
-      promptAt: string;
+      promptAt: string | null;
     };
 
 function parseIsoToMs(value: string | null | undefined) {
@@ -40,6 +41,21 @@ function parseIsoToMs(value: string | null | undefined) {
     return null;
   }
   return parsed;
+}
+
+function isAutomationMessage(message: SessionAutomationMessageLike) {
+  return readSessionAutomationKind(message.payload) !== null;
+}
+
+function isParticipantActivityMessage(message: SessionAutomationMessageLike) {
+  if (isAutomationMessage(message)) {
+    return false;
+  }
+  return (
+    message.senderKind === "customer" ||
+    message.senderKind === "ava" ||
+    message.senderKind === "support_agent"
+  );
 }
 
 export function readSessionAutomationKind(
@@ -66,25 +82,33 @@ export function getIdleAutomationDecision(
   messages: SessionAutomationMessageLike[],
   nowMs: number = Date.now()
 ): IdleAutomationDecision {
-  let lastCustomerMessage: SessionAutomationMessageLike | null = null;
-  let lastCustomerMessageMs: number | null = null;
+  let lastParticipantActivity: SessionAutomationMessageLike | null = null;
+  let lastParticipantActivityMs: number | null = null;
 
   for (const message of messages) {
-    if (message.senderKind !== "customer") {
+    if (!isParticipantActivityMessage(message)) {
       continue;
     }
     const messageMs = parseIsoToMs(message.createdAt);
     if (messageMs === null) {
       continue;
     }
-    if (lastCustomerMessageMs === null || messageMs > lastCustomerMessageMs) {
-      lastCustomerMessage = message;
-      lastCustomerMessageMs = messageMs;
+    if (lastParticipantActivityMs === null || messageMs > lastParticipantActivityMs) {
+      lastParticipantActivity = message;
+      lastParticipantActivityMs = messageMs;
     }
   }
 
-  if (!lastCustomerMessage || lastCustomerMessageMs === null) {
+  if (!lastParticipantActivity || lastParticipantActivityMs === null) {
     return { action: "none" };
+  }
+
+  if (nowMs - lastParticipantActivityMs >= SESSION_IDLE_FORCE_CLOSE_AFTER_MS) {
+    return {
+      action: "close",
+      customerMessageAt: lastParticipantActivity.createdAt,
+      promptAt: null
+    };
   }
 
   let latestPrompt: SessionAutomationMessageLike | null = null;
@@ -95,7 +119,7 @@ export function getIdleAutomationDecision(
       continue;
     }
     const messageMs = parseIsoToMs(message.createdAt);
-    if (messageMs === null || messageMs <= lastCustomerMessageMs) {
+    if (messageMs === null || messageMs <= lastParticipantActivityMs) {
       continue;
     }
     if (latestPromptMs === null || messageMs > latestPromptMs) {
@@ -105,17 +129,17 @@ export function getIdleAutomationDecision(
   }
 
   if (!latestPrompt || latestPromptMs === null) {
-    if (nowMs - lastCustomerMessageMs < SESSION_IDLE_PROMPT_AFTER_MS) {
+    if (nowMs - lastParticipantActivityMs < SESSION_IDLE_PROMPT_AFTER_MS) {
       return { action: "none" };
     }
     return {
       action: "prompt",
-      customerMessageAt: lastCustomerMessage.createdAt
+      customerMessageAt: lastParticipantActivity.createdAt
     };
   }
 
   for (const message of messages) {
-    if (message.senderKind !== "customer") {
+    if (!isParticipantActivityMessage(message)) {
       continue;
     }
     const messageMs = parseIsoToMs(message.createdAt);
@@ -140,7 +164,7 @@ export function getIdleAutomationDecision(
 
   return {
     action: "close",
-    customerMessageAt: lastCustomerMessage.createdAt,
+    customerMessageAt: lastParticipantActivity.createdAt,
     promptAt: latestPrompt.createdAt
   };
 }

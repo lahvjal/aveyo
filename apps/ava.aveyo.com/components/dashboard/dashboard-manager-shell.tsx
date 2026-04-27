@@ -13,6 +13,7 @@ import { useRealtimeInvalidation } from "@/lib/use-realtime-invalidation";
 import {
   getConversationApi,
   getManagerAgentsApi,
+  runManagerCleanupSweepApi,
   getManagerHandoffsApi,
   getManagerOverviewApi,
   type ManagerAgentRecord,
@@ -479,6 +480,8 @@ export function DashboardManagerShell() {
   const [isNavCollapsed, setIsNavCollapsed] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cleanupNotice, setCleanupNotice] = useState<string | null>(null);
+  const [cleanupPending, setCleanupPending] = useState(false);
   const [overview, setOverview] = useState<ManagerOverviewResult | null>(null);
   const [agents, setAgents] = useState<ManagerAgentRecord[]>([]);
   const [handoffs, setHandoffs] = useState<ManagerHandoffRecord[]>([]);
@@ -939,6 +942,42 @@ export function DashboardManagerShell() {
     }
   }, [presenceSyncing, toggleOnline]);
 
+  const handleRunCleanupSweep = useCallback(async () => {
+    if (cleanupPending) {
+      return;
+    }
+
+    setCleanupPending(true);
+    setError(null);
+    setCleanupNotice(null);
+    try {
+      const result = await runManagerCleanupSweepApi();
+      if (!result.acquiredLease) {
+        setCleanupNotice("Cleanup sweep is already running. Try again in a moment.");
+        return;
+      }
+
+      setCleanupNotice(
+        `Cleanup sweep finished: ${result.idleClosed} idle chats closed, ${result.idlePrompted} prompted, ${result.resolvedClosed} resolved chats closed.`
+      );
+      await refreshManagerData({ silent: true });
+      if (selectedConversationId) {
+        await loadConversationPreview(selectedConversationId, {
+          keepVisibleConversation: true,
+          force: true
+        });
+      }
+    } catch (runError) {
+      setError(
+        runError instanceof Error && runError.message
+          ? runError.message
+          : "Unable to run cleanup sweep."
+      );
+    } finally {
+      setCleanupPending(false);
+    }
+  }, [cleanupPending, loadConversationPreview, refreshManagerData, selectedConversationId]);
+
   const signOutAgent = async () => {
     if (signOutPending) {
       return;
@@ -1012,6 +1051,7 @@ export function DashboardManagerShell() {
             {error}
           </p>
         ) : null}
+        {cleanupNotice ? <p className="rep-shell-hint">{cleanupNotice}</p> : null}
 
         <header className="manager-command-header">
           <div>
@@ -1114,6 +1154,23 @@ export function DashboardManagerShell() {
               onClick={() => applyRange(draftRange)}
             >
               Apply
+            </button>
+            <button
+              type="button"
+              className="manager-action-button secondary"
+              onClick={() => {
+                void handleRunCleanupSweep();
+              }}
+              disabled={cleanupPending}
+            >
+              {cleanupPending ? (
+                <>
+                  <span className="inline-button-spinner" aria-hidden="true" />
+                  Running cleanup...
+                </>
+              ) : (
+                "Run Cleanup Sweep"
+              )}
             </button>
             <button type="button" className="manager-filter-more" aria-label="More manager actions">
               <span />
