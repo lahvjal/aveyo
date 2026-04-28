@@ -112,7 +112,8 @@ export function HandoffWorkspaceShell({
     permissionState,
     notificationsSupported,
     requestBrowserNotificationPermission,
-    sendTestNotification
+    sendTestNotification,
+    notifyTransferRequests
   } = useHandoffNotifications();
 
   const [queueRecord, setQueueRecord] = useState<QueueRecord | null>(null);
@@ -233,8 +234,30 @@ export function HandoffWorkspaceShell({
     setCloseHint("The browser could not create a desktop notification.");
   }, [sendTestNotification]);
 
+  const notifyTransferRequestsFromQueue = useCallback(
+    (queue: QueueRecord[]) => {
+      notifyTransferRequests({
+        activeChats: queue
+          .filter((item) => item.status === "active" || item.status === "claimed")
+          .map((item) => ({
+            requestId: item.requestId,
+            conversationId: item.conversationId,
+            customerName: item.customerName,
+            claimedByAuthUserId: item.claimedByAuthUserId,
+            hasUnreadCustomerReply: item.hasUnreadCustomerReply,
+            lastMessageAt: item.lastMessageAt,
+            transferRequest: item.transferRequest
+          })),
+        currentAgentId: authSession.user?.id ?? null,
+        selectedConversationId: workspaceConversationId
+      });
+    },
+    [authSession.user?.id, notifyTransferRequests, workspaceConversationId]
+  );
+
   const refreshWorkspaceData = useCallback(async () => {
     const queueResult = await listQueueApi({ resolvedScope: "all" });
+    notifyTransferRequestsFromQueue(queueResult.queue);
     const matchedRecord = queueResult.queue.find((item) => item.requestId === requestId) ?? null;
     setQueueRecord(matchedRecord);
 
@@ -248,7 +271,12 @@ export function HandoffWorkspaceShell({
     const conversationResult = await getConversationApi(targetConversationId);
     setConversation(conversationResult.conversation);
     setOperationError(null);
-  }, [initialConversationId, requestId, seededConversation]);
+  }, [initialConversationId, notifyTransferRequestsFromQueue, requestId, seededConversation]);
+
+  const refreshTransferNotifications = useCallback(async () => {
+    const queueResult = await listQueueApi({ resolvedScope: "all" });
+    notifyTransferRequestsFromQueue(queueResult.queue);
+  }, [notifyTransferRequestsFromQueue]);
 
   const refreshWorkspaceDataSafely = useCallback(async () => {
     try {
@@ -317,6 +345,7 @@ export function HandoffWorkspaceShell({
       }
 
       if (conversationId && workspaceConversationId && conversationId !== workspaceConversationId) {
+        await refreshTransferNotifications();
         return;
       }
 
@@ -331,7 +360,7 @@ export function HandoffWorkspaceShell({
         realtimeBusyRef.current = false;
       }
     },
-    [refreshWorkspaceData, workspaceConversationId]
+    [refreshTransferNotifications, refreshWorkspaceData, workspaceConversationId]
   );
 
   useRealtimeInvalidation({
