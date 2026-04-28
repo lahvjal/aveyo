@@ -196,6 +196,7 @@ export function DashboardBoardShell() {
   } = useHandoffNotifications();
   const [queueRecords, setQueueRecords] = useState<QueueRecord[]>([]);
   const [selectedActiveRequestId, setSelectedActiveRequestId] = useState<string | null>(null);
+  const [activeSelectionClearedByUser, setActiveSelectionClearedByUser] = useState(false);
   const [activeQueueSort, setActiveQueueSort] = useState<ActiveQueueSortOption>("unread");
   const [conversation, setConversation] = useState<ConversationThread>(seededConversation);
   const [composeMode, setComposeMode] = useState<"reply" | "note">("reply");
@@ -566,6 +567,7 @@ export function DashboardBoardShell() {
   useEffect(() => {
     if (activeRecords.length === 0) {
       setSelectedActiveRequestId(null);
+      setActiveSelectionClearedByUser(false);
       return;
     }
 
@@ -573,6 +575,10 @@ export function DashboardBoardShell() {
     setSelectedActiveRequestId((current) => {
       if (current && activeRequestIds.has(current)) {
         return current;
+      }
+
+      if (activeSelectionClearedByUser) {
+        return null;
       }
 
       const preferredRecord =
@@ -584,7 +590,7 @@ export function DashboardBoardShell() {
         ) ?? activeRecords[0];
       return preferredRecord?.requestId ?? null;
     });
-  }, [activeRecords, agentId, isAdminLike]);
+  }, [activeRecords, activeSelectionClearedByUser, agentId, isAdminLike]);
 
   useEffect(() => {
     if (!workspaceTimerSource) {
@@ -993,6 +999,7 @@ export function DashboardBoardShell() {
           timestamp: new Date().toISOString()
         });
         await refreshQueueData();
+        setActiveSelectionClearedByUser(false);
         setSelectedActiveRequestId(result.queue.requestId);
         setWorkspaceHint("Handoff claimed. It is now loaded in the active workspace.");
       } catch (error) {
@@ -1019,11 +1026,20 @@ export function DashboardBoardShell() {
         return;
       }
 
+      if (selectedActiveRequestId === queueRecord.requestId) {
+        setSelectedActiveRequestId(null);
+        setActiveSelectionClearedByUser(true);
+        setOperationError(null);
+        setWorkspaceHint(null);
+        return;
+      }
+
+      setActiveSelectionClearedByUser(false);
       setSelectedActiveRequestId(queueRecord.requestId);
       setOperationError(null);
       setWorkspaceHint(null);
     },
-    [activeByRequestId]
+    [activeByRequestId, selectedActiveRequestId]
   );
 
   const splitChatFromCard = useCallback(

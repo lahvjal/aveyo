@@ -3308,6 +3308,29 @@ export async function requestHandoff(
     throw new StoreError(500, `Unable to insert handoff system message: ${messageError.message}`);
   }
 
+  const { data: queueStatusMessageRow, error: queueStatusMessageError } = await supabase
+    .schema("ava")
+    .from("messages")
+    .insert({
+      conversation_id: params.conversationId,
+      sender_kind: "system",
+      sender_auth_user_id: null,
+      body: "An agent is looking into your account. You will be connected soon.",
+      payload: {
+        systemEvent: "queue_update",
+        queue: queueSnapshot
+      }
+    })
+    .select("id")
+    .single();
+
+  if (queueStatusMessageError) {
+    throw new StoreError(
+      500,
+      `Unable to insert queue status system message: ${queueStatusMessageError.message}`
+    );
+  }
+
   const { error: eventError } = await supabase.schema("ava").from("handoff_events").insert({
     handoff_request_id: requestRow.id,
     conversation_id: params.conversationId,
@@ -3316,7 +3339,8 @@ export async function requestHandoff(
     payload: {
       requestId: requestRow.id,
       reason: params.reason ?? null,
-      systemMessageId: systemMessageRow.id
+      systemMessageId: systemMessageRow.id,
+      queueStatusMessageId: queueStatusMessageRow.id
     }
   });
 
