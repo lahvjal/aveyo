@@ -151,7 +151,9 @@ export function HandoffWorkspaceShell({
     !queueRecord?.claimedByAuthUserId || queueRecord.claimedByAuthUserId === authSession.user?.id;
   const requestResolved = queueRecord?.status === "resolved";
   const isTransferTarget = queueRecord?.transferRequest?.target.id === authSession.user?.id;
+  const canComposeNotes = Boolean(workspaceConversationId) && !requestResolved;
   const canInteract = Boolean(workspaceConversationId) && (isAssignedToCurrentAgent || isAdminLike) && !requestResolved;
+  const forceNoteOnlyComposer = canComposeNotes && !canInteract;
   const interactionLockReason = !isAssignedToCurrentAgent
     ? isTransferTarget
       ? "This handoff stays with the current representative until you accept the transfer."
@@ -184,6 +186,12 @@ export function HandoffWorkspaceShell({
   const agentAvatarUrl = authSession.user?.avatarUrl ?? null;
   const composeValue = composeMode === "reply" ? replyDraft : noteDraft;
   const composerSubmitPending = composeMode === "reply" ? sendPending : notePending;
+
+  useEffect(() => {
+    if (forceNoteOnlyComposer && composeMode !== "note") {
+      setComposeMode("note");
+    }
+  }, [composeMode, forceNoteOnlyComposer]);
 
   const publishRepresentativeTyping = useCallback(
     (conversationId: string, isTyping: boolean, force = false) => {
@@ -603,7 +611,7 @@ export function HandoffWorkspaceShell({
   };
 
   const addComposerNote = useCallback(async () => {
-    if (!authSession.authenticated || !workspaceConversationId || !canInteract || notePending) {
+    if (!authSession.authenticated || !workspaceConversationId || !canComposeNotes || notePending) {
       return;
     }
 
@@ -623,7 +631,7 @@ export function HandoffWorkspaceShell({
     } finally {
       setNotePending(false);
     }
-  }, [authSession.authenticated, canInteract, noteDraft, notePending, workspaceConversationId]);
+  }, [authSession.authenticated, canComposeNotes, noteDraft, notePending, workspaceConversationId]);
 
   const resolveChat = async () => {
     if (!authSession.authenticated || !workspaceConversationId || !canInteract || resolvePending) {
@@ -680,6 +688,10 @@ export function HandoffWorkspaceShell({
   }, [avaSuggestion.suggestionText]);
 
   const handleSubmitCompose = () => {
+    if (forceNoteOnlyComposer) {
+      void addComposerNote();
+      return;
+    }
     if (composeMode === "reply") {
       void sendRepMessage();
       return;
@@ -873,10 +885,11 @@ export function HandoffWorkspaceShell({
               hasPendingChats={false}
               isOnline
               isEmptyState={!isConversationLoaded}
-              composerLocked={!canInteract}
+              composerLocked={!canComposeNotes}
               composerLockedReason={interactionLockReason}
               composeMode={composeMode}
               composeValue={composeValue}
+              composeModeLocked={forceNoteOnlyComposer}
               showAvaSuggestion={avaSuggestion.hasPendingCustomerQuestion}
               avaSuggestionText={avaSuggestion.suggestionText}
               avaSuggestionLoading={avaSuggestion.isLoading}

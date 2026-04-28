@@ -323,8 +323,10 @@ export function DashboardBoardShell() {
     !selectedQueueRecord?.claimedByAuthUserId || selectedQueueRecord.claimedByAuthUserId === agentId;
   const requestResolved = selectedQueueRecord?.status === "resolved";
   const isTransferTarget = selectedQueueRecord?.transferRequest?.target.id === agentId;
+  const canComposeNotes = Boolean(workspaceConversationId) && !requestResolved;
   const canInteract =
     Boolean(workspaceConversationId) && (isAssignedToCurrentAgent || isAdminLike) && !requestResolved;
+  const forceNoteOnlyComposer = canComposeNotes && !canInteract;
   const interactionLockReason = !selectedQueueRecord
     ? "Select an active chat to start messaging."
     : !isAssignedToCurrentAgent
@@ -364,6 +366,12 @@ export function DashboardBoardShell() {
       isConversationLoaded &&
       canInteract
   });
+
+  useEffect(() => {
+    if (forceNoteOnlyComposer && composeMode !== "note") {
+      setComposeMode("note");
+    }
+  }, [composeMode, forceNoteOnlyComposer]);
 
   const publishRepresentativeTyping = useCallback(
     (conversationId: string, isTyping: boolean, force = false) => {
@@ -1109,7 +1117,7 @@ export function DashboardBoardShell() {
   ]);
 
   const addComposerNote = useCallback(async () => {
-    if (!authSession.authenticated || !workspaceConversationId || !canInteract || notePending) {
+    if (!authSession.authenticated || !workspaceConversationId || !canComposeNotes || notePending) {
       return;
     }
 
@@ -1129,7 +1137,7 @@ export function DashboardBoardShell() {
     } finally {
       setNotePending(false);
     }
-  }, [authSession.authenticated, canInteract, noteDraft, notePending, workspaceConversationId]);
+  }, [authSession.authenticated, canComposeNotes, noteDraft, notePending, workspaceConversationId]);
 
   const resolveSelectedChat = async () => {
     if (!authSession.authenticated || !workspaceConversationId || !canInteract || resolvePending) {
@@ -1175,12 +1183,16 @@ export function DashboardBoardShell() {
   );
 
   const handleSubmitCompose = useCallback(() => {
+    if (forceNoteOnlyComposer) {
+      void addComposerNote();
+      return;
+    }
     if (composeMode === "reply") {
       void sendRepMessage();
       return;
     }
     void addComposerNote();
-  }, [addComposerNote, composeMode, sendRepMessage]);
+  }, [addComposerNote, composeMode, forceNoteOnlyComposer, sendRepMessage]);
 
   const signOutAgent = async () => {
     if (signOutPending) {
@@ -1498,10 +1510,11 @@ export function DashboardBoardShell() {
                   hasPendingChats={pendingQueue.length > 0}
                   isOnline={isOnline}
                   isEmptyState={!isConversationLoaded}
-                  composerLocked={!canInteract}
+                  composerLocked={!canComposeNotes}
                   composerLockedReason={interactionLockReason}
                   composeMode={composeMode}
                   composeValue={composeValue}
+                  composeModeLocked={forceNoteOnlyComposer}
                   showAvaSuggestion={avaSuggestion.hasPendingCustomerQuestion}
                   avaSuggestionText={avaSuggestion.suggestionText}
                   avaSuggestionLoading={avaSuggestion.isLoading}
