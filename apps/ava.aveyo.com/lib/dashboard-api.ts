@@ -138,6 +138,16 @@ export function cancelHandoffTransferApi(body: { transferRequestId: string }) {
   });
 }
 
+export function markHandoffCustomerReadApi(body: { requestId: string }) {
+  return apiRequest<{ ok: boolean; requestId: string; conversationId: string; readAt: string }>(
+    "/api/handoff/read",
+    {
+      method: "POST",
+      body: JSON.stringify(body)
+    }
+  );
+}
+
 export function createRepresentativeMessageApi(body: {
   conversationId: string;
   text: string;

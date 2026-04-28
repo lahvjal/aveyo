@@ -1705,6 +1705,46 @@ async function getLatestCustomerRatingByRequestIds(
   return ratingByRequestId;
 }
 
+async function getLatestCustomerReadAtByRequestIds(
+  requestIds: string[],
+  actorUserId: string
+): Promise<Map<string, string>> {
+  if (requestIds.length === 0) {
+    return new Map();
+  }
+
+  const supabase = getSupabaseServiceRoleClient();
+  const { data, error } = await supabase
+    .schema("ava")
+    .from("handoff_events")
+    .select("handoff_request_id, payload, created_at")
+    .in("handoff_request_id", requestIds)
+    .eq("event_type", "queue_update")
+    .eq("actor_auth_user_id", actorUserId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new StoreError(500, `Unable to load customer read markers: ${error.message}`);
+  }
+
+  const readAtByRequestId = new Map<string, string>();
+  for (const row of (data ?? []) as Array<{
+    handoff_request_id: string;
+    payload: Record<string, unknown> | null;
+    created_at: string;
+  }>) {
+    if (readAtByRequestId.has(row.handoff_request_id)) {
+      continue;
+    }
+    if (!row.payload || row.payload.kind !== "customer_read") {
+      continue;
+    }
+    readAtByRequestId.set(row.handoff_request_id, row.created_at);
+  }
+
+  return readAtByRequestId;
+}
+
 async function getPendingTransferRequestsByHandoffRequestIds(requestIds: string[]) {
   const uniqueRequestIds = Array.from(new Set(requestIds.filter(Boolean)));
   if (uniqueRequestIds.length === 0) {
@@ -2440,12 +2480,19 @@ export async function listQueue(
     .filter((value): value is string => Boolean(value));
   const requestIds = dedupedQueueRows.map((row) => row.id);
   const dedupedConversationIds = Array.from(new Set(dedupedQueueRows.map((row) => row.conversation_id)));
-  const [customerNameMap, resolvedByRequestId, customerRatingByRequestId, pendingTransferByRequestId] =
+  const [
+    customerNameMap,
+    resolvedByRequestId,
+    customerRatingByRequestId,
+    pendingTransferByRequestId,
+    latestCustomerReadAtByRequestId
+  ] =
     await Promise.all([
       getCustomerNameMapByAuthUserId(customerAuthIds),
       getResolvedActorByRequestIds(requestIds),
       getLatestCustomerRatingByRequestIds(requestIds),
-      getPendingTransferRequestsByHandoffRequestIds(requestIds)
+      getPendingTransferRequestsByHandoffRequestIds(requestIds),
+      getLatestCustomerReadAtByRequestIds(requestIds, actorUserId)
     ]);
   const recentMessagesByConversation = await listRecentMessagesForConversations(
     dedupedConversationIds,
@@ -2508,13 +2555,50 @@ export async function listQueue(
       }
       return latest.created_at.localeCompare(message.created_at) >= 0 ? latest : message;
     }, null);
+    const latestCustomerMessageAt = recentMessages.reduce<string | null>((latest, message) => {
+      if (message.sender_kind !== "customer") {
+        return latest;
+      }
+      if (!latest) {
+        return message.created_at;
+      }
+      return latest.localeCompare(message.created_at) >= 0 ? latest : message.created_at;
+    }, null);
+    const latestRepresentativeReplyAt = recentMessages.reduce<string | null>((latest, message) => {
+      if (message.sender_kind !== "support_agent" || message.sender_auth_user_id !== actorUserId) {
+        return latest;
+      }
+      if (!latest) {
+        return message.created_at;
+      }
+      return latest.localeCompare(message.created_at) >= 0 ? latest : message.created_at;
+    }, null);
+    const latestReadReferenceAt = (() => {
+      const explicitReadAt = latestCustomerReadAtByRequestId.get(row.id) ?? null;
+      if (!explicitReadAt && !latestRepresentativeReplyAt) {
+        return null;
+      }
+      if (!explicitReadAt) {
+        return latestRepresentativeReplyAt;
+      }
+      if (!latestRepresentativeReplyAt) {
+        return explicitReadAt;
+      }
+      return explicitReadAt.localeCompare(latestRepresentativeReplyAt) >= 0
+        ? explicitReadAt
+        : latestRepresentativeReplyAt;
+    })();
+    const isAssignedToActor = row.claimed_by_auth_user_id === actorUserId;
+    const hasUnreadCustomerReply = isAssignedToActor && Boolean(
+      latestCustomerMessageAt &&
+        (!latestReadReferenceAt || latestCustomerMessageAt.localeCompare(latestReadReferenceAt) > 0)
+    );
     const lastMessageAt =
       latestRelevantMessage?.created_at ??
       conversation?.last_message_at ??
       conversation?.updated_at ??
       row.claimed_at ??
       row.requested_at;
-    const hasUnreadCustomerReply = latestRelevantMessage?.sender_kind === "customer";
 
     return {
       requestId: row.id,
@@ -3577,6 +3661,68 @@ export async function claimHandoff(
       },
       requestedAt: updatedRequest.requested_at
     } as QueueRecord
+  };
+}
+
+export async function markHandoffCustomerRead(
+  params: { requestId: string },
+  actorUserId: string
+) {
+  const supportAgent = await isAvaSupportAgent(actorUserId);
+  if (!supportAgent) {
+    throw new StoreError(403, "Support-agent role required.");
+  }
+
+  const supabase = getSupabaseServiceRoleClient();
+  const { data: requestData, error: requestError } = await supabase
+    .schema("ava")
+    .from("handoff_requests")
+    .select(
+      "id, conversation_id, status, reason, requested_at, claimed_at, claimed_by_auth_user_id, resolved_at"
+    )
+    .eq("id", params.requestId)
+    .maybeSingle();
+
+  if (requestError) {
+    throw new StoreError(500, `Unable to load handoff request: ${requestError.message}`);
+  }
+
+  const requestRow = requestData as HandoffRequestRow | null;
+  if (!requestRow) {
+    throw new StoreError(404, "Handoff request not found.");
+  }
+  if (requestRow.status === "cancelled") {
+    throw new StoreError(409, "Handoff request is no longer available.");
+  }
+  if (
+    requestRow.status !== "active" &&
+    requestRow.status !== "claimed"
+  ) {
+    throw new StoreError(409, "Only active handoffs can be marked as read.");
+  }
+  if (requestRow.claimed_by_auth_user_id !== actorUserId) {
+    throw new StoreError(403, "Only the assigned representative can mark this handoff as read.");
+  }
+
+  const { error: eventError } = await supabase.schema("ava").from("handoff_events").insert({
+    handoff_request_id: requestRow.id,
+    conversation_id: requestRow.conversation_id,
+    event_type: "queue_update",
+    actor_auth_user_id: actorUserId,
+    payload: {
+      kind: "customer_read"
+    }
+  });
+
+  if (eventError) {
+    throw new StoreError(500, `Unable to save read marker: ${eventError.message}`);
+  }
+
+  return {
+    ok: true,
+    requestId: requestRow.id,
+    conversationId: requestRow.conversation_id,
+    readAt: nowIso()
   };
 }
 

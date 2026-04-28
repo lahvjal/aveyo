@@ -4,6 +4,7 @@ import {
   claimHandoff,
   declineHandoffTransfer,
   listQueue,
+  markHandoffCustomerRead,
   requestHandoffTransfer,
   requestHandoff,
   resolveHandoff,
@@ -47,6 +48,10 @@ export interface TransferRequestBody {
 
 export interface TransferDecisionBody {
   transferRequestId?: string;
+}
+
+export interface MarkReadBody {
+  requestId?: string;
 }
 
 function assertSupportAgentAccess(role: AppRole) {
@@ -286,6 +291,29 @@ export async function createTransferCancelResult(body: TransferDecisionBody, act
     throw new ServiceError(
       500,
       error instanceof Error ? error.message : "Unable to cancel transfer."
+    );
+  }
+}
+
+export async function createHandoffMarkReadResult(body: MarkReadBody, actorUserId: string) {
+  if (!body.requestId) {
+    throw new ServiceError(400, "requestId is required.");
+  }
+
+  try {
+    return await markHandoffCustomerRead(
+      {
+        requestId: body.requestId
+      },
+      actorUserId
+    );
+  } catch (error) {
+    if (error instanceof StoreError) {
+      throw new ServiceError(error.status, error.message);
+    }
+    throw new ServiceError(
+      500,
+      error instanceof Error ? error.message : "Unable to mark customer message as read."
     );
   }
 }

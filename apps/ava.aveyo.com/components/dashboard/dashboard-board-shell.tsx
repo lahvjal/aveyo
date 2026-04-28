@@ -26,6 +26,7 @@ import {
   getConversationCustomerDetailsApi,
   listQueueApi,
   listSupportNotesApi,
+  markHandoffCustomerReadApi,
   publishRepresentativeTypingApi,
   resolveHandoffApi,
   setSupportPresenceOfflineApi,
@@ -208,6 +209,8 @@ export function DashboardBoardShell() {
   const representativeTypingSentRef = useRef(false);
   const representativeTypingConversationRef = useRef<string | null>(null);
   const representativeTypingLastSentAtMsRef = useRef(0);
+  const unreadMarkTimerRef = useRef<number | null>(null);
+  const lastUnreadReadKeyRef = useRef<string | null>(null);
 
   const agentAvatarUrl = authSession.user?.avatarUrl ?? null;
   const agentId = authSession.user?.id ?? null;
@@ -576,6 +579,88 @@ export function DashboardBoardShell() {
       window.clearInterval(intervalId);
     };
   }, [workspaceTimerSource]);
+
+  useEffect(() => {
+    const assignedToCurrentAgent =
+      Boolean(selectedQueueRecord?.claimedByAuthUserId) &&
+      selectedQueueRecord?.claimedByAuthUserId === authSession.user?.id;
+    if (
+      !authSession.authenticated ||
+      !selectedQueueRecord ||
+      !isConversationLoaded ||
+      !selectedQueueRecord.hasUnreadCustomerReply ||
+      !assignedToCurrentAgent
+    ) {
+      return;
+    }
+
+    const markReadKey = `${selectedQueueRecord.requestId}:${selectedQueueRecord.lastMessageAt ?? "none"}`;
+    if (lastUnreadReadKeyRef.current === markReadKey) {
+      return;
+    }
+
+    let cancelled = false;
+    const clearUnreadTimer = () => {
+      if (unreadMarkTimerRef.current !== null) {
+        window.clearTimeout(unreadMarkTimerRef.current);
+        unreadMarkTimerRef.current = null;
+      }
+    };
+    const canMarkReadNow = () =>
+      typeof document !== "undefined" &&
+      document.visibilityState === "visible" &&
+      document.hasFocus();
+
+    const runMarkRead = async () => {
+      if (!canMarkReadNow()) {
+        return;
+      }
+      try {
+        await markHandoffCustomerReadApi({ requestId: selectedQueueRecord.requestId });
+        if (cancelled) {
+          return;
+        }
+        lastUnreadReadKeyRef.current = markReadKey;
+        await refreshQueueDataSafely();
+      } catch {
+        // Best-effort read marker; preserve unread if request fails.
+      }
+    };
+
+    const scheduleMarkRead = () => {
+      clearUnreadTimer();
+      if (!canMarkReadNow()) {
+        return;
+      }
+      unreadMarkTimerRef.current = window.setTimeout(() => {
+        unreadMarkTimerRef.current = null;
+        void runMarkRead();
+      }, 650);
+    };
+
+    const handleVisibilityOrFocus = () => {
+      if (!cancelled) {
+        scheduleMarkRead();
+      }
+    };
+
+    scheduleMarkRead();
+    window.addEventListener("focus", handleVisibilityOrFocus);
+    document.addEventListener("visibilitychange", handleVisibilityOrFocus);
+
+    return () => {
+      cancelled = true;
+      clearUnreadTimer();
+      window.removeEventListener("focus", handleVisibilityOrFocus);
+      document.removeEventListener("visibilitychange", handleVisibilityOrFocus);
+    };
+  }, [
+    authSession.authenticated,
+    authSession.user?.id,
+    isConversationLoaded,
+    refreshQueueDataSafely,
+    selectedQueueRecord
+  ]);
 
   useEffect(() => {
     if (!workspaceHint || operationError) {
