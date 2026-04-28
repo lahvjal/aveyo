@@ -3601,6 +3601,16 @@ body.ava-embed-mode nextjs-portal {
   margin-top: auto;
 }
 
+.chat-timeline.chat-timeline-loading {
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+}
+
+.chat-timeline.chat-timeline-loading > :first-child {
+  margin-top: 0;
+}
+
 .chat-empty-state {
   padding: 24px;
   display: flex;

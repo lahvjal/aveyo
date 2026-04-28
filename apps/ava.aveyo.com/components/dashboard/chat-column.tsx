@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef } from "react";
 import { type ConversationThread } from "@ava/chat-domain";
-import { AvaOrb } from "@ava/ui";
+import { AvaOrb, BrandLoader } from "@ava/ui";
 import {
   getCustomerMessageSentimentLabel,
   getCustomerMessageSentimentLevel
@@ -311,7 +311,14 @@ export const ChatColumn = memo(function ChatColumn({
         </header>
       ) : null}
 
-      {isEmptyState ? (
+      {isEmptyState && hasActiveChat ? (
+        <div className="chat-timeline chat-timeline-loading">
+          <div className="dashboard-no-chat-indicator is-loading">
+            <BrandLoader size={34} tone="dark" label="Loading chat" />
+            <p>Loading chat</p>
+          </div>
+        </div>
+      ) : isEmptyState ? (
         <div className="chat-empty-state">
           <div className="chat-empty-card">
             <AvaOrb size={44} />
