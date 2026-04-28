@@ -597,30 +597,23 @@ body.ava-embed-mode nextjs-portal {
 .resolved-card-rating-icon {
   width: 15.097px;
   height: 16px;
-  color: #1f7ef5;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
 }
 
-.resolved-card-rating-icon svg {
+.resolved-card-rating-image {
   width: 100%;
   height: 100%;
   display: block;
 }
 
-.resolved-card-rating-icon svg.is-negative {
-  transform: scaleY(-1);
-  transform-origin: center;
-}
-
-.resolved-card-rating.negative .resolved-card-rating-icon {
-  color: #c33e3e;
-}
-
-.resolved-card-rating.neutral .resolved-card-rating-icon {
-  color: #adadad;
+.resolved-card-rating-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #adadad;
 }
 
 .resolved-card-assignee {

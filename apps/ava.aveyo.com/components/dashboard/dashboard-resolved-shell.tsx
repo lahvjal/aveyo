@@ -153,19 +153,13 @@ function ResolvedCardStatusIcon() {
 }
 
 function ResolvedCardRatingIcon({ rating }: { rating: Ticket["customerRating"] }) {
-  return (
-    <svg
-      viewBox="0 0 16 16"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={rating === "thumbs_down" ? "is-negative" : undefined}
-    >
-      <path
-        d="M6.85 1.25C6.46 1.25 6.11 1.48 5.95 1.84L3.94 6.19C3.88 6.31 3.85 6.45 3.85 6.59V7.5C3.85 8.05 4.3 8.5 4.85 8.5H7V13.25C7 13.66 7.34 14 7.75 14H8.36C8.72 14 9.04 13.74 9.12 13.39L10.44 8.5H12.1C12.47 8.5 12.81 8.29 12.98 7.97C13.15 7.64 13.13 7.26 12.93 6.96L10.38 2.96C10.2 2.68 9.89 2.5 9.56 2.5H7.85L7.74 1.89C7.66 1.52 7.33 1.25 6.95 1.25H6.85ZM2.35 6.75H1.9C1.4 6.75 1 7.15 1 7.65V12.1C1 12.6 1.4 13 1.9 13H2.35C2.85 13 3.25 12.6 3.25 12.1V7.65C3.25 7.15 2.85 6.75 2.35 6.75Z"
-        fill="currentColor"
-      />
-    </svg>
-  );
+  if (rating === "thumbs_up") {
+    return <img src="/images/thumbsUp-color.svg" alt="" className="resolved-card-rating-image" />;
+  }
+  if (rating === "thumbs_down") {
+    return <img src="/images/thumbsDown-color.svg" alt="" className="resolved-card-rating-image" />;
+  }
+  return <span className="resolved-card-rating-dot" aria-hidden="true" />;
 }
 
 export function DashboardResolvedShell() {
