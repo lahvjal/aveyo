@@ -4556,6 +4556,34 @@ export async function submitHandoffRating(
     throw new StoreError(500, `Unable to record handoff rating: ${ratingEventError.message}`);
   }
 
+  const ratingStatusText =
+    params.rating === "thumbs_up"
+      ? `Customer rated this chat: Thumbs up`
+      : `Customer rated this chat: Thumbs down`;
+
+  const { error: ratingStatusMessageError } = await supabase.schema("ava").from("messages").insert({
+    conversation_id: params.conversationId,
+    sender_kind: "system",
+    sender_auth_user_id: null,
+    body: ratingStatusText,
+    payload: {
+      systemEvent: "queue_update",
+      feedbackRequest: {
+        type: "handoff_rating",
+        requestId: latestResolvedRequest.id,
+        representativeName,
+        submittedRating: params.rating
+      }
+    }
+  });
+
+  if (ratingStatusMessageError) {
+    throw new StoreError(
+      500,
+      `Unable to insert handoff rating status message: ${ratingStatusMessageError.message}`
+    );
+  }
+
   const confirmationText =
     params.rating === "thumbs_up"
       ? `Thanks for rating your chat with ${representativeName}. Do you need any more help today?`
