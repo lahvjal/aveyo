@@ -152,9 +152,21 @@
   height: 60px;
   padding: 0 10px;
   position: relative;
+  text-decoration: none;
   transition:
     background 160ms ease,
     color 160ms ease;
+}
+
+.navItem:hover,
+.navItem:focus-visible,
+.navItem:active,
+.navItem:visited,
+.utilityItem:hover,
+.utilityItem:focus-visible,
+.utilityItem:active,
+.utilityItem:visited {
+  text-decoration: none;
 }
 
 .navItem {
