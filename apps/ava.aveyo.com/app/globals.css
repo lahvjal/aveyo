@@ -550,11 +550,23 @@ body.ava-embed-mode nextjs-portal {
 .resolved-card-status-icon {
   width: 11.121px;
   height: 8px;
-  color: #12b76a;
+  color: #f79009;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
+}
+
+.resolved-card-status-icon.positive {
+  color: #12b76a;
+}
+
+.resolved-card-status-icon.negative {
+  color: #f04438;
+}
+
+.resolved-card-status-icon.neutral {
+  color: #f79009;
 }
 
 .resolved-card-status-icon svg {

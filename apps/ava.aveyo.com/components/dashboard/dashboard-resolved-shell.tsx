@@ -769,7 +769,10 @@ export function DashboardResolvedShell() {
                               <div className="board-queue-identity-copy">
                                 <div className="board-queue-identity-title">
                                   <p className="resolved-card-name">{ticket.fullName}</p>
-                                  <span className="resolved-card-status-icon" aria-hidden="true">
+                                  <span
+                                    className={`resolved-card-status-icon ${ratingTone}`}
+                                    aria-hidden="true"
+                                  >
                                     <ResolvedCardStatusIcon />
                                   </span>
                                 </div>
