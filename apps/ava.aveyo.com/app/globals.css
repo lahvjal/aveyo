@@ -710,26 +710,30 @@ body.ava-embed-mode nextjs-portal {
   white-space: nowrap;
 }
 
-.board-queue-card.active.is-selected .board-queue-identity-copy {
-  gap: 14px;
-}
-
-.board-queue-card.active.is-unread .board-queue-identity-copy {
-  gap: 14px;
-}
-
 .board-queue-active-status-icon {
   width: 11.121px;
   height: 8px;
-  color: #d78800;
+  color: #f79009;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
 }
 
-.board-queue-active-status-icon.is-unread {
+.board-queue-active-status-icon.positive {
   color: #12b76a;
+}
+
+.board-queue-active-status-icon.negative {
+  color: #f04438;
+}
+
+.board-queue-active-status-icon.neutral {
+  color: #f79009;
+}
+
+.board-queue-active-status-icon.is-unread {
+  color: inherit;
 }
 
 .board-queue-active-status-icon svg {

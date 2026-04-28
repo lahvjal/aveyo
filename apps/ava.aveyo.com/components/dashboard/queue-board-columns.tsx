@@ -273,6 +273,7 @@ const QueueLaneCard = memo(function QueueLaneCard({
   const interactiveCard = lane === "active" || lane === "pending";
   const claimPending = lane === "pending" && claimPendingTicketId === ticket.id;
   const sentiment = getSentimentDisplay(ticket.customerRating);
+  const statusIconTone = sentiment?.tone ?? "neutral";
   const transferState =
     lane === "active" && ticket.transferRequest
       ? ticket.transferRequest.target.id === currentAgentId
@@ -349,21 +350,21 @@ const QueueLaneCard = memo(function QueueLaneCard({
             <InitialChip
               initials={ticket.initials}
               tone={ticket.chipTone}
-              size={isPendingLane || showSelectedActiveAccent ? 46 : undefined}
+              size={isPendingLane || lane === "active" ? 46 : undefined}
             />
           </div>
           {!isPendingLane ? (
             <div className="board-queue-identity-copy">
               <div className="board-queue-identity-title">
                 <strong>{ticket.fullName}</strong>
-                {showSelectedActiveAccent || showUnreadAccent ? (
-                  <span
-                    className={`board-queue-active-status-icon${showUnreadAccent ? " is-unread" : ""}`}
-                    aria-hidden="true"
-                  >
-                    <QueueActiveStatusIcon />
-                  </span>
-                ) : null}
+                <span
+                  className={`board-queue-active-status-icon ${statusIconTone}${
+                    showUnreadAccent ? " is-unread" : ""
+                  }`}
+                  aria-hidden="true"
+                >
+                  <QueueActiveStatusIcon />
+                </span>
               </div>
               <p>{ticket.preview}</p>
               {!showSelectedActiveAccent && secondaryLine ? <span>{secondaryLine}</span> : null}

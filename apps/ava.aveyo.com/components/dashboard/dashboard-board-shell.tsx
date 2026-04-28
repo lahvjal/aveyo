@@ -455,6 +455,7 @@ export function DashboardBoardShell() {
       ? "Select an active chat to send messages."
       : "Claim a chat to send messages.";
   }, [activeQueue.length, composeMode, isOnline, pendingQueue.length]);
+  const showNoChatLoadingState = activeQueue.length > 0 && !activeSelectionClearedByUser;
 
   const enqueueHintToast = useCallback((message: string) => {
     const trimmedMessage = message.trim();
@@ -1461,10 +1462,10 @@ export function DashboardBoardShell() {
                 <div className="dashboard-no-chat-timeline">
                   <div
                     className={`dashboard-no-chat-indicator${
-                      activeQueue.length > 0 ? " is-loading" : ""
+                        showNoChatLoadingState ? " is-loading" : ""
                     }`}
                   >
-                    {activeQueue.length > 0 ? (
+                      {showNoChatLoadingState ? (
                       <>
                         <BrandLoader size={34} tone="dark" label="Loading chat" />
                         <p>Loading chat</p>
