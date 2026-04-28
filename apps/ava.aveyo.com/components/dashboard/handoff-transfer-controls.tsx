@@ -65,6 +65,12 @@ export function HandoffTransferControls({
     }
     return "Request handoff";
   }, [isRequester, isTarget]);
+  const buttonLabel = useMemo(() => {
+    if (isTarget) {
+      return "Accept handoff?";
+    }
+    return "Handoff";
+  }, [isTarget]);
 
   const loadTargets = async () => {
     if (targetsLoading) {
@@ -189,7 +195,7 @@ export function HandoffTransferControls({
         aria-label={buttonAriaLabel}
         aria-expanded={isOpen}
       >
-        <span>Handoff</span>
+        <span>{buttonLabel}</span>
         <HandoffButtonIcon />
       </button>
 

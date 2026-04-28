@@ -273,14 +273,24 @@ const QueueLaneCard = memo(function QueueLaneCard({
   const interactiveCard = lane === "active" || lane === "pending";
   const claimPending = lane === "pending" && claimPendingTicketId === ticket.id;
   const sentiment = getSentimentDisplay(ticket.customerRating);
-  const transferLabel =
+  const transferState =
     lane === "active" && ticket.transferRequest
       ? ticket.transferRequest.target.id === currentAgentId
-        ? "Transfer requested to you"
+        ? {
+            label: "Transfer requested to you",
+            isTarget: true
+          }
         : ticket.transferRequest.requestedBy.id === currentAgentId
-          ? `Transfer requested to ${ticket.transferRequest.target.name}`
-          : `Transfer pending: ${ticket.transferRequest.target.name}`
+          ? {
+              label: `Transfer requested to ${ticket.transferRequest.target.name}`,
+              isTarget: false
+            }
+          : {
+              label: `Transfer pending: ${ticket.transferRequest.target.name}`,
+              isTarget: false
+            }
       : null;
+  const transferLabel = transferState?.label ?? null;
   const isPendingLane = lane === "pending";
   const showSelectedActiveAccent = lane === "active" && isSelected;
   const showUnreadAccent =
@@ -377,7 +387,11 @@ const QueueLaneCard = memo(function QueueLaneCard({
           {sentiment.label}
         </p>
       ) : null}
-      {!isPendingLane && transferLabel ? <p className="board-queue-transfer">{transferLabel}</p> : null}
+      {!isPendingLane && transferLabel ? (
+        <p className={`board-queue-transfer${transferState?.isTarget ? " is-target" : ""}`}>
+          {transferLabel}
+        </p>
+      ) : null}
     </article>
   );
 });

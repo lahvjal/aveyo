@@ -915,6 +915,17 @@ body.ava-embed-mode nextjs-portal {
   font-weight: 600;
 }
 
+.board-queue-transfer.is-target {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #fef5d2;
+  color: #9f580a;
+}
+
 .board-queue-action {
   width: 30px;
   height: 30px;
@@ -2837,7 +2848,8 @@ body.ava-embed-mode nextjs-portal {
 }
 
 .workspace-handoff-button.is-target {
-  background: #111111;
+  background: #f79009;
+  color: #ffffff;
   box-shadow: none;
 }
 

@@ -147,6 +147,20 @@ function compareActiveQueueRecords(
   return right.requestedAt.localeCompare(left.requestedAt);
 }
 
+function getTransferPriorityForAgent(record: QueueRecord, currentAgentId: string | null) {
+  const transferRequest = record.transferRequest;
+  if (!transferRequest || !currentAgentId) {
+    return 2;
+  }
+  if (transferRequest.target.id === currentAgentId) {
+    return 0;
+  }
+  if (transferRequest.requestedBy.id === currentAgentId) {
+    return 1;
+  }
+  return 2;
+}
+
 function SecondaryNavToggleIcon() {
   return (
     <svg viewBox="0 0 8 9" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -237,8 +251,15 @@ export function DashboardBoardShell() {
     () =>
       queueRecords
         .filter((item) => item.status === "active" || item.status === "claimed")
-        .sort((left, right) => compareActiveQueueRecords(left, right, activeQueueSort)),
-    [activeQueueSort, queueRecords]
+        .sort((left, right) => {
+          const leftTransferPriority = getTransferPriorityForAgent(left, agentId);
+          const rightTransferPriority = getTransferPriorityForAgent(right, agentId);
+          if (leftTransferPriority !== rightTransferPriority) {
+            return leftTransferPriority - rightTransferPriority;
+          }
+          return compareActiveQueueRecords(left, right, activeQueueSort);
+        }),
+    [activeQueueSort, agentId, queueRecords]
   );
   const pendingQueue = useMemo<Ticket[]>(
     () => pendingRecords.map((record) => createTicketFromQueueRecord(record)),
