@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type ConversationThread } from "@ava/chat-domain";
+import { BrandLoader } from "@ava/ui";
 import {
   appendTimelineMessage,
   createEmptyConversation,
@@ -1324,19 +1325,32 @@ export function DashboardBoardShell() {
             {!selectedQueueRecord ? (
               <div className="dashboard-no-chat-workspace">
                 <div className="dashboard-no-chat-timeline">
-                  <div className="dashboard-no-chat-indicator">
-                    <span className="dashboard-no-chat-indicator-icon" aria-hidden="true">
-                      <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path
-                          d="M6 10L10 6M11.333 8C11.333 9.841 9.841 11.333 8 11.333C6.159 11.333 4.667 9.841 4.667 8C4.667 6.159 6.159 4.667 8 4.667"
-                          stroke="currentColor"
-                          strokeWidth="1.4"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                    </span>
-                    <p>No chat selected</p>
+                  <div
+                    className={`dashboard-no-chat-indicator${
+                      activeQueue.length > 0 ? " is-loading" : ""
+                    }`}
+                  >
+                    {activeQueue.length > 0 ? (
+                      <>
+                        <BrandLoader size={34} tone="dark" label="Loading chat" />
+                        <p>Loading chat</p>
+                      </>
+                    ) : (
+                      <>
+                        <span className="dashboard-no-chat-indicator-icon" aria-hidden="true">
+                          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path
+                              d="M6 10L10 6M11.333 8C11.333 9.841 9.841 11.333 8 11.333C6.159 11.333 4.667 9.841 4.667 8C4.667 6.159 6.159 4.667 8 4.667"
+                              stroke="currentColor"
+                              strokeWidth="1.4"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </span>
+                        <p>No chat selected</p>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="dashboard-no-chat-compose uses-real-composer">

@@ -1,7 +1,7 @@
 "use client";
 
 import { type ConversationThread } from "@ava/chat-domain";
-import { AvaOrb } from "@ava/ui";
+import { AvaOrb, BrandLoader } from "@ava/ui";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { memo, type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { canAccessAvaManagerViews } from "@/lib/auth/access";
@@ -1409,9 +1409,9 @@ export function DashboardManagerShell() {
                   <p className="manager-preview-error">{previewError}</p>
                 ) : previewNeedsHydration ? (
                   <div className="manager-preview-loading" role="status" aria-live="polite">
-                    <p className="manager-preview-state loading">
-                      <span className="inline-button-spinner" aria-hidden="true" />
-                      Loading transcript...
+                    <p className="manager-preview-state loading is-stacked">
+                      <BrandLoader size={24} tone="dark" label="Loading transcript" />
+                      Loading transcript
                     </p>
                     <article className="manager-chat-card skeleton" />
                     <article className="manager-chat-card skeleton" />

@@ -2572,6 +2572,14 @@ body.ava-embed-mode nextjs-portal {
   gap: 6px;
 }
 
+.manager-preview-state.loading.is-stacked {
+  width: 100%;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+}
+
 .manager-preview-error {
   color: #b42318;
 }
@@ -3035,6 +3043,11 @@ body.ava-embed-mode nextjs-portal {
   justify-content: center;
   gap: 10px;
   color: #adadad;
+}
+
+.dashboard-no-chat-indicator.is-loading {
+  flex-direction: column;
+  gap: 12px;
 }
 
 .dashboard-no-chat-indicator-icon {
