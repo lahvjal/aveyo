@@ -567,10 +567,16 @@ export function DashboardResolvedShell() {
         return;
       }
 
+      if (selectedResolvedRequestId === ticketId) {
+        setSelectedResolvedRequestId(null);
+        setOperationError(null);
+        return;
+      }
+
       setSelectedResolvedRequestId(ticketId);
       setOperationError(null);
     },
-    [resolvedRecords]
+    [resolvedRecords, selectedResolvedRequestId]
   );
 
   const signOutAgent = async () => {
