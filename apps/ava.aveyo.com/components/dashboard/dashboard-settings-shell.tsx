@@ -8,6 +8,7 @@ import { useAuthSession } from "@/lib/auth/use-auth-session";
 import {
   getManagerAgentsApi,
   getManagerConfigApi,
+  setSupportPresenceOfflineApi,
   updateManagerConfigApi,
   type ManagerAgentRecord,
   type ManagerConfig
@@ -117,6 +118,7 @@ export function DashboardSettingsShell() {
     setSignOutPending(true);
     try {
       if (typeof window !== "undefined") {
+        await setSupportPresenceOfflineApi().catch(() => null);
         await logoutAuthSession();
         const returnTo = `${window.location.origin}/`;
         window.location.replace(buildAuthLoginUrl(returnTo, { logout: true }));

@@ -27,6 +27,7 @@ import {
   listSupportNotesApi,
   publishRepresentativeTypingApi,
   resolveHandoffApi,
+  setSupportPresenceOfflineApi,
   type QueueRecord
 } from "@/lib/dashboard-api";
 import { useAvaReplySuggestion } from "@/lib/dashboard-ava-suggestion";
@@ -1066,6 +1067,7 @@ export function DashboardBoardShell() {
     setSignOutPending(true);
     try {
       if (typeof window !== "undefined") {
+        await setSupportPresenceOfflineApi().catch(() => null);
         await logoutAuthSession();
         const returnTo = `${window.location.origin}/`;
         window.location.replace(buildAuthLoginUrl(returnTo, { logout: true }));

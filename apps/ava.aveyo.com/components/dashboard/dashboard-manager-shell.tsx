@@ -16,6 +16,7 @@ import {
   runManagerCleanupSweepApi,
   getManagerHandoffsApi,
   getManagerOverviewApi,
+  setSupportPresenceOfflineApi,
   type ManagerAgentRecord,
   type ManagerHandoffRecord,
   type ManagerOverviewResult
@@ -986,6 +987,7 @@ export function DashboardManagerShell() {
     setSignOutPending(true);
     try {
       if (typeof window !== "undefined") {
+        await setSupportPresenceOfflineApi().catch(() => null);
         await logoutAuthSession();
         const returnTo = `${window.location.origin}/`;
         window.location.replace(buildAuthLoginUrl(returnTo, { logout: true }));

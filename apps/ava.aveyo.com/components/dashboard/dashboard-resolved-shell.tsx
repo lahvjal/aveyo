@@ -14,6 +14,7 @@ import {
   getConversationApi,
   listQueueApi,
   listSupportNotesApi,
+  setSupportPresenceOfflineApi,
   type QueueRecord
 } from "@/lib/dashboard-api";
 import {
@@ -579,6 +580,7 @@ export function DashboardResolvedShell() {
     setSignOutPending(true);
     try {
       if (typeof window !== "undefined") {
+        await setSupportPresenceOfflineApi().catch(() => null);
         await logoutAuthSession();
         const returnTo = `${window.location.origin}/`;
         window.location.replace(buildAuthLoginUrl(returnTo, { logout: true }));
