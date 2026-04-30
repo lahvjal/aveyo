@@ -17,7 +17,8 @@
     "orchestrate:typecheck": "pnpm --filter app-aveyo-com run orchestration:typecheck",
     "supabase:migrate:ordered": "pnpm --filter app-aveyo-com run supabase:migrate:ordered",
     "supabase:seed-and-smoke:nonprod": "pnpm --filter app-aveyo-com run supabase:seed-and-smoke:nonprod",
-    "supabase:session:verify": "pnpm --filter app-aveyo-com run supabase:session:verify"
+    "supabase:session:verify": "pnpm --filter app-aveyo-com run supabase:session:verify",
+    "security:headers:check": "node scripts/security/check-subdomain-headers.mjs"
   },
   "devDependencies": {
     "turbo": "^2.9.3"

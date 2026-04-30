@@ -2,6 +2,10 @@
 set -eu
 
 if [ -z "${DATABASE_URL:-}" ]; then
+  if [ "${REQUIRE_DATABASE_URL:-false}" = "true" ]; then
+    echo "DATABASE_URL is required for SQL authz checks."
+    exit 1
+  fi
   echo "Skipping SQL authz checks: DATABASE_URL is not set."
   exit 0
 fi

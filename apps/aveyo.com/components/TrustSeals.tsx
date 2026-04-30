@@ -65,6 +65,8 @@ function BbbSealMark() {
         title="BBB Accredited Business seal"
         frameBorder="0"
         scrolling="no"
+        sandbox="allow-scripts allow-same-origin"
+        referrerPolicy="strict-origin-when-cross-origin"
         style={{ border: 0, height: 80, width: 280, maxWidth: "100%" }}
         src="https://seal-utah.bbb.org/frame/blue-seal-280-80-bbb-90036849.png?chk=AE5088513B"
       />

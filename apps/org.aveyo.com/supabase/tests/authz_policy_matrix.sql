@@ -165,6 +165,33 @@ $$;
 
 DO $$
 BEGIN
+  IF has_table_privilege('anon', 'public.profiles', 'UPDATE')
+     OR has_table_privilege('anon', 'public.profiles', 'INSERT')
+     OR has_table_privilege('anon', 'public.profiles', 'DELETE') THEN
+    RAISE EXCEPTION 'anon must not have DML privilege on public.profiles';
+  END IF;
+
+  IF has_table_privilege('anon', 'public.audit_logs', 'UPDATE')
+     OR has_table_privilege('anon', 'public.audit_logs', 'INSERT')
+     OR has_table_privilege('anon', 'public.audit_logs', 'DELETE') THEN
+    RAISE EXCEPTION 'anon must not have DML privilege on public.audit_logs';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename = 'audit_logs'
+      AND cmd IN ('DELETE', 'UPDATE')
+  ) THEN
+    RAISE EXCEPTION 'audit_logs must not expose UPDATE/DELETE policies';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'ava')
+     AND has_schema_privilege('anon', 'ava', 'USAGE') THEN
+    RAISE EXCEPTION 'anon must not retain USAGE on ava schema';
+  END IF;
+
   IF has_function_privilege('authenticated', 'public.terminate_employee(uuid,uuid,uuid,timestamptz,text)', 'EXECUTE') THEN
     RAISE EXCEPTION 'authenticated must NOT have EXECUTE on terminate_employee';
   END IF;

@@ -358,6 +358,7 @@ export function AvaWidgetEmbedBridge({
       title={iframeTitle}
       loading="lazy"
       onLoad={() => setIframeLoaded(true)}
+      sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-popups-to-escape-sandbox"
       referrerPolicy="strict-origin-when-cross-origin"
       style={iframeStyle}
     />

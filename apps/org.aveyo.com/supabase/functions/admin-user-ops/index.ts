@@ -10,6 +10,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const INCIDENT_LOCKDOWN_ROLE_MUTATIONS =
+  (Deno.env.get('INCIDENT_LOCKDOWN_ROLE_MUTATIONS') ?? 'true').toLowerCase() === 'true'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -83,6 +85,14 @@ function sanitizeRedirectTo(raw: unknown, fallbackPath: string): string {
     return fallback
   }
 }
+
+const roleMutationFields = new Set([
+  'is_admin',
+  'is_manager',
+  'is_executive',
+  'is_process_editor',
+  'is_super_admin',
+])
 
 async function getRequesterProfile(supabaseAdmin: ReturnType<typeof createClient>, userId: string) {
   return supabaseAdmin
@@ -560,11 +570,9 @@ serve(async (req) => {
         'department_id',
         'profile_photo_url',
         'onboarding_completed',
-        'is_admin',
-        'is_manager',
-        'is_executive',
-        'is_process_editor',
       ])
+
+      const superAdminAllowedFields = new Set([...adminAllowedFields, ...roleMutationFields])
 
       const managerAllowedFields = new Set([
         'full_name',
@@ -597,6 +605,7 @@ serve(async (req) => {
 
       const payload = profileData as Record<string, unknown>
       const requestedFields = Object.keys(payload)
+      const requestedRoleMutations = requestedFields.filter((field) => roleMutationFields.has(field))
 
       if (requestedFields.length === 0) {
         return jsonResponse({ error: 'No fields to update', code: 'NO_FIELDS_TO_UPDATE', requestId }, 400)
@@ -611,14 +620,32 @@ serve(async (req) => {
         }
       }
 
-      if (!isSuperAdmin && Object.prototype.hasOwnProperty.call(payload, 'is_super_admin')) {
+      if (requestedRoleMutations.length > 0 && !isSuperAdmin && INCIDENT_LOCKDOWN_ROLE_MUTATIONS) {
+        logEvent('authz_incident_lockdown_denied', {
+          requestId,
+          action,
+          actorUserId: userId,
+          targetUserId,
+          requestedRoleMutations,
+        })
         return jsonResponse(
-          { error: 'Only super admins can modify super-admin status', code: 'AUTHZ_FIELD_DENIED', requestId },
+          {
+            error: 'Role mutations are temporarily restricted to super admins during security lockdown',
+            code: 'AUTHZ_INCIDENT_LOCKDOWN',
+            requestId,
+          },
           403
         )
       }
 
-      const allowed = isAdmin ? adminAllowedFields : managerAllowedFields
+      if (!isSuperAdmin && requestedRoleMutations.length > 0) {
+        return jsonResponse(
+          { error: 'Only super admins can modify role fields', code: 'AUTHZ_FIELD_DENIED', requestId },
+          403
+        )
+      }
+
+      const allowed = isSuperAdmin ? superAdminAllowedFields : isAdmin ? adminAllowedFields : managerAllowedFields
       const disallowed = requestedFields.filter((field) => !allowed.has(field))
 
       if (disallowed.length > 0) {

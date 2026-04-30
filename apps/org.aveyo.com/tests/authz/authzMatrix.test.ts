@@ -38,6 +38,7 @@ describe('authz regression matrix', () => {
   })
 
   it('preserves key privilege-escalation denials', () => {
+    expect(matrix.sql.profiles_anon_update_privileged_columns.anon).toBe('deny')
     expect(matrix.sql.profiles_self_update_privileged_columns.authenticated).toBe('deny')
     expect(matrix.sql.profiles_self_update_privileged_columns.manager).toBe('deny')
     expect(matrix.edge.admin_user_ops_update_profile_manager_privileged_fields.manager).toBe('deny')

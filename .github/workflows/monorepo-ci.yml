@@ -13,6 +13,7 @@ jobs:
     outputs:
       org: ${{ steps.filter.outputs.org }}
       customer: ${{ steps.filter.outputs.customer }}
+      supabase_security: ${{ steps.filter.outputs.supabase_security }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,6 +38,14 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'pnpm-workspace.yaml'
               - 'turbo.json'
+              - '.github/workflows/monorepo-ci.yml'
+            supabase_security:
+              - 'apps/app.aveyo.com/supabase/**'
+              - 'apps/org.aveyo.com/supabase/**'
+              - 'apps/app.aveyo.com/scripts/supabase/**'
+              - 'apps/org.aveyo.com/scripts/run-sql-authz-check.sh'
+              - 'apps/org.aveyo.com/tests/authz/**'
+              - 'apps/org.aveyo.com/authz-regression-matrix.json'
               - '.github/workflows/monorepo-ci.yml'
 
   verify:
@@ -78,7 +87,7 @@ jobs:
     needs:
       - changes
       - verify
-    if: needs.changes.outputs.org == 'true'
+    if: needs.changes.outputs.org == 'true' || needs.changes.outputs.supabase_security == 'true'
     runs-on: ubuntu-latest
     env:
       # Test-only placeholders so auth modules can initialize in CI.
@@ -109,48 +118,60 @@ jobs:
     needs:
       - changes
       - verify
-    if: needs.changes.outputs.org == 'true'
+    if: needs.changes.outputs.org == 'true' || needs.changes.outputs.supabase_security == 'true'
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       PGCONNECT_TIMEOUT: 10
+      REQUIRE_DATABASE_URL: true
     steps:
-      - name: Check DATABASE_URL availability
-        id: sql-authz-gate
-        run: |
-          if [ -z "${DATABASE_URL}" ]; then
-            echo "run_sql_authz=false" >> "$GITHUB_OUTPUT"
-            echo "DATABASE_URL is not set; SQL authz checks will be skipped."
-          else
-            echo "run_sql_authz=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Checkout
-        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
         uses: actions/checkout@v4
 
       - name: Install psql client
-        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
       - name: Setup pnpm
-        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
         uses: pnpm/action-setup@v4
 
       - name: Setup Node
-        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
 
       - name: Install dependencies
-        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
         run: pnpm install --frozen-lockfile
 
       - name: Run SQL authz checks
-        if: ${{ steps.sql-authz-gate.outputs.run_sql_authz == 'true' }}
         run: pnpm --filter org-aveyo-com run test:sql-authz
+
+  supabase-migration-drift:
+    needs:
+      - changes
+      - verify
+    if: needs.changes.outputs.supabase_security == 'true'
+    runs-on: ubuntu-latest
+    env:
+      STRICT_MIGRATION_DRIFT: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Enforce canonical migration source
+        run: pnpm --filter app-aveyo-com run supabase:migrations:check-source
 
   customer-quality:
     needs:

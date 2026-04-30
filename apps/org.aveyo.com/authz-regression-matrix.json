@@ -16,6 +16,14 @@
       "super_admin": "allow",
       "process_editor": "deny"
     },
+    "profiles_anon_update_privileged_columns": {
+      "anon": "deny",
+      "authenticated": "deny",
+      "manager": "deny",
+      "admin": "deny",
+      "super_admin": "deny",
+      "process_editor": "deny"
+    },
     "organization_settings_write": {
       "anon": "deny",
       "authenticated": "deny",

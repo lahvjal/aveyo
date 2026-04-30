@@ -29,6 +29,8 @@
     "supabase:smoke:dev": "node scripts/supabase/smoke-nonprod.mjs dev",
     "supabase:smoke:staging": "node scripts/supabase/smoke-nonprod.mjs staging",
     "supabase:seed-and-smoke:nonprod": "bash scripts/supabase/seed-and-smoke-nonprod.sh all",
+    "supabase:security:audit": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 -f supabase/tests/privilege_escalation_audit.sql",
+    "supabase:security:replay": "node scripts/supabase/replay-privilege-escalation-check.mjs",
     "supabase:env:check": "node scripts/supabase/check-env-secrets.mjs",
     "supabase:auth:callbacks:dev": "pnpm --filter auth-aveyo-com run supabase:auth:callbacks:dev --",
     "supabase:auth:callbacks:staging": "pnpm --filter auth-aveyo-com run supabase:auth:callbacks:staging --",
