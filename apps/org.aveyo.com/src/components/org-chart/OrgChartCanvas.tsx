@@ -183,6 +183,7 @@ function OrgChartCanvasInner({
 }: OrgChartCanvasProps) {
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   const [viewMode, setViewMode] = useState<OrgChartViewMode>('chart')
+  const [isFlashQuizMode, setIsFlashQuizMode] = useState(false)
   const [flashOrder, setFlashOrder] = useState<string[]>([])
   const [activeFlashIndex, setActiveFlashIndex] = useState(0)
 
@@ -576,10 +577,19 @@ function OrgChartCanvasInner({
               size="sm"
               aria-pressed={viewMode === 'flash'}
             >
-              Flash Mode
+              Flash Cards
             </Button>
             {viewMode === 'flash' && (
               <>
+                <Button
+                  onClick={() => setIsFlashQuizMode((current) => !current)}
+                  variant={isFlashQuizMode ? 'default' : 'outline'}
+                  size="sm"
+                  aria-pressed={isFlashQuizMode}
+                  className="h-9"
+                >
+                  Quiz
+                </Button>
                 <Button
                   onClick={handlePreviousFlashCard}
                   variant="ghost"
@@ -680,6 +690,7 @@ function OrgChartCanvasInner({
           activeIndex={activeFlashIndex}
           onPrevious={handlePreviousFlashCard}
           onNext={handleNextFlashCard}
+          quizEnabled={isFlashQuizMode}
         />
       )}
     </div>

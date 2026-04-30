@@ -7,6 +7,9 @@ import { Mail } from 'lucide-react'
 interface EmployeeCardFaceProps extends HTMLAttributes<HTMLDivElement> {
   profile: OrgChartProfile
   size?: 'chart' | 'flash'
+  obscurePhoto?: boolean
+  obscureText?: boolean
+  blackoutPhoto?: boolean
 }
 
 const sizeStyles = {
@@ -34,7 +37,15 @@ const sizeStyles = {
   },
 } as const
 
-export function EmployeeCardFace({ profile, size = 'chart', className, ...props }: EmployeeCardFaceProps) {
+export function EmployeeCardFace({
+  profile,
+  size = 'chart',
+  className,
+  obscurePhoto = false,
+  obscureText = false,
+  blackoutPhoto = false,
+  ...props
+}: EmployeeCardFaceProps) {
   const styles = sizeStyles[size]
 
   return (
@@ -46,7 +57,7 @@ export function EmployeeCardFace({ profile, size = 'chart', className, ...props 
       )}
       {...props}
     >
-      <div className={cn('w-full bg-gray-100 flex-shrink-0', styles.photo)}>
+      <div className={cn('relative w-full bg-gray-100 flex-shrink-0 overflow-hidden', styles.photo, obscurePhoto && 'blur-sm')}>
         {profile.profile_photo_url ? (
           <img
             src={profile.profile_photo_url}
@@ -59,9 +70,10 @@ export function EmployeeCardFace({ profile, size = 'chart', className, ...props 
             {getInitials(profile.full_name)}
           </div>
         )}
+        {blackoutPhoto && <div className="absolute inset-0 bg-black/95" aria-hidden="true" />}
       </div>
 
-      <div className={styles.content}>
+      <div className={cn(styles.content, obscureText && 'blur-sm')}>
         <h3 className={cn('font-semibold truncate', styles.title)}>{profile.full_name}</h3>
         <p className={cn('text-muted-foreground truncate', styles.subtitle, size === 'flash' ? 'mb-3' : 'mb-2')}>
           {profile.job_title}
