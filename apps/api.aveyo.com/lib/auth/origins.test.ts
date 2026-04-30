@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { resolveAppUrl } from "@ava/config/runtime/app-urls";
 import { getAllowedOrigins, getDefaultAllowedOrigins, isAllowedLocalDevOrigin } from "@/lib/auth/origins";
 
 describe("auth origins", () => {
@@ -24,5 +25,11 @@ describe("auth origins", () => {
     expect(isAllowedLocalDevOrigin("http://localhost:4007")).toBe(true);
     expect(isAllowedLocalDevOrigin("http://192.168.1.20:4007")).toBe(true);
     expect(isAllowedLocalDevOrigin("https://preview.example.com")).toBe(false);
+  });
+
+  it("keeps KPI production auth authority on auth.aveyo.com", () => {
+    expect(resolveAppUrl("kpi", "prod")).toBe("https://kpi.aveyo.com");
+    expect(resolveAppUrl("auth", "prod")).toBe("https://auth.aveyo.com");
+    expect(resolveAppUrl("auth", "prod")).not.toContain("auth-staging.aveyo.com");
   });
 });

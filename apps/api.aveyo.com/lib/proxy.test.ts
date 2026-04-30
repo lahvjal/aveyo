@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { proxy } from "@/proxy";
+import { getAllowedOrigins } from "@/lib/auth/origins";
 import { extractAccessTokenFromNextRequest } from "@/lib/auth/token";
 
 vi.mock("@/lib/auth/cookie-contract", () => ({
@@ -17,8 +18,24 @@ vi.mock("@/lib/auth/origins", () => ({
 }));
 
 const mockedExtractAccessTokenFromNextRequest = vi.mocked(extractAccessTokenFromNextRequest);
+const mockedGetAllowedOrigins = vi.mocked(getAllowedOrigins);
 
 describe("api proxy", () => {
+  it("rejects disallowed cross-origin requests before route handling", () => {
+    mockedGetAllowedOrigins.mockReturnValue(["https://app.aveyo.com"]);
+    mockedExtractAccessTokenFromNextRequest.mockReturnValue("valid-token");
+
+    const response = proxy(
+      new NextRequest("https://api.aveyo.com/api/conversations", {
+        headers: { origin: "https://attacker.example.com" }
+      })
+    );
+
+    expect(response.status).toBe(403);
+    expect(response.headers.get("access-control-allow-origin")).toBeNull();
+    expect(response.headers.get("vary")).toContain("Origin");
+  });
+
   it("allows guest reply requests without an auth token", () => {
     mockedExtractAccessTokenFromNextRequest.mockReturnValue(undefined);
 
