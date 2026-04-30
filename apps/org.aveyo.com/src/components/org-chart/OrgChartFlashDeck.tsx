@@ -20,6 +20,7 @@ interface OrgChartFlashDeckProps {
   onNext: () => void
   onPrevious: () => void
   quizEnabled?: boolean
+  onQuizAnswer?: (result: { profileId: string; correct: boolean; responseMs: number }) => void
 }
 
 type QuizQuestionType = 'name' | 'photo'
@@ -41,6 +42,7 @@ export function OrgChartFlashDeck({
   onNext,
   onPrevious,
   quizEnabled = false,
+  onQuizAnswer,
 }: OrgChartFlashDeckProps) {
   const activeProfile = profiles[activeIndex] ?? null
   const hasMultipleProfiles = profiles.length > 1
@@ -50,6 +52,7 @@ export function OrgChartFlashDeck({
   const [isAnswerCorrect, setIsAnswerCorrect] = useState<boolean | null>(null)
   const dragStartRef = useRef<{ x: number; y: number; startedAt: number } | null>(null)
   const activePointerIdRef = useRef<number | null>(null)
+  const questionStartTimeRef = useRef<number>(performance.now())
 
   const questionType = useMemo<QuizQuestionType>(() => {
     if (!quizEnabled || !activeProfile) return 'name'
@@ -60,6 +63,7 @@ export function OrgChartFlashDeck({
   useEffect(() => {
     setSelectedAnswer(null)
     setIsAnswerCorrect(null)
+    questionStartTimeRef.current = performance.now()
   }, [activeIndex, quizEnabled, questionType])
 
   useEffect(() => {
@@ -351,8 +355,12 @@ export function OrgChartFlashDeck({
                       disabled={isQuizAnswered}
                       onClick={() => {
                         const correct = option === activeProfile?.full_name
+                        const responseMs = performance.now() - questionStartTimeRef.current
                         setSelectedAnswer(option)
                         setIsAnswerCorrect(correct)
+                        if (activeProfile) {
+                          onQuizAnswer?.({ profileId: activeProfile.id, correct, responseMs })
+                        }
                       }}
                       className={cn(
                         'justify-start',
@@ -380,8 +388,12 @@ export function OrgChartFlashDeck({
                       disabled={isQuizAnswered}
                       onClick={() => {
                         const correct = option.id === activeProfile?.id
+                        const responseMs = performance.now() - questionStartTimeRef.current
                         setSelectedAnswer(option.id)
                         setIsAnswerCorrect(correct)
+                        if (activeProfile) {
+                          onQuizAnswer?.({ profileId: activeProfile.id, correct, responseMs })
+                        }
                       }}
                       className={cn(
                         'group relative overflow-hidden rounded-md border bg-gray-100 text-left transition-colors',

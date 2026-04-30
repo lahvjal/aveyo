@@ -18,7 +18,14 @@ import { EmployeeNode } from './EmployeeNode'
 import { OrgChartFlashDeck } from './OrgChartFlashDeck'
 import type { OrgChartProfile, Department, OrgChartPosition } from '../../types'
 import { useOrgChart } from '../../hooks/useOrgChart'
-import { useUpdatePosition, getDepartmentDescendantIds, useClearAllPositions, useBatchSavePositions } from '../../lib/queries'
+import {
+  useUpdatePosition,
+  getDepartmentDescendantIds,
+  useClearAllPositions,
+  useBatchSavePositions,
+  useFlashQuizLeaderboard,
+  useCreateFlashQuizScore,
+} from '../../lib/queries'
 import { Button } from '../ui/button'
 import { Save, Loader2, ChevronLeft, ChevronRight, Shuffle } from 'lucide-react'
 
@@ -184,8 +191,11 @@ function OrgChartCanvasInner({
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
   const [viewMode, setViewMode] = useState<OrgChartViewMode>('chart')
   const [isFlashQuizMode, setIsFlashQuizMode] = useState(false)
+  const [currentQuizRun, setCurrentQuizRun] = useState({ answered: 0, correct: 0, averageResponseMs: 0 })
   const [flashOrder, setFlashOrder] = useState<string[]>([])
   const [activeFlashIndex, setActiveFlashIndex] = useState(0)
+  const answeredFlashProfilesRef = useRef<Set<string>>(new Set())
+  const quizRunTotalsRef = useRef({ answered: 0, correct: 0, totalResponseMs: 0 })
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768)
@@ -204,6 +214,10 @@ function OrgChartCanvasInner({
   const updatePosition = useUpdatePosition()
   const clearAllPositions = useClearAllPositions()
   const batchSavePositions = useBatchSavePositions()
+  const createFlashQuizScore = useCreateFlashQuizScore()
+  const flashQuizLeaderboardQuery = useFlashQuizLeaderboard({
+    enabled: viewMode === 'flash' && isFlashQuizMode,
+  })
   const { fitView, getNodes, getEdges } = useReactFlow()
   const storeApi = useStoreApi()
   const normalizedSearchQuery = searchQuery.trim().toLowerCase()
@@ -543,16 +557,18 @@ function OrgChartCanvasInner({
   const handlePreviousFlashCard = useCallback(() => {
     setActiveFlashIndex((current) => {
       if (!orderedFlashProfiles.length) return 0
+      if (isFlashQuizMode) return Math.max(current - 1, 0)
       return current === 0 ? orderedFlashProfiles.length - 1 : current - 1
     })
-  }, [orderedFlashProfiles.length])
+  }, [isFlashQuizMode, orderedFlashProfiles.length])
 
   const handleNextFlashCard = useCallback(() => {
     setActiveFlashIndex((current) => {
       if (!orderedFlashProfiles.length) return 0
+      if (isFlashQuizMode) return Math.min(current + 1, orderedFlashProfiles.length - 1)
       return (current + 1) % orderedFlashProfiles.length
     })
-  }, [orderedFlashProfiles.length])
+  }, [isFlashQuizMode, orderedFlashProfiles.length])
 
   const handleShuffleFlashCards = useCallback(() => {
     setFlashOrder((current) => {
@@ -561,6 +577,54 @@ function OrgChartCanvasInner({
     })
     setActiveFlashIndex(0)
   }, [filteredFlashProfiles])
+
+  const resetQuizRun = useCallback(() => {
+    answeredFlashProfilesRef.current = new Set()
+    quizRunTotalsRef.current = { answered: 0, correct: 0, totalResponseMs: 0 }
+    setCurrentQuizRun({ answered: 0, correct: 0, averageResponseMs: 0 })
+  }, [])
+
+  useEffect(() => {
+    if (!isFlashQuizMode || viewMode !== 'flash') {
+      resetQuizRun()
+    }
+  }, [isFlashQuizMode, viewMode, resetQuizRun])
+
+  useEffect(() => {
+    resetQuizRun()
+  }, [orderedFlashProfiles.length, resetQuizRun])
+
+  const handleQuizAnswer = useCallback((result: { profileId: string; correct: boolean; responseMs: number }) => {
+    if (!isFlashQuizMode || viewMode !== 'flash') return
+    if (answeredFlashProfilesRef.current.has(result.profileId)) return
+
+    answeredFlashProfilesRef.current.add(result.profileId)
+    const nextAnswered = quizRunTotalsRef.current.answered + 1
+    const nextCorrect = quizRunTotalsRef.current.correct + (result.correct ? 1 : 0)
+    const nextTotalResponseMs = quizRunTotalsRef.current.totalResponseMs + result.responseMs
+    const nextAverageResponseMs = nextAnswered > 0 ? nextTotalResponseMs / nextAnswered : 0
+
+    quizRunTotalsRef.current = {
+      answered: nextAnswered,
+      correct: nextCorrect,
+      totalResponseMs: nextTotalResponseMs,
+    }
+    setCurrentQuizRun({
+      answered: nextAnswered,
+      correct: nextCorrect,
+      averageResponseMs: nextAverageResponseMs,
+    })
+
+    if (orderedFlashProfiles.length === 0 || nextAnswered < orderedFlashProfiles.length) return
+
+    createFlashQuizScore.mutate({
+      correct_count: nextCorrect,
+      total_questions: nextAnswered,
+      average_response_ms: nextAverageResponseMs,
+    })
+
+    resetQuizRun()
+  }, [createFlashQuizScore, isFlashQuizMode, orderedFlashProfiles.length, resetQuizRun, viewMode])
 
   return (
     <div className="w-full h-full relative">
@@ -594,7 +658,10 @@ function OrgChartCanvasInner({
                   onClick={handlePreviousFlashCard}
                   variant="ghost"
                   size="icon"
-                  disabled={orderedFlashProfiles.length <= 1}
+                  disabled={
+                    orderedFlashProfiles.length <= 1 ||
+                    (isFlashQuizMode && activeFlashIndex === 0)
+                  }
                   title="Previous card"
                   aria-label="Previous card"
                   className="h-9 w-9"
@@ -616,7 +683,10 @@ function OrgChartCanvasInner({
                   onClick={handleNextFlashCard}
                   variant="ghost"
                   size="icon"
-                  disabled={orderedFlashProfiles.length <= 1}
+                  disabled={
+                    orderedFlashProfiles.length <= 1 ||
+                    (isFlashQuizMode && activeFlashIndex >= orderedFlashProfiles.length - 1)
+                  }
                   title="Next card"
                   aria-label="Next card"
                   className="h-9 w-9"
@@ -630,6 +700,35 @@ function OrgChartCanvasInner({
                 </span>
               </>
             )}
+          </div>
+        </div>
+      )}
+      {viewMode === 'flash' && isFlashQuizMode && (
+        <div className="pointer-events-none absolute right-2 top-2 z-20 md:right-4 md:top-4">
+          <div className="pointer-events-auto w-64 rounded-lg border border-gray-200 bg-white/95 p-3 shadow-md backdrop-blur">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quiz Leaderboard</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Current: {currentQuizRun.correct}/{currentQuizRun.answered} correct
+              {currentQuizRun.answered > 0 ? ` · ${(currentQuizRun.averageResponseMs / 1000).toFixed(2)}s avg` : ''}
+            </p>
+            <div className="mt-3 space-y-2">
+              {flashQuizLeaderboardQuery.isLoading ? (
+                <p className="text-sm text-muted-foreground">Loading leaderboard...</p>
+              ) : !flashQuizLeaderboardQuery.data || flashQuizLeaderboardQuery.data.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No scores yet. Complete a full round to rank.</p>
+              ) : (
+                flashQuizLeaderboardQuery.data.map((entry, index) => (
+                  <div key={entry.id} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5">
+                    <p className="text-xs font-medium text-foreground">
+                      #{index + 1} · {entry.player_name} · {entry.correct_count}/{entry.total_questions} correct
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {entry.accuracy_pct.toFixed(0)}% · {(entry.average_response_ms / 1000).toFixed(2)}s avg
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -691,6 +790,7 @@ function OrgChartCanvasInner({
           onPrevious={handlePreviousFlashCard}
           onNext={handleNextFlashCard}
           quizEnabled={isFlashQuizMode}
+          onQuizAnswer={handleQuizAnswer}
         />
       )}
     </div>

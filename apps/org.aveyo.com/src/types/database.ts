@@ -203,6 +203,44 @@ export interface Database {
           },
         ]
       }
+      org_chart_flash_quiz_scores: {
+        Row: {
+          id: string
+          profile_id: string
+          correct_count: number
+          total_questions: number
+          average_response_ms: number
+          accuracy_pct: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          profile_id: string
+          correct_count: number
+          total_questions: number
+          average_response_ms: number
+          accuracy_pct: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          profile_id?: string
+          correct_count?: number
+          total_questions?: number
+          average_response_ms?: number
+          accuracy_pct?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'org_chart_flash_quiz_scores_profile_id_fkey'
+            columns: ['profile_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       share_links: {
         Row: {
           id: string

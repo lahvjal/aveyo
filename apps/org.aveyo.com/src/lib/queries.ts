@@ -4,6 +4,17 @@ import type { Department, OrgChartPosition, OrgChartProfile, Profile, ShareLink 
 import type { Database } from '../types/database'
 import type { Process, ProcessEdge, ProcessNode } from '../types/processes'
 
+export interface FlashQuizLeaderboardEntry {
+  id: string
+  profile_id: string
+  correct_count: number
+  total_questions: number
+  average_response_ms: number
+  accuracy_pct: number
+  created_at: string
+  player_name: string
+}
+
 // Departments
 export function useDepartments({ enabled = true }: { enabled?: boolean } = {}) {
   return useQuery({
@@ -219,6 +230,79 @@ export function useClearAllPositions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['org-chart-positions'] })
+    },
+  })
+}
+
+// Flash quiz leaderboard
+export function useFlashQuizLeaderboard({ enabled = true }: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: ['flash-quiz-leaderboard'],
+    enabled,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('org_chart_flash_quiz_scores')
+        .select('id, profile_id, correct_count, total_questions, average_response_ms, accuracy_pct, created_at, profile:profiles!org_chart_flash_quiz_scores_profile_id_fkey(full_name)')
+        .order('correct_count', { ascending: false })
+        .order('accuracy_pct', { ascending: false })
+        .order('average_response_ms', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(3)
+
+      if (error) throw error
+
+      type Row = {
+        id: string
+        profile_id: string
+        correct_count: number
+        total_questions: number
+        average_response_ms: number
+        accuracy_pct: number
+        created_at: string
+        profile: { full_name: string } | null
+      }
+
+      return ((data ?? []) as Row[]).map((row) => ({
+        ...row,
+        player_name: row.profile?.full_name ?? 'Unknown player',
+      })) as FlashQuizLeaderboardEntry[]
+    },
+  })
+}
+
+export function useCreateFlashQuizScore() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (score: {
+      correct_count: number
+      total_questions: number
+      average_response_ms: number
+    }) => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('Not authenticated')
+
+      const accuracyPct = score.total_questions > 0
+        ? (score.correct_count / score.total_questions) * 100
+        : 0
+
+      const { data, error } = await supabase
+        .from('org_chart_flash_quiz_scores')
+        .insert({
+          profile_id: user.id,
+          correct_count: score.correct_count,
+          total_questions: score.total_questions,
+          average_response_ms: score.average_response_ms,
+          accuracy_pct: accuracyPct,
+        } as any)
+        .select('id')
+        .single()
+
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['flash-quiz-leaderboard'] })
     },
   })
 }
