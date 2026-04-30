@@ -66,7 +66,7 @@ export function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const origin = request.headers.get("origin");
-  const disallowedOrigin = Boolean(origin) && !isOriginAllowed(origin);
+  const disallowedOrigin = origin !== null && !isOriginAllowed(origin);
 
   if (request.method === "OPTIONS") {
     if (disallowedOrigin) {
