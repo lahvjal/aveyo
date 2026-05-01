@@ -25,7 +25,6 @@ const eventTimeFormatter = new Intl.DateTimeFormat("en-US", {
 function formatEventDateTime(event: CultureEvent) {
   const parsedDate = Date.parse(`${event.date}T00:00:00`);
   const parsedEndDate = event.endDate ? Date.parse(`${event.endDate}T00:00:00`) : Number.NaN;
-  const parsedTime = Date.parse(`1970-01-01T${event.time}`);
 
   const formattedDate = Number.isNaN(parsedDate)
     ? event.date
@@ -36,9 +35,14 @@ function formatEventDateTime(event: CultureEvent) {
       : Number.isNaN(parsedEndDate)
         ? event.endDate
         : eventDateFormatter.format(new Date(parsedEndDate));
-  const formattedTime = Number.isNaN(parsedTime)
-    ? event.time
-    : eventTimeFormatter.format(new Date(parsedTime));
+  const formattedTime = event.isAllDay
+    ? "All day"
+    : (() => {
+        const parsedTime = Date.parse(`1970-01-01T${event.time}`);
+        return Number.isNaN(parsedTime)
+          ? event.time
+          : eventTimeFormatter.format(new Date(parsedTime));
+      })();
 
   return formattedEndDate
     ? `${formattedDate} - ${formattedEndDate} at ${formattedTime}`

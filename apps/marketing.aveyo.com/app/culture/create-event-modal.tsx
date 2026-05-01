@@ -13,6 +13,7 @@ interface CreateEventFormState {
   title: string;
   date: string;
   endDate: string;
+  isAllDay: boolean;
   time: string;
   location: string;
   owner: string;
@@ -40,6 +41,7 @@ function buildFormState(
       title: event.title,
       date: event.date,
       endDate: event.endDate ?? "",
+      isAllDay: event.isAllDay,
       time: event.time,
       location: event.location,
       owner: event.owner,
@@ -53,6 +55,7 @@ function buildFormState(
     title: "",
     date: "",
     endDate: "",
+    isAllDay: false,
     time: "",
     location: "",
     owner: currentUserName?.trim() || "",
@@ -186,6 +189,10 @@ export function CultureEventModal({
     const trimmedEndDate = formState.endDate.trim();
     if (trimmedEndDate && trimmedEndDate < formState.date) {
       setErrorMessage("End date cannot be earlier than the start date.");
+      return;
+    }
+    if (!formState.isAllDay && !formState.time.trim()) {
+      setErrorMessage("Start time is required unless the event is marked all day.");
       return;
     }
 
@@ -348,12 +355,34 @@ export function CultureEventModal({
                   <input
                     id="event-time"
                     type="time"
-                    required
+                    required={!formState.isAllDay}
+                    disabled={formState.isAllDay}
                     value={formState.time}
                     onChange={(event) =>
                       setFormState((state) => ({ ...state, time: event.target.value }))
                     }
                   />
+                  <p className="helper-text">
+                    <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={formState.isAllDay}
+                        onChange={(event) => {
+                          const enabled = event.target.checked;
+                          setFormState((state) => ({
+                            ...state,
+                            isAllDay: enabled,
+                            time: enabled
+                              ? "00:00"
+                              : !state.time || state.time === "00:00"
+                                ? "09:00"
+                                : state.time
+                          }));
+                        }}
+                      />
+                      All-day event
+                    </label>
+                  </p>
                 </div>
 
                 <div className="field full">

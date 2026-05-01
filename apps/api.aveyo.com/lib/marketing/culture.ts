@@ -25,6 +25,7 @@ interface CultureEventRow {
   title: string;
   event_date: string;
   event_end_date: string | null;
+  is_all_day: boolean;
   event_time: string;
   location: string;
   owner_name: string;
@@ -51,6 +52,7 @@ export interface CultureEvent {
   title: string;
   date: string;
   endDate: string | null;
+  isAllDay: boolean;
   time: string;
   location: string;
   owner: string;
@@ -88,6 +90,7 @@ interface CreateCultureEventPayload {
   title: string;
   date: string;
   endDate: string | null;
+  isAllDay: boolean;
   time: string;
   location: string;
   owner: string;
@@ -170,6 +173,28 @@ function normalizeEventTime(value: unknown) {
   }
 
   return `${match[1]}:${match[2]}:${String(seconds).padStart(2, "0")}`;
+}
+
+function normalizeIsAllDay(value: unknown) {
+  if (value === undefined || value === null) {
+    return false;
+  }
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) {
+      return false;
+    }
+    if (normalized === "true" || normalized === "1" || normalized === "yes" || normalized === "on") {
+      return true;
+    }
+    if (normalized === "false" || normalized === "0" || normalized === "no" || normalized === "off") {
+      return false;
+    }
+  }
+  throw new MarketingCultureError("All-day flag must be true or false.");
 }
 
 function normalizePosterKind(value: unknown) {
@@ -280,6 +305,7 @@ function mapCultureEventRow(row: CultureEventRow): CultureEvent {
     title: row.title,
     date: row.event_date,
     endDate: row.event_end_date,
+    isAllDay: row.is_all_day,
     time: row.event_time.slice(0, 5),
     location: row.location,
     owner: row.owner_name,
@@ -338,6 +364,9 @@ function coerceCultureEventPayload(payload: unknown): CreateCultureEventPayload 
       readFormDataText(payload, "endDate") ?? readFormDataText(payload, "end_date")
     );
     validateEventDateRange(date, endDate);
+    const isAllDay = normalizeIsAllDay(
+      readFormDataText(payload, "isAllDay") ?? readFormDataText(payload, "is_all_day")
+    );
 
     const posterKind = normalizePosterKind(
       readFormDataText(payload, "posterKind") ?? readFormDataText(payload, "poster_kind")
@@ -359,7 +388,8 @@ function coerceCultureEventPayload(payload: unknown): CreateCultureEventPayload 
       title: normalizeRequiredText(readFormDataText(payload, "title"), "Title"),
       date,
       endDate,
-      time: normalizeEventTime(readFormDataText(payload, "time")),
+      isAllDay,
+      time: isAllDay ? "00:00:00" : normalizeEventTime(readFormDataText(payload, "time")),
       location: normalizeRequiredText(readFormDataText(payload, "location"), "Location"),
       owner: normalizeRequiredText(readFormDataText(payload, "owner"), "Owner"),
       description: normalizeRequiredText(readFormDataText(payload, "description"), "Description"),
@@ -389,12 +419,14 @@ function coerceCultureEventPayload(payload: unknown): CreateCultureEventPayload 
   const date = normalizeEventDate(record.date);
   const endDate = normalizeOptionalEventDate(record.endDate ?? record.end_date);
   validateEventDateRange(date, endDate);
+  const isAllDay = normalizeIsAllDay(record.isAllDay ?? record.is_all_day);
 
   return {
     title: normalizeRequiredText(record.title, "Title"),
     date,
     endDate,
-    time: normalizeEventTime(record.time),
+    isAllDay,
+    time: isAllDay ? "00:00:00" : normalizeEventTime(record.time),
     location: normalizeRequiredText(record.location, "Location"),
     owner: normalizeRequiredText(record.owner, "Owner"),
     description: normalizeRequiredText(record.description, "Description"),
@@ -512,7 +544,7 @@ async function getCultureEventRowById(eventId: string) {
   const { data, error } = await supabaseServiceRoleClient
     .from(CULTURE_EVENTS_TABLE)
     .select(
-      "id, title, event_date, event_end_date, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
+      "id, title, event_date, event_end_date, is_all_day, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
     )
     .eq("id", eventId)
     .maybeSingle();
@@ -529,7 +561,7 @@ async function listCultureEvents() {
   const { data, error } = await supabaseServiceRoleClient
     .from(CULTURE_EVENTS_TABLE)
     .select(
-      "id, title, event_date, event_end_date, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
+      "id, title, event_date, event_end_date, is_all_day, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
     )
     .order("event_date", { ascending: true })
     .order("event_time", { ascending: true })
@@ -602,6 +634,7 @@ export async function createCultureEvent(payload: unknown, session: AuthSessionR
         title: normalizedPayload.title,
         event_date: normalizedPayload.date,
         event_end_date: normalizedPayload.endDate,
+        is_all_day: normalizedPayload.isAllDay,
         event_time: normalizedPayload.time,
         location: normalizedPayload.location,
         owner_name: normalizedPayload.owner,
@@ -610,7 +643,7 @@ export async function createCultureEvent(payload: unknown, session: AuthSessionR
         poster_media_url: posterUrl
       })
       .select(
-        "id, title, event_date, event_end_date, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
+        "id, title, event_date, event_end_date, is_all_day, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
       )
       .maybeSingle();
 
@@ -667,6 +700,7 @@ export async function updateCultureEvent(
         title: normalizedPayload.title,
         event_date: normalizedPayload.date,
         event_end_date: normalizedPayload.endDate,
+        is_all_day: normalizedPayload.isAllDay,
         event_time: normalizedPayload.time,
         location: normalizedPayload.location,
         owner_name: normalizedPayload.owner,
@@ -676,7 +710,7 @@ export async function updateCultureEvent(
       })
       .eq("id", normalizedEventId)
       .select(
-        "id, title, event_date, event_end_date, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
+        "id, title, event_date, event_end_date, is_all_day, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
       )
       .maybeSingle();
 

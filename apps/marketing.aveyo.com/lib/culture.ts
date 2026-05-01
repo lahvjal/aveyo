@@ -7,6 +7,7 @@ export interface CultureEvent {
   title: string;
   date: string;
   endDate: string | null;
+  isAllDay: boolean;
   time: string;
   location: string;
   owner: string;
@@ -37,6 +38,7 @@ export interface NewCultureEventInput {
   title: string;
   date: string;
   endDate?: string;
+  isAllDay?: boolean;
   time: string;
   location: string;
   owner: string;
@@ -57,6 +59,7 @@ function buildCultureEventPayload(input: NewCultureEventInput) {
     title: input.title,
     date: input.date,
     endDate: input.endDate?.trim() ? input.endDate.trim() : undefined,
+    isAllDay: Boolean(input.isAllDay),
     time: input.time,
     location: input.location,
     owner: input.owner,
@@ -74,6 +77,9 @@ function buildCultureEventFormData(input: NewCultureEventInput) {
   formData.set("date", payload.date);
   if (payload.endDate) {
     formData.set("endDate", payload.endDate);
+  }
+  if (payload.isAllDay) {
+    formData.set("isAllDay", "true");
   }
   formData.set("time", payload.time);
   formData.set("location", payload.location);

@@ -56,7 +56,10 @@ function formatEventDateRange(startDate: string, endDate: string | null): string
   return `${formattedStart} - ${formatEventDate(endDate)}`;
 }
 
-function formatEventTime(value: string): string {
+function formatEventTime(value: string, isAllDay: boolean): string {
+  if (isAllDay) {
+    return "All day";
+  }
   const parsed = Date.parse(`1970-01-01T${value}`);
   if (Number.isNaN(parsed)) {
     return value;
@@ -85,7 +88,7 @@ function sortCultureEvents(events: CultureEvent[]) {
 }
 
 function buildEventSummary(event: CultureEvent): string {
-  return `${event.title} at ${event.location} from ${formatEventDateRange(event.date, event.endDate)} at ${formatEventTime(event.time)}. Hosted by ${event.owner}.`;
+  return `${event.title} at ${event.location} from ${formatEventDateRange(event.date, event.endDate)} at ${formatEventTime(event.time, event.isAllDay)}. Hosted by ${event.owner}.`;
 }
 
 function isSameCalendarDay(left: Date, right: Date) {
