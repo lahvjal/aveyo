@@ -159,6 +159,30 @@
 }
 
 .navItem:hover,
+.utilityItem:hover {
+  background: radial-gradient(circle at right center, rgba(65, 155, 255, 0.14), rgba(255, 255, 255, 0) 72%);
+  color: #101828;
+}
+
+.navItem:hover .navLabel,
+.utilityItem:hover .navLabel {
+  font-weight: 600;
+}
+
+.navItem:hover .navIcon > svg,
+.navItem:hover .navIcon svg,
+.utilityItem:hover .navIcon > svg,
+.utilityItem:hover .navIcon svg {
+  opacity: 0.92;
+}
+
+.navItem:hover .navIcon img,
+.utilityItem:hover .navIcon img {
+  filter: none;
+  opacity: 0.92;
+}
+
+.navItem:hover,
 .navItem:focus-visible,
 .navItem:active,
 .navItem:visited,
@@ -292,6 +316,11 @@
 
 .aside.collapsed .navItem.active {
   background: radial-gradient(circle at center, rgba(65, 155, 255, 0.2), rgba(255, 255, 255, 0) 74%);
+}
+
+.aside.collapsed .navItem:hover,
+.aside.collapsed .utilityItem:hover {
+  background: radial-gradient(circle at center, rgba(65, 155, 255, 0.16), rgba(255, 255, 255, 0) 74%);
 }
 
 .aside.collapsed .navLabel {

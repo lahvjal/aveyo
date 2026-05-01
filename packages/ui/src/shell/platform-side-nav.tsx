@@ -325,20 +325,6 @@ function readRuntimeEnvironment(): RuntimeEnvironment {
   return resolveEnvironment(window.location.hostname);
 }
 
-function readStoredCollapsedState(storageKey: string, fallbackValue: boolean): boolean {
-  if (typeof window === "undefined") {
-    return fallbackValue;
-  }
-  const stored = window.localStorage.getItem(storageKey);
-  if (stored === "0") {
-    return false;
-  }
-  if (stored === "1") {
-    return true;
-  }
-  return fallbackValue;
-}
-
 function readPublicEnv(name: string): string | undefined {
   const processLike = globalThis as unknown as {
     process?: {
@@ -401,7 +387,6 @@ function toAvatarUrl(value: string | null | undefined): string {
 export function PlatformSideNav({
   primaryItems,
   pathname = DEFAULT_PATHNAME,
-  storageKey,
   renderWordmark,
   wordmarkLogoSrc,
   wordmarkMiniLogoSrc,
@@ -410,7 +395,6 @@ export function PlatformSideNav({
   sameAppHrefByItemId = {},
   utilityItems,
   iconPrefix = "/",
-  defaultCollapsed = true,
   brandAriaLabel = "Open Aveyo site",
   isPrimaryItemActive,
   isUtilityItemActive,
@@ -429,9 +413,7 @@ export function PlatformSideNav({
   const [runtimeEnvironment, setRuntimeEnvironment] = useState<RuntimeEnvironment>(
     readRuntimeEnvironment
   );
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() =>
-    readStoredCollapsedState(storageKey, defaultCollapsed)
-  );
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -439,14 +421,12 @@ export function PlatformSideNav({
   }, []);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(storageKey, isCollapsed ? "1" : "0");
-    }
     onCollapsedChange?.(isCollapsed);
-  }, [storageKey, isCollapsed, onCollapsedChange]);
+  }, [isCollapsed, onCollapsedChange]);
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    setIsCollapsed(false);
   }, [pathname]);
 
   const primaryNavItems = useMemo(
@@ -543,7 +523,9 @@ export function PlatformSideNav({
     typeof mobileDashboardHref === "string" && mobileDashboardHref.startsWith("/")
       ? routeMatches(pathname, [mobileDashboardHref === "/" ? "/" : mobileDashboardHref])
       : false;
-  const profileTitle = isCollapsed ? `${profile.displayName} (${profile.roleLabel})` : undefined;
+  const profileTitle = isCollapsed
+    ? `${profile.displayName} (${profile.roleLabel})`
+    : undefined;
   const profileBody = (
     <>
       <span className={classNames.profileAvatar} aria-hidden="true">

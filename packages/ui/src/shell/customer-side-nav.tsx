@@ -54,20 +54,6 @@ function routeMatches(pathname: string, prefixes: string[] | undefined): boolean
   return prefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
-function readStoredCollapsedState(storageKey: string, fallbackValue: boolean): boolean {
-  if (typeof window === "undefined") {
-    return fallbackValue;
-  }
-  const stored = window.localStorage.getItem(storageKey);
-  if (stored === "0") {
-    return false;
-  }
-  if (stored === "1") {
-    return true;
-  }
-  return fallbackValue;
-}
-
 function isPrimaryItemActive(item: CustomerSideNavItem, pathname: string): boolean {
   if (item.matchPrefixes?.length) {
     return routeMatches(pathname, item.matchPrefixes);
@@ -83,34 +69,28 @@ function isPrimaryItemActive(item: CustomerSideNavItem, pathname: string): boole
 
 export function CustomerSideNav({
   pathname = DEFAULT_PATHNAME,
-  storageKey,
   brandHref,
   brandAriaLabel = "Aveyo home",
   renderWordmark,
   items,
   footer,
   renderLink,
-  defaultCollapsed = true,
   onCollapsedChange,
   className,
   onSupportClick,
   onProfileClick,
   profileAvatar
 }: CustomerSideNavProps) {
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() =>
-    readStoredCollapsedState(storageKey, defaultCollapsed)
-  );
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(storageKey, isCollapsed ? "1" : "0");
-    }
     onCollapsedChange?.(isCollapsed);
-  }, [storageKey, isCollapsed, onCollapsedChange]);
+  }, [isCollapsed, onCollapsedChange]);
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
+    setIsCollapsed(false);
   }, [pathname]);
 
   const dashboardItem = useMemo(
@@ -134,7 +114,9 @@ export function CustomerSideNav({
   const supportTabActive = false;
 
   return (
-    <aside className={`${styles.aside}${isCollapsed ? ` ${styles.collapsed}` : ""}${className ? ` ${className}` : ""}`}>
+    <aside
+      className={`${styles.aside}${isCollapsed ? ` ${styles.collapsed}` : ""}${className ? ` ${className}` : ""}`}
+    >
       <div className={styles.header}>
         <div className={styles.brandRow}>
           {renderLink({
