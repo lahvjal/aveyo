@@ -100,26 +100,22 @@ export function CultureEventModal({
   const isEditing = mode === "edit";
 
   useEffect(() => {
+    setFormState(buildFormState(currentUserName, isOpen ? initialEvent : null));
+    setPosterFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+    setIsSaving(false);
+    setErrorMessage("");
+  }, [currentUserName, initialEvent, isOpen]);
+
+  useEffect(() => {
     if (!isOpen) {
-      setFormState(buildFormState(currentUserName, null));
-      setPosterFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
-      setIsSaving(false);
-      setErrorMessage("");
       return;
     }
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    setFormState(buildFormState(currentUserName, initialEvent));
-    setPosterFile(null);
-    setIsSaving(false);
-    setErrorMessage("");
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -132,7 +128,7 @@ export function CultureEventModal({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [currentUserName, initialEvent, isOpen, onClose]);
+  }, [isOpen, onClose]);
 
   if (!isOpen) {
     return null;
