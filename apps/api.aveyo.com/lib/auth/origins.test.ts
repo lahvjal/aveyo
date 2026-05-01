@@ -11,6 +11,7 @@ describe("auth origins", () => {
     expect(origins).toContain("https://auth.aveyo.com");
     expect(origins).toContain("https://app.aveyo.com");
     expect(origins).toContain("https://www.aveyo.com");
+    expect(origins).toContain("https://tech.aveyo.com");
   });
 
   it("merges configured origins with the generated defaults", () => {

@@ -40,6 +40,8 @@ export function getDefaultAllowedOrigins() {
 
   // Support the common production alias even though the canonical registry entry is aveyo.com.
   origins.add("https://www.aveyo.com");
+  // Support the legacy production app hostname used by internal users.
+  origins.add("https://tech.aveyo.com");
   return Array.from(origins);
 }
 
