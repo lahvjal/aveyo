@@ -48,6 +48,14 @@ function formatEventDate(value: string): string {
   return eventDateFormatter.format(new Date(parsed));
 }
 
+function formatEventDateRange(startDate: string, endDate: string | null): string {
+  const formattedStart = formatEventDate(startDate);
+  if (!endDate || endDate === startDate) {
+    return formattedStart;
+  }
+  return `${formattedStart} - ${formatEventDate(endDate)}`;
+}
+
 function formatEventTime(value: string): string {
   const parsed = Date.parse(`1970-01-01T${value}`);
   if (Number.isNaN(parsed)) {
@@ -57,7 +65,8 @@ function formatEventTime(value: string): string {
 }
 
 function isUpcomingEvent(event: CultureEvent): boolean {
-  const parsed = Date.parse(`${event.date}T${event.time}`);
+  const finalDate = event.endDate ?? event.date;
+  const parsed = Date.parse(`${finalDate}T23:59:59`);
   if (Number.isNaN(parsed)) {
     return true;
   }
@@ -76,7 +85,7 @@ function sortCultureEvents(events: CultureEvent[]) {
 }
 
 function buildEventSummary(event: CultureEvent): string {
-  return `${event.title} at ${event.location} on ${formatEventDate(event.date)} at ${formatEventTime(event.time)}. Hosted by ${event.owner}.`;
+  return `${event.title} at ${event.location} from ${formatEventDateRange(event.date, event.endDate)} at ${formatEventTime(event.time)}. Hosted by ${event.owner}.`;
 }
 
 function isSameCalendarDay(left: Date, right: Date) {

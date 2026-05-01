@@ -6,6 +6,7 @@ export interface CultureEvent {
   id: string;
   title: string;
   date: string;
+  endDate: string | null;
   time: string;
   location: string;
   owner: string;
@@ -35,6 +36,7 @@ export interface CultureFeedResponse {
 export interface NewCultureEventInput {
   title: string;
   date: string;
+  endDate?: string;
   time: string;
   location: string;
   owner: string;
@@ -54,6 +56,7 @@ function buildCultureEventPayload(input: NewCultureEventInput) {
   return {
     title: input.title,
     date: input.date,
+    endDate: input.endDate?.trim() ? input.endDate.trim() : undefined,
     time: input.time,
     location: input.location,
     owner: input.owner,
@@ -69,6 +72,9 @@ function buildCultureEventFormData(input: NewCultureEventInput) {
 
   formData.set("title", payload.title);
   formData.set("date", payload.date);
+  if (payload.endDate) {
+    formData.set("endDate", payload.endDate);
+  }
   formData.set("time", payload.time);
   formData.set("location", payload.location);
   formData.set("owner", payload.owner);

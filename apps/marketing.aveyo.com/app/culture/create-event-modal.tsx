@@ -12,6 +12,7 @@ import styles from "./culture-page.module.css";
 interface CreateEventFormState {
   title: string;
   date: string;
+  endDate: string;
   time: string;
   location: string;
   owner: string;
@@ -38,6 +39,7 @@ function buildFormState(
     return {
       title: event.title,
       date: event.date,
+      endDate: event.endDate ?? "",
       time: event.time,
       location: event.location,
       owner: event.owner,
@@ -50,6 +52,7 @@ function buildFormState(
   return {
     title: "",
     date: "",
+    endDate: "",
     time: "",
     location: "",
     owner: currentUserName?.trim() || "",
@@ -95,12 +98,14 @@ export function CultureEventModal({
     buildFormState(currentUserName, initialEvent)
   );
   const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [useDateRange, setUseDateRange] = useState(() => Boolean(initialEvent?.endDate));
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const isEditing = mode === "edit";
 
   useEffect(() => {
     setFormState(buildFormState(currentUserName, isOpen ? initialEvent : null));
+    setUseDateRange(Boolean(isOpen ? initialEvent?.endDate : null));
     setPosterFile(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -178,6 +183,12 @@ export function CultureEventModal({
       return;
     }
 
+    const trimmedEndDate = formState.endDate.trim();
+    if (trimmedEndDate && trimmedEndDate < formState.date) {
+      setErrorMessage("End date cannot be earlier than the start date.");
+      return;
+    }
+
     const trimmedPosterUrl = formState.posterUrl.trim();
     if (
       !posterFile &&
@@ -194,11 +205,13 @@ export function CultureEventModal({
       const savedEvent = isEditing
         ? await updateCultureEvent(initialEvent!.id, {
             ...formState,
+            endDate: useDateRange ? trimmedEndDate : "",
             posterUrl: trimmedPosterUrl,
             posterFile
           })
         : await createCultureEvent({
             ...formState,
+            endDate: useDateRange ? trimmedEndDate : "",
             posterUrl: trimmedPosterUrl,
             posterFile
           });
@@ -284,7 +297,7 @@ export function CultureEventModal({
                 </div>
 
                 <div className="field">
-                  <label htmlFor="event-date">Date</label>
+                  <label htmlFor="event-date">Start date</label>
                   <input
                     id="event-date"
                     type="date"
@@ -294,6 +307,40 @@ export function CultureEventModal({
                       setFormState((state) => ({ ...state, date: event.target.value }))
                     }
                   />
+                </div>
+
+                <div className="field">
+                  <label htmlFor="event-end-date">End date</label>
+                  <input
+                    id="event-end-date"
+                    type="date"
+                    value={formState.endDate}
+                    required={useDateRange}
+                    disabled={!useDateRange}
+                    min={formState.date || undefined}
+                    onChange={(event) =>
+                      setFormState((state) => ({ ...state, endDate: event.target.value }))
+                    }
+                  />
+                  <p className="helper-text">
+                    Set an end date for multi-day events.
+                    <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={useDateRange}
+                        onChange={(event) => {
+                          const enabled = event.target.checked;
+                          setUseDateRange(enabled);
+                          if (!enabled) {
+                            setFormState((state) => ({ ...state, endDate: "" }));
+                          } else if (!formState.endDate && formState.date) {
+                            setFormState((state) => ({ ...state, endDate: state.date }));
+                          }
+                        }}
+                      />
+                      Multi-day event
+                    </label>
+                  </p>
                 </div>
 
                 <div className="field">

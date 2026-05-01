@@ -24,6 +24,7 @@ interface CultureEventRow {
   id: string;
   title: string;
   event_date: string;
+  event_end_date: string | null;
   event_time: string;
   location: string;
   owner_name: string;
@@ -49,6 +50,7 @@ export interface CultureEvent {
   id: string;
   title: string;
   date: string;
+  endDate: string | null;
   time: string;
   location: string;
   owner: string;
@@ -85,6 +87,7 @@ export class MarketingCultureError extends Error {
 interface CreateCultureEventPayload {
   title: string;
   date: string;
+  endDate: string | null;
   time: string;
   location: string;
   owner: string;
@@ -133,6 +136,23 @@ function normalizeEventDate(value: unknown) {
   }
 
   return normalized;
+}
+
+function normalizeOptionalEventDate(value: unknown) {
+  const normalized = normalizeOptionalText(value);
+  if (!normalized) {
+    return null;
+  }
+  return normalizeEventDate(normalized);
+}
+
+function validateEventDateRange(startDate: string, endDate: string | null) {
+  if (!endDate) {
+    return;
+  }
+  if (Date.parse(`${endDate}T00:00:00.000Z`) < Date.parse(`${startDate}T00:00:00.000Z`)) {
+    throw new MarketingCultureError("End date cannot be earlier than the start date.");
+  }
 }
 
 function normalizeEventTime(value: unknown) {
@@ -259,6 +279,7 @@ function mapCultureEventRow(row: CultureEventRow): CultureEvent {
     id: row.id,
     title: row.title,
     date: row.event_date,
+    endDate: row.event_end_date,
     time: row.event_time.slice(0, 5),
     location: row.location,
     owner: row.owner_name,
@@ -312,6 +333,12 @@ function assertManageCultureAccess(session: AuthSessionResult) {
 
 function coerceCultureEventPayload(payload: unknown): CreateCultureEventPayload {
   if (payload instanceof FormData) {
+    const date = normalizeEventDate(readFormDataText(payload, "date"));
+    const endDate = normalizeOptionalEventDate(
+      readFormDataText(payload, "endDate") ?? readFormDataText(payload, "end_date")
+    );
+    validateEventDateRange(date, endDate);
+
     const posterKind = normalizePosterKind(
       readFormDataText(payload, "posterKind") ?? readFormDataText(payload, "poster_kind")
     );
@@ -330,7 +357,8 @@ function coerceCultureEventPayload(payload: unknown): CreateCultureEventPayload 
 
     return {
       title: normalizeRequiredText(readFormDataText(payload, "title"), "Title"),
-      date: normalizeEventDate(readFormDataText(payload, "date")),
+      date,
+      endDate,
       time: normalizeEventTime(readFormDataText(payload, "time")),
       location: normalizeRequiredText(readFormDataText(payload, "location"), "Location"),
       owner: normalizeRequiredText(readFormDataText(payload, "owner"), "Owner"),
@@ -358,9 +386,14 @@ function coerceCultureEventPayload(payload: unknown): CreateCultureEventPayload 
     );
   }
 
+  const date = normalizeEventDate(record.date);
+  const endDate = normalizeOptionalEventDate(record.endDate ?? record.end_date);
+  validateEventDateRange(date, endDate);
+
   return {
     title: normalizeRequiredText(record.title, "Title"),
-    date: normalizeEventDate(record.date),
+    date,
+    endDate,
     time: normalizeEventTime(record.time),
     location: normalizeRequiredText(record.location, "Location"),
     owner: normalizeRequiredText(record.owner, "Owner"),
@@ -479,7 +512,7 @@ async function getCultureEventRowById(eventId: string) {
   const { data, error } = await supabaseServiceRoleClient
     .from(CULTURE_EVENTS_TABLE)
     .select(
-      "id, title, event_date, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
+      "id, title, event_date, event_end_date, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
     )
     .eq("id", eventId)
     .maybeSingle();
@@ -496,7 +529,7 @@ async function listCultureEvents() {
   const { data, error } = await supabaseServiceRoleClient
     .from(CULTURE_EVENTS_TABLE)
     .select(
-      "id, title, event_date, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
+      "id, title, event_date, event_end_date, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
     )
     .order("event_date", { ascending: true })
     .order("event_time", { ascending: true })
@@ -568,6 +601,7 @@ export async function createCultureEvent(payload: unknown, session: AuthSessionR
       .insert({
         title: normalizedPayload.title,
         event_date: normalizedPayload.date,
+        event_end_date: normalizedPayload.endDate,
         event_time: normalizedPayload.time,
         location: normalizedPayload.location,
         owner_name: normalizedPayload.owner,
@@ -576,7 +610,7 @@ export async function createCultureEvent(payload: unknown, session: AuthSessionR
         poster_media_url: posterUrl
       })
       .select(
-        "id, title, event_date, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
+        "id, title, event_date, event_end_date, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
       )
       .maybeSingle();
 
@@ -632,6 +666,7 @@ export async function updateCultureEvent(
       .update({
         title: normalizedPayload.title,
         event_date: normalizedPayload.date,
+        event_end_date: normalizedPayload.endDate,
         event_time: normalizedPayload.time,
         location: normalizedPayload.location,
         owner_name: normalizedPayload.owner,
@@ -641,7 +676,7 @@ export async function updateCultureEvent(
       })
       .eq("id", normalizedEventId)
       .select(
-        "id, title, event_date, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
+        "id, title, event_date, event_end_date, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
       )
       .maybeSingle();
 

@@ -24,16 +24,25 @@ const eventTimeFormatter = new Intl.DateTimeFormat("en-US", {
 
 function formatEventDateTime(event: CultureEvent) {
   const parsedDate = Date.parse(`${event.date}T00:00:00`);
+  const parsedEndDate = event.endDate ? Date.parse(`${event.endDate}T00:00:00`) : Number.NaN;
   const parsedTime = Date.parse(`1970-01-01T${event.time}`);
 
   const formattedDate = Number.isNaN(parsedDate)
     ? event.date
     : eventDateFormatter.format(new Date(parsedDate));
+  const formattedEndDate =
+    !event.endDate || event.endDate === event.date
+      ? null
+      : Number.isNaN(parsedEndDate)
+        ? event.endDate
+        : eventDateFormatter.format(new Date(parsedEndDate));
   const formattedTime = Number.isNaN(parsedTime)
     ? event.time
     : eventTimeFormatter.format(new Date(parsedTime));
 
-  return `${formattedDate} at ${formattedTime}`;
+  return formattedEndDate
+    ? `${formattedDate} - ${formattedEndDate} at ${formattedTime}`
+    : `${formattedDate} at ${formattedTime}`;
 }
 
 interface EventInfoModalProps {
