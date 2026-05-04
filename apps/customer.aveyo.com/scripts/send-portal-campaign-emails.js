@@ -1,6 +1,7 @@
 const { readFileSync } = require("node:fs");
 const { resolve } = require("node:path");
 const { Resend } = require("resend");
+const mysql = require("mysql2/promise");
 const {
   EMAIL_SUBJECTS,
   renderUpdatedPortalEmailHtml,
@@ -86,6 +87,76 @@ function requireValue(label, value) {
   return String(value).trim();
 }
 
+function chunk(values, size) {
+  const out = [];
+  for (let i = 0; i < values.length; i += size) {
+    out.push(values.slice(i, i + size));
+  }
+  return out;
+}
+
+async function getUnsubscribedRecipients(recipients) {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) {
+    return new Set();
+  }
+
+  if (recipients.length === 0) {
+    return new Set();
+  }
+
+  let connection;
+  try {
+    connection = await mysql.createConnection(databaseUrl);
+
+    const [tableRows] = await connection.query(
+      "SHOW TABLES LIKE 'marketing_email_unsubscribes'"
+    );
+    if (!Array.isArray(tableRows) || tableRows.length === 0) {
+      return new Set();
+    }
+
+    const unsubscribed = new Set();
+    const normalizedRecipients = recipients.map((email) => email.toLowerCase());
+    for (const emailChunk of chunk(normalizedRecipients, 200)) {
+      const placeholders = emailChunk.map(() => "?").join(",");
+      const [rows] = await connection.query(
+        `SELECT email FROM marketing_email_unsubscribes WHERE email IN (${placeholders})`,
+        emailChunk
+      );
+      for (const row of rows) {
+        if (row.email) {
+          unsubscribed.add(String(row.email).toLowerCase());
+        }
+      }
+    }
+
+    return unsubscribed;
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.warn("Unable to load unsubscribed recipients. Continuing send.", reason);
+    return new Set();
+  } finally {
+    if (connection) {
+      await connection.end();
+    }
+  }
+}
+
+function buildRecipientUrl(baseUrl, email) {
+  const url = new URL(baseUrl);
+  url.searchParams.set("email", email);
+  return url.toString();
+}
+
+function deriveUnsubscribeApiUrl(pageUrl) {
+  const url = new URL(pageUrl);
+  url.pathname = "/api/preferences/unsubscribe";
+  url.search = "";
+  url.hash = "";
+  return url.toString();
+}
+
 function pickResendApiKey() {
   const keyCandidates = [
     { name: "RESEND_AVEYOORG_API_KEY", value: process.env.RESEND_AVEYOORG_API_KEY },
@@ -127,6 +198,10 @@ async function main() {
   const limit = toNumber(getArg("limit", "0"), 0);
   const supportEmail = getArg("support-email", "customercare@aveyo.com");
   const unsubscribeUrl = getArg("unsubscribe-url", process.env.MARKETING_UNSUBSCRIBE_URL || "");
+  const unsubscribeApiUrl = getArg(
+    "unsubscribe-api-url",
+    process.env.MARKETING_UNSUBSCRIBE_API_URL || ""
+  );
   const preferencesUrl = getArg("preferences-url", process.env.MARKETING_PREFERENCES_URL || "");
   const companyName = getArg("company-name", process.env.MARKETING_COMPANY_NAME || "Aveyo");
   const companyAddress = getArg("company-address", process.env.MARKETING_COMPANY_ADDRESS || "");
@@ -155,13 +230,26 @@ async function main() {
   const resend = new Resend(keyValue);
   const from = process.env.CAMPAIGN_FROM || "Aveyo Support <support@send.aveyo.com>";
   const liveUnsubscribeUrl = requireValue("unsubscribe-url", unsubscribeUrl);
+  const liveUnsubscribeApiBaseUrl = unsubscribeApiUrl
+    ? requireValue("unsubscribe-api-url", unsubscribeApiUrl)
+    : deriveUnsubscribeApiUrl(liveUnsubscribeUrl);
   const liveCompanyAddress = requireValue("company-address", companyAddress);
   console.log(`Resend key source: ${keyName}`);
+
+  const unsubscribedRecipients = await getUnsubscribedRecipients(limitedRecipients);
+  const filteredRecipients = limitedRecipients.filter(
+    (recipient) => !unsubscribedRecipients.has(recipient.toLowerCase())
+  );
+  console.log(
+    `Suppressed unsubscribed recipients: ${unsubscribedRecipients.size}. Sending to ${filteredRecipients.length}.`
+  );
 
   let successCount = 0;
   let failureCount = 0;
 
-  for (const recipient of limitedRecipients) {
+  for (const recipient of filteredRecipients) {
+    const recipientUnsubscribeUrl = buildRecipientUrl(liveUnsubscribeUrl, recipient);
+    const recipientUnsubscribeApiUrl = buildRecipientUrl(liveUnsubscribeApiBaseUrl, recipient);
     const subject = EMAIL_SUBJECTS[campaign];
     const html =
       campaign === "welcome"
@@ -170,7 +258,7 @@ async function main() {
             imageSrc,
             footerContext: {
               recipientEmail: recipient,
-              unsubscribeUrl: liveUnsubscribeUrl,
+              unsubscribeUrl: recipientUnsubscribeUrl,
               preferencesUrl,
               supportEmail,
               companyName,
@@ -183,7 +271,7 @@ async function main() {
             name: inferNameFromEmail(recipient),
             footerContext: {
               recipientEmail: recipient,
-              unsubscribeUrl: liveUnsubscribeUrl,
+              unsubscribeUrl: recipientUnsubscribeUrl,
               preferencesUrl,
               supportEmail,
               companyName,
@@ -198,7 +286,7 @@ async function main() {
         subject,
         html,
         headers: {
-          "List-Unsubscribe": `<${liveUnsubscribeUrl}>`,
+          "List-Unsubscribe": `<${recipientUnsubscribeApiUrl}>`,
           "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"
         }
       };
