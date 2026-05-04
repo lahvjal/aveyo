@@ -86,13 +86,20 @@ function trimTrailingSlash(value) {
   return typeof value === "string" ? value.replace(/\/$/, "") : "";
 }
 
-function isUpcomingCultureEvent(event) {
-  const parsed = Date.parse(`${event?.date}T${event?.time}`);
-  if (Number.isNaN(parsed)) {
+function isCurrentOrUpcomingCultureEvent(event) {
+  const startAt = Date.parse(`${event?.date}T${event?.time}`);
+  if (Number.isNaN(startAt)) {
     return false;
   }
 
-  return parsed >= Date.now();
+  const now = Date.now();
+  const endDate = typeof event?.endDate === "string" ? event.endDate.trim() : "";
+  const endAt =
+    endDate && !Number.isNaN(Date.parse(`${endDate}T23:59:59.999`))
+      ? Date.parse(`${endDate}T23:59:59.999`)
+      : null;
+
+  return endAt !== null ? now <= endAt : startAt >= now;
 }
 
 function sortCultureEvents(events) {
@@ -352,7 +359,9 @@ export default function HomePage() {
         }
 
         const upcomingEvents = sortCultureEvents(
-          Array.isArray(payload?.events) ? payload.events.filter((event) => isUpcomingCultureEvent(event)) : []
+          Array.isArray(payload?.events)
+            ? payload.events.filter((event) => isCurrentOrUpcomingCultureEvent(event))
+            : []
         );
         const announcements = Array.isArray(payload?.announcements) ? payload.announcements : [];
 
