@@ -9,6 +9,8 @@ const AVEYO_COLORS = {
   accent: "#111827"
 };
 
+const AVEYO_LOGO_URL = "https://www.aveyo.com/aveyo-logo.svg";
+
 function escapeHtml(value) {
   return String(value)
     .replace(/&/g, "&amp;")
@@ -21,12 +23,10 @@ function escapeHtml(value) {
 function buildFooter({
   unsubscribeUrl,
   preferencesUrl,
-  supportEmail,
   privacyPolicyUrl
 }) {
   const safeUnsubscribeUrl = escapeHtml(unsubscribeUrl);
   const safePreferencesUrl = escapeHtml(preferencesUrl || "");
-  const safeSupportEmail = escapeHtml(supportEmail);
   const safePrivacyPolicyUrl = escapeHtml(privacyPolicyUrl || "");
 
   const preferencesRow = preferencesUrl
@@ -45,7 +45,7 @@ function buildFooter({
         ${preferencesRow}<a href="${safeUnsubscribeUrl}" style="color:${AVEYO_COLORS.accent};">Unsubscribe</a>${privacyRow}
       </p>
       <p style="margin:0 0 10px 0;">
-        For help, contact <a href="mailto:${safeSupportEmail}" style="color:${AVEYO_COLORS.accent};">${safeSupportEmail}</a>.
+        For help, chat with Ava at <a href="https://www.aveyo.com" style="color:${AVEYO_COLORS.accent};">aveyo.com</a>.
       </p>
     </div>
   `;
@@ -63,6 +63,7 @@ function buildShell({
 }) {
   const safePortalUrl = escapeHtml(portalUrl);
   const safeImageSrc = escapeHtml(imageSrc);
+  const safeLogoUrl = escapeHtml(AVEYO_LOGO_URL);
   const footerHtml = buildFooter(footerContext);
 
   return `<!doctype html>
@@ -75,6 +76,7 @@ function buildShell({
   <body style="font-family: Arial, sans-serif; line-height: 1.6; color: ${AVEYO_COLORS.text}; margin: 0; padding: 24px; background: ${AVEYO_COLORS.page};">
     <div style="max-width: 560px; margin: 0 auto; background: ${AVEYO_COLORS.panel}; border: 1px solid ${AVEYO_COLORS.border}; border-radius: 16px; overflow: hidden;">
       <div style="padding: 24px 24px 16px; background: ${AVEYO_COLORS.action}; color: ${AVEYO_COLORS.actionText};">
+        <img src="${safeLogoUrl}" alt="Aveyo logo" width="132" style="display:block;width:132px;max-width:100%;height:auto;margin:0 0 14px 0;" />
         <p style="margin:0 0 8px 0;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;opacity:0.9;">${escapeHtml(eyebrow)}</p>
         <h1 style="margin:0;font-size:24px;line-height:1.2;">${escapeHtml(heading)}</h1>
       </div>
