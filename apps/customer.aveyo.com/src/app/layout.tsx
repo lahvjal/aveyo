@@ -20,7 +20,12 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Aveyo Solar Customer Portal",
-  description: "Track your solar installation progress in real-time"
+  description: "Track your solar installation progress in real-time",
+  icons: {
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
+    shortcut: ["/favicon.svg"],
+    apple: [{ url: "/apple-icon", type: "image/png" }]
+  }
 };
 
 export default function RootLayout({
