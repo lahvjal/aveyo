@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import '@/styles/brand-colors.css';
 import Link from 'next/link';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
@@ -24,12 +24,119 @@ function formatDate(dateString: string) {
   return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
 }
 
-function StageMenuDots({ active = false }: { active?: boolean }) {
+type StageMenuMilestone = {
+  label: string;
+  description: string;
+  completed: boolean;
+};
+
+function StageMenuDots({
+  active = false,
+  stageLabel,
+  milestones,
+  stageStatus = 'pending',
+  popoverPosition = 'bottom'
+}: {
+  active?: boolean;
+  stageLabel: string;
+  milestones: StageMenuMilestone[];
+  stageStatus?: 'completed' | 'active' | 'pending';
+  popoverPosition?: 'bottom' | 'top';
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: MouseEvent | TouchEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    document.addEventListener('touchstart', handlePointerDown);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      document.removeEventListener('touchstart', handlePointerDown);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen]);
+
   return (
-    <div className="absolute right-5 top-5 flex items-center gap-1">
-      <span className={`h-1 w-1 rounded-full ${active ? 'bg-[var(--customer-color-text-primary)]' : 'bg-[var(--customer-color-text-muted)]'}`}></span>
-      <span className={`h-1 w-1 rounded-full ${active ? 'bg-[var(--customer-color-text-primary)]' : 'bg-[var(--customer-color-text-muted)]'}`}></span>
-      <span className={`h-1 w-1 rounded-full ${active ? 'bg-[var(--customer-color-text-primary)]' : 'bg-[var(--customer-color-text-muted)]'}`}></span>
+    <div ref={menuRef} className="absolute right-5 top-5 z-10">
+      <button
+        type="button"
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
+        aria-label={`Open ${stageLabel} milestone details`}
+        className="flex h-6 w-6 items-center justify-center gap-1 rounded-full transition-colors hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--customer-color-action)]"
+        onClick={() => setIsOpen((previousState) => !previousState)}
+      >
+        <span className={`h-1 w-1 rounded-full ${active ? 'bg-[var(--customer-color-text-primary)]' : 'bg-[var(--customer-color-text-muted)]'}`}></span>
+        <span className={`h-1 w-1 rounded-full ${active ? 'bg-[var(--customer-color-text-primary)]' : 'bg-[var(--customer-color-text-muted)]'}`}></span>
+        <span className={`h-1 w-1 rounded-full ${active ? 'bg-[var(--customer-color-text-primary)]' : 'bg-[var(--customer-color-text-muted)]'}`}></span>
+      </button>
+
+      {isOpen ? (
+        <div
+          role="dialog"
+          aria-label={`${stageLabel} milestones`}
+          className={`absolute right-0 z-20 w-[280px] rounded-2xl border border-[var(--customer-color-border-muted)] bg-white p-4 text-left shadow-[0_20px_45px_rgba(16,24,40,0.12)] ${
+            popoverPosition === 'top' ? 'bottom-full mb-2' : 'mt-2'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2.5 w-2.5 rounded-full ${
+                stageStatus === 'completed'
+                  ? 'bg-[var(--customer-color-stage-complete)]'
+                  : stageStatus === 'active'
+                    ? 'bg-[var(--customer-color-action)]'
+                    : 'bg-[var(--customer-color-text-muted)]'
+              }`}
+            ></span>
+            <p className="text-sm font-bold text-[var(--customer-color-text-primary)]">{stageLabel}</p>
+          </div>
+
+          {milestones.length ? (
+            <ul className="mt-3 space-y-3">
+              {milestones.map((milestone) => (
+                <li key={milestone.label}>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-[var(--customer-color-text-primary)]">{milestone.label}</p>
+                    <span
+                      className={`shrink-0 text-[11px] font-semibold uppercase tracking-[0.06em] ${
+                        milestone.completed
+                          ? 'text-[var(--customer-color-stage-complete)]'
+                          : 'text-[var(--customer-color-action)]'
+                      }`}
+                    >
+                      {milestone.completed ? 'Completed' : 'In Progress'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs leading-5 text-[var(--customer-color-text-subtle)]">{milestone.description}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-xs leading-5 text-[var(--customer-color-text-subtle)]">
+              Milestone information will appear here once your project starts.
+            </p>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -49,10 +156,14 @@ function StageMilestoneDots({
     <div className="flex items-center justify-center gap-3">
       {Array.from({ length: totalMilestones }).map((_, index) => {
         if (index < completedCount) {
+          const completedMilestoneBackground =
+            visualState === 'completed' ? 'rgba(15, 184, 38, 0.30)' : '#0FB826';
+
           return (
             <span
               key={index}
-              className="flex h-6 w-6 items-center justify-center rounded-full bg-[var(--customer-color-stage-complete)] text-white"
+              className="flex h-6 w-6 items-center justify-center rounded-full text-white"
+              style={{ backgroundColor: completedMilestoneBackground }}
             >
               <svg className="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" aria-hidden="true">
                 <path d="m3.5 8 2.5 2.5 6-6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
@@ -313,7 +424,13 @@ export default function DashboardPage() {
                           : ''
                       }`}
                     >
-                      <StageMenuDots />
+                      <StageMenuDots
+                        active={false}
+                        stageLabel={label}
+                        milestones={[]}
+                        stageStatus="pending"
+                        popoverPosition={index === emptyStageLabels.length - 1 ? 'top' : 'bottom'}
+                      />
                       <h3 className="text-[length:var(--customer-font-h5)] font-medium tracking-[-0.03em] text-[var(--customer-color-text-muted)]">
                         {label}
                       </h3>
@@ -336,7 +453,17 @@ export default function DashboardPage() {
                           : undefined
                       }
                     >
-                      <StageMenuDots active={section.visualState === 'active'} />
+                      <StageMenuDots
+                        active={section.visualState === 'active'}
+                        stageLabel={section.label}
+                        stageStatus={section.visualState}
+                        popoverPosition={index === selectedProjectStages.length - 1 ? 'top' : 'bottom'}
+                        milestones={section.milestones.map((milestone) => ({
+                          label: milestone.label,
+                          description: getNextMilestoneDescription(milestone.label),
+                          completed: milestone.completed
+                        }))}
+                      />
                       <h3
                         className={`${
                           section.visualState === 'active'
