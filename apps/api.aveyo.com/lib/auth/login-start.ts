@@ -2,7 +2,7 @@ import { type User } from "@supabase/supabase-js";
 import { getLocalAppUrl, resolveAppUrl, resolveEnvironment } from "@ava/config/runtime/app-urls";
 import { getMySqlCustomerProjectDetails } from "@/lib/mysql/customer-projects";
 import { ServiceError } from "@/lib/service-error";
-import { getSupabaseServerClient, getSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 const LOCAL_HOST_PATTERN =
   /^(localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|::1|.+\.local)$/i;
@@ -10,7 +10,7 @@ const DEFAULT_AUTH_FROM_EMAIL = "Aveyo Support <support@send.goaveyo.com>";
 const DEFAULT_CUSTOMER_SUPPORT_EMAIL = "customercare@aveyo.com";
 const DEFAULT_LOOKUP_CACHE_TTL_MS = 5 * 60 * 1000;
 
-export type LoginStartNextStep = "password" | "emailLinkNotice" | "noAccount";
+export type LoginStartNextStep = "password" | "emailLinkNotice";
 
 interface BeginHostedLoginInput {
   email?: unknown;
@@ -278,37 +278,6 @@ async function generateCustomerMagicLink(request: Request, email: string, reques
   return actionLink;
 }
 
-async function sendCustomerSignInEmailViaSupabase(request: Request, email: string, requestedReturnTo: unknown) {
-  const emailRedirectTo = buildHostedAuthCallbackUrl(request, requestedReturnTo);
-  const otpOptions = {
-    email,
-    options: {
-      emailRedirectTo,
-      shouldCreateUser: false
-    }
-  } as const;
-
-  // Primary path: standard anon-key OTP flow (matches hosted client behavior).
-  const anonClient = getSupabaseServerClient();
-  const { error: anonError } = await anonClient.auth.signInWithOtp(otpOptions);
-  if (!anonError) {
-    return;
-  }
-
-  // Secondary fallback: service-role client, in case anon flow is restricted by policy.
-  const serviceClient = getSupabaseServiceRoleClient();
-  const { error: serviceError } = await serviceClient.auth.signInWithOtp(otpOptions);
-  if (!serviceError) {
-    return;
-  }
-
-  console.error("Supabase OTP delivery failed for customer sign-in", {
-    anonError: anonError.message,
-    serviceError: serviceError.message
-  });
-  throw new ServiceError(500, "Failed to send secure sign-in email.");
-}
-
 async function sendCustomerSignInEmail(email: string, actionLink: string) {
   const resendApiKey = process.env.RESEND_API_KEY;
   if (!resendApiKey) {
@@ -386,27 +355,13 @@ export async function beginHostedLogin(request: Request, input: BeginHostedLogin
   if (!customerMatch) {
     return {
       email,
-      nextStep: "noAccount" as const
-    };
-  }
-
-  await ensureCustomerAuthUser(email, customerMatch.customerName);
-  const resendApiKey = process.env.RESEND_API_KEY?.trim();
-  if (!resendApiKey) {
-    await sendCustomerSignInEmailViaSupabase(request, email, input.returnTo);
-    return {
-      email,
       nextStep: "emailLinkNotice" as const
     };
   }
 
-  try {
-    const actionLink = await generateCustomerMagicLink(request, email, input.returnTo);
-    await sendCustomerSignInEmail(email, actionLink);
-  } catch (error) {
-    console.error("Customer magic-link email fallback triggered", error);
-    await sendCustomerSignInEmailViaSupabase(request, email, input.returnTo);
-  }
+  await ensureCustomerAuthUser(email, customerMatch.customerName);
+  const actionLink = await generateCustomerMagicLink(request, email, input.returnTo);
+  await sendCustomerSignInEmail(email, actionLink);
 
   return {
     email,
