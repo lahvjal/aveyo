@@ -140,6 +140,19 @@ export function isCompleted(date: any, status: any, milestoneKey?: string, secti
   const approvals = milestones.approvals || {};
   const construction = milestones.construction || {};
   const energization = milestones.energization || {};
+
+  // "System live and producing" should be considered complete once
+  // "System Active and Producing" is complete.
+  if (sectionKey === 'energization' && milestoneKey === 'system-active') {
+    if (
+      isDirectlyCompleted(
+        energization['energize-complete-date'],
+        energization['engergize-status']
+      )
+    ) {
+      return true;
+    }
+  }
   
   // Check if any later milestone in this section is completed
   const section = milestoneStatusMap[sectionKey as keyof typeof milestoneStatusMap];

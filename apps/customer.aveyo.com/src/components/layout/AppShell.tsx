@@ -137,7 +137,6 @@ export default function AppShell({ children }: AppShellProps) {
     typeof user?.user_metadata?.avatar_url === 'string' ? user.user_metadata.avatar_url : null;
   const displayName = getDisplayName(fullName, user?.email ?? null);
   const primaryAddress = projects[0]?.address ?? user?.email ?? 'Your project details';
-  const reportYear = new Date().getFullYear() - 1;
   const headerDisplayName = useMemo(() => {
     if (!customerPortalView?.impersonationActive) {
       return displayName;
@@ -359,22 +358,6 @@ export default function AppShell({ children }: AppShellProps) {
 
             <div className="flex w-full min-w-0 flex-col gap-3 lg:max-w-xl lg:items-end">
               <div className="flex flex-wrap items-center justify-end gap-3">
-              {pathname !== '/annual-report' && (
-                <Link
-                  href="/annual-report"
-                  className="brand-button inline-flex items-center gap-2 px-5 py-3 text-sm"
-                >
-                  <svg className="h-4 w-4" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                    <path
-                      d="M2.75 12.75h10.5M4.75 10.5V6.25M8 10.5V3.25M11.25 10.5V7.75"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <span>{reportYear} Value Report</span>
-                </Link>
-              )}
               <button
                 type="button"
                 className="brand-button-secondary inline-flex items-center gap-2 px-5 py-3 text-sm"

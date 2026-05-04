@@ -46,7 +46,16 @@ const milestoneDescriptions: Record<string, string> = {
 };
 
 export function getProjectStatusSnapshot(project: Project) {
-  return project.calculatedStatus ?? calculateProjectStatus(project);
+  const computedStatus = calculateProjectStatus(project);
+
+  if (!project.calculatedStatus) {
+    return computedStatus;
+  }
+
+  return {
+    ...project.calculatedStatus,
+    progressPercentage: Math.max(project.calculatedStatus.progressPercentage, computedStatus.progressPercentage)
+  };
 }
 
 export function getCurrentSectionKey(project: Project): DashboardSectionKey | null {
