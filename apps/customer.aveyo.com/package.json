@@ -11,7 +11,9 @@
     "pretypecheck": "prisma generate",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "test": "echo \"No tests configured for customer-aveyo-com\"",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "email:portal:preview": "node scripts/preview-portal-campaign-email.js",
+    "email:portal:send": "node scripts/send-portal-campaign-emails.js"
   },
   "dependencies": {
     "@ava/config": "workspace:*",

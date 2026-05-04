@@ -1,0 +1,238 @@
+const { readFileSync } = require("node:fs");
+const { resolve } = require("node:path");
+const { Resend } = require("resend");
+const {
+  EMAIL_SUBJECTS,
+  renderUpdatedPortalEmailHtml,
+  renderWelcomeEmailHtml
+} = require("./portal-email-template.js");
+
+const args = new Map();
+for (const rawArg of process.argv.slice(2)) {
+  const [key, value] = rawArg.split("=");
+  if (key?.startsWith("--")) {
+    args.set(key.slice(2), value ?? "true");
+  }
+}
+
+function getArg(name, fallback) {
+  const value = args.get(name);
+  return value === undefined ? fallback : value;
+}
+
+function toBoolean(value, fallback = false) {
+  if (value === undefined) {
+    return fallback;
+  }
+  const normalized = String(value).trim().toLowerCase();
+  if (["1", "true", "yes", "y"].includes(normalized)) {
+    return true;
+  }
+  if (["0", "false", "no", "n"].includes(normalized)) {
+    return false;
+  }
+  return fallback;
+}
+
+function toNumber(value, fallback) {
+  const parsed = Number.parseInt(String(value), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function normalizeEmailCell(cell) {
+  return String(cell)
+    .split(",")
+    .map((part) => part.replace(/\(.*?\)/g, "").trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function isLikelyEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function inferNameFromEmail(email) {
+  const localPart = email.split("@")[0] ?? "";
+  const cleaned = localPart.replace(/[._-]+/g, " ").replace(/\d+/g, " ").trim();
+  if (!cleaned) {
+    return "there";
+  }
+  const words = cleaned
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+  return words.join(" ");
+}
+
+function collectRecipients(csvPath) {
+  const content = readFileSync(csvPath, "utf8");
+  const lines = content.split(/\r?\n/).slice(1).filter(Boolean);
+  const unique = new Set();
+  for (const line of lines) {
+    const emails = normalizeEmailCell(line);
+    for (const email of emails) {
+      if (isLikelyEmail(email)) {
+        unique.add(email);
+      }
+    }
+  }
+  return Array.from(unique.values());
+}
+
+function requireValue(label, value) {
+  if (!value || !String(value).trim()) {
+    throw new Error(`${label} is required for live marketing sends.`);
+  }
+  return String(value).trim();
+}
+
+function pickResendApiKey() {
+  const keyCandidates = [
+    { name: "RESEND_AVEYOORG_API_KEY", value: process.env.RESEND_AVEYOORG_API_KEY },
+    { name: "AVEYOORG_RESEND_API_KEY", value: process.env.AVEYOORG_RESEND_API_KEY },
+    { name: "RESEND_API_KEY", value: process.env.RESEND_API_KEY }
+  ];
+
+  const selected = keyCandidates.find((candidate) => candidate.value && String(candidate.value).trim());
+  if (!selected) {
+    throw new Error(
+      "No Resend API key configured. Set RESEND_AVEYOORG_API_KEY (preferred) or RESEND_API_KEY."
+    );
+  }
+
+  return {
+    keyName: selected.name,
+    keyValue: String(selected.value).trim()
+  };
+}
+
+async function main() {
+  const campaign = getArg("campaign", "welcome");
+  if (!["welcome", "updated"].includes(campaign)) {
+    throw new Error(`Unsupported --campaign value "${campaign}". Use "welcome" or "updated".`);
+  }
+
+  const csvPath = resolve(
+    process.cwd(),
+    getArg("csv", "../../customer-emails-2026-not-completed.csv")
+  );
+  const portalUrl = getArg("portal-url", "https://customer.aveyo.com");
+  const imageUrl = getArg("image-url", "https://customer.aveyo.com/email/customer-portal-preview.png");
+  const inlineImage = toBoolean(getArg("inline-image", "false"), false);
+  const screenshotPath = getArg(
+    "image",
+    "/Users/vel/.cursor/projects/Users-vel-Documents-Aveyo-monoveyo/assets/custportal-4ec0aa81-59fc-4044-9b0a-542e46e83c4b.png"
+  );
+  const dryRun = toBoolean(getArg("dry-run", "true"), true);
+  const limit = toNumber(getArg("limit", "0"), 0);
+  const supportEmail = getArg("support-email", "customercare@aveyo.com");
+  const unsubscribeUrl = getArg("unsubscribe-url", process.env.MARKETING_UNSUBSCRIBE_URL || "");
+  const preferencesUrl = getArg("preferences-url", process.env.MARKETING_PREFERENCES_URL || "");
+  const companyName = getArg("company-name", process.env.MARKETING_COMPANY_NAME || "Aveyo");
+  const companyAddress = getArg("company-address", process.env.MARKETING_COMPANY_ADDRESS || "");
+
+  const recipients = collectRecipients(csvPath);
+  const limitedRecipients = limit > 0 ? recipients.slice(0, limit) : recipients;
+  const imageSrc = inlineImage ? "cid:portal-preview" : imageUrl;
+  const screenshotBase64 = inlineImage ? readFileSync(screenshotPath).toString("base64") : null;
+
+  console.log(`Campaign: ${campaign}`);
+  console.log(`Dry run: ${dryRun}`);
+  console.log(`Recipient count: ${limitedRecipients.length}`);
+  console.log(`CSV: ${csvPath}`);
+  console.log(`Portal URL: ${portalUrl}`);
+  console.log(`Image source: ${imageSrc}`);
+  console.log(`Inline image mode: ${inlineImage}`);
+
+  if (dryRun) {
+    console.log("Dry run enabled. No emails sent.");
+    console.log("First 10 recipients:", limitedRecipients.slice(0, 10));
+    return;
+  }
+
+  const { keyName, keyValue } = pickResendApiKey();
+
+  const resend = new Resend(keyValue);
+  const from = process.env.CAMPAIGN_FROM || "Aveyo Support <support@send.aveyo.com>";
+  const liveUnsubscribeUrl = requireValue("unsubscribe-url", unsubscribeUrl);
+  const liveCompanyAddress = requireValue("company-address", companyAddress);
+  console.log(`Resend key source: ${keyName}`);
+
+  let successCount = 0;
+  let failureCount = 0;
+
+  for (const recipient of limitedRecipients) {
+    const subject = EMAIL_SUBJECTS[campaign];
+    const html =
+      campaign === "welcome"
+        ? renderWelcomeEmailHtml({
+            portalUrl,
+            imageSrc,
+            footerContext: {
+              recipientEmail: recipient,
+              unsubscribeUrl: liveUnsubscribeUrl,
+              preferencesUrl,
+              supportEmail,
+              companyName,
+              companyAddress: liveCompanyAddress
+            }
+          })
+        : renderUpdatedPortalEmailHtml({
+            portalUrl,
+            imageSrc,
+            name: inferNameFromEmail(recipient),
+            footerContext: {
+              recipientEmail: recipient,
+              unsubscribeUrl: liveUnsubscribeUrl,
+              preferencesUrl,
+              supportEmail,
+              companyName,
+              companyAddress: liveCompanyAddress
+            }
+          });
+
+    try {
+      const payload = {
+        from,
+        to: recipient,
+        subject,
+        html,
+        headers: {
+          "List-Unsubscribe": `<${liveUnsubscribeUrl}>`,
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click"
+        }
+      };
+
+      if (inlineImage && screenshotBase64) {
+        payload.attachments = [
+          {
+            filename: "customer-portal-preview.png",
+            content: screenshotBase64,
+            contentType: "image/png",
+            disposition: "inline",
+            contentId: "portal-preview"
+          }
+        ];
+      }
+
+      const { error } = await resend.emails.send(payload);
+
+      if (error) {
+        failureCount += 1;
+        console.error(`Failed: ${recipient}`, error);
+      } else {
+        successCount += 1;
+      }
+    } catch (error) {
+      failureCount += 1;
+      console.error(`Failed: ${recipient}`, error);
+    }
+  }
+
+  console.log(`Done. Success: ${successCount} | Failed: ${failureCount}`);
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

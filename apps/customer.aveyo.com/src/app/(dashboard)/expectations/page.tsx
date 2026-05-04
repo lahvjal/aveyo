@@ -168,51 +168,6 @@ export default function ExpectationsPage() {
         </div>
       </section>
 
-      <section id="need-help" className="mb-12 scroll-mt-6">
-        <div className="rounded-[var(--customer-radius-card)] bg-gradient-to-r from-[var(--customer-color-action)] to-[var(--customer-color-action-hover)] p-8 text-white shadow-[var(--customer-shadow-panel)]">
-            <div className="flex items-start mb-4">
-              <span className="text-4xl mr-3">💬</span>
-              <h3 className="text-2xl font-bold">Need Help?</h3>
-            </div>
-
-            <p className="text-lg mb-6">
-              We're here for you every step of the way!
-            </p>
-
-            <div className="bg-white bg-opacity-20 backdrop-blur-sm rounded-lg p-6 mb-6">
-              <div className="flex items-center space-x-3">
-                <svg
-                  className="w-8 h-8 flex-shrink-0"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
-                  />
-                </svg>
-                <div>
-                  <p className="text-xl font-bold mb-1">
-                    Aveyo Customer Care:{' '}
-                    <a href="tel:+13854693838" className="hover:underline">
-                      (385) 469-3838
-                    </a>
-                  </p>
-                  <p className="text-sm opacity-90">
-                    Hours: Monday – Friday, 8:00 AM – 4:00 PM CST
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <p className="text-base">
-              If you have any questions before or during installation, don't hesitate to reach out. We can't wait to bring clean, reliable energy to your home — thank you for choosing Aveyo!
-            </p>
-        </div>
-      </section>
     </div>
   );
 }
