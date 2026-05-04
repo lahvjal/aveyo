@@ -12,6 +12,7 @@ import {
   type PlatformSessionUser,
   type PlatformSessionUserType
 } from '@/lib/platform-auth/session';
+import { analytics } from '@/lib/analytics';
 
 const SESSION_REFRESH_INTERVAL_MS = 30000;
 
@@ -101,6 +102,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         result.ok && payload?.authenticated && payload.user
           ? toAuthenticatedCustomerUser(payload.user, nextRole, nextUserType)
           : null;
+      let nextCustomerPortalView: CustomerPortalViewState | null = null;
 
       setUser(nextUser);
       setRole(nextRole);
@@ -110,12 +112,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const viewerEmail = payload.user?.email ?? null;
 
         if (isCustomerPortalCustomerSession(payload)) {
-          setCustomerPortalView({
+          nextCustomerPortalView = {
             canImpersonate: false,
             impersonationActive: false,
             effectiveCustomerEmail: viewerEmail?.trim() ?? null,
             viewerEmail
-          });
+          };
         } else if (canAccessCustomerPortalAsAdmin(payload)) {
           try {
             const impersonationResponse = await fetch('/api/customer-portal/impersonation', {
@@ -132,34 +134,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               impersonationPayload &&
               typeof impersonationPayload.impersonationActive === 'boolean'
             ) {
-              setCustomerPortalView({
+              nextCustomerPortalView = {
                 canImpersonate: true,
                 impersonationActive: Boolean(impersonationPayload.impersonationActive),
                 effectiveCustomerEmail: impersonationPayload.effectiveCustomerEmail ?? null,
                 viewerEmail: impersonationPayload.viewerEmail ?? viewerEmail
-              });
+              };
             } else {
-              setCustomerPortalView({
+              nextCustomerPortalView = {
                 canImpersonate: true,
                 impersonationActive: false,
                 effectiveCustomerEmail: null,
                 viewerEmail
-              });
+              };
             }
           } catch {
-            setCustomerPortalView({
+            nextCustomerPortalView = {
               canImpersonate: true,
               impersonationActive: false,
               effectiveCustomerEmail: null,
               viewerEmail
-            });
+            };
           }
-        } else {
-          setCustomerPortalView(null);
         }
-      } else {
-        setCustomerPortalView(null);
       }
+      setCustomerPortalView(nextCustomerPortalView);
 
       const isAuthenticated = Boolean(nextUser);
       const wasAuthenticated = previousAuthenticatedRef.current;
@@ -170,6 +169,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (isAuthenticated && !wasAuthenticated) {
+        analytics.userLogin(nextUser?.email, {
+          role: nextRole,
+          userType: nextUserType,
+          impersonationActive: Boolean(nextCustomerPortalView?.impersonationActive),
+          impersonatedCustomer: nextCustomerPortalView?.effectiveCustomerEmail
+        });
+
         if (nextUserType === 'customer') {
           await consumeWelcomeVideo();
         } else {
@@ -224,6 +230,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      analytics.userLogout(user?.email, {
+        role,
+        userType,
+        impersonationActive: Boolean(customerPortalView?.impersonationActive),
+        impersonatedCustomer: customerPortalView?.effectiveCustomerEmail
+      });
+
       await fetch('/api/customer-portal/impersonation', {
         method: 'DELETE',
         credentials: 'include'

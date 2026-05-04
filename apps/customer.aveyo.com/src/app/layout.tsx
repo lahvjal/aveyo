@@ -4,6 +4,7 @@ import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import { AuthProvider } from '@/context/AuthContext';
 import AvaWidgetEmbed from '@/components/AvaWidgetEmbed';
+import UserTracking from '@/components/analytics/UserTracking';
 import RouteLoadingOverlay from "./route-loading-overlay";
 import { customerPortalStyleVars } from '@/lib/customer-design-system';
 import "./globals.css";
@@ -40,6 +41,7 @@ export default function RootLayout({
       >
         <RouteLoadingOverlay />
         <AuthProvider>
+          <UserTracking />
           {children}
           <AvaWidgetEmbed />
         </AuthProvider>

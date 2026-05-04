@@ -4,6 +4,8 @@ import "./globals.css";
 import AuthProvider from "@/components/auth-provider";
 import AvaWidgetEmbed from "@/components/AvaWidgetEmbed";
 import RouteLoadingOverlay from "./route-loading-overlay";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "Aveyo KPI Dashboard",
@@ -23,6 +25,8 @@ export default function RootLayout({
           {children}
           <AvaWidgetEmbed />
         </AuthProvider>
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

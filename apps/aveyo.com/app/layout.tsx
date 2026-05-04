@@ -4,6 +4,8 @@ import AvaWidgetEmbed from "@/components/AvaWidgetEmbed";
 import { PricingPlansModal } from "@/components/PricingPlansModal";
 import { SiteLoadOverlay } from "@/components/site-load-overlay";
 import { metadataBase, siteDescription, siteName, siteTitle } from "@/lib/site-metadata";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const socialPreviewImage = {
   url: "/images/og-preview-bg.jpg",
@@ -51,6 +53,8 @@ export default function RootLayout({
         {children}
         <PricingPlansModal />
         <AvaWidgetEmbed />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

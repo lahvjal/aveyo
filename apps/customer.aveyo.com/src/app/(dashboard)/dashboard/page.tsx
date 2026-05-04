@@ -215,10 +215,6 @@ export default function DashboardPage() {
     user?.email?.trim().toLowerCase() ??
     '';
 
-  useEffect(() => {
-    analytics.pageView('dashboard');
-  }, []);
-
   const selectedProjectId = useMemo(() => {
     if (!projects.length) {
       return null;

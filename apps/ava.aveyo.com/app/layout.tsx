@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import AvaWidgetEmbed from "@/components/ava-widget-embed";
 import RouteLoadingOverlay from "./route-loading-overlay";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: "Ava Rep Dashboard",
@@ -17,6 +19,8 @@ export default function RootLayout({
         <RouteLoadingOverlay />
         {children}
         <AvaWidgetEmbed />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

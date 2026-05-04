@@ -1,18 +1,63 @@
 import { track } from '@vercel/analytics';
 
+type UserTrackingContext = {
+  role?: string;
+  userType?: string;
+  impersonationActive?: boolean;
+  impersonatedCustomer?: string | null;
+};
+
+type UiClickEvent = {
+  pathname: string;
+  elementType: string;
+  target: string;
+  label?: string;
+  href?: string;
+};
+
+function anonymizeEmail(email: string | null | undefined) {
+  if (!email) {
+    return 'unknown';
+  }
+
+  const [username] = email.trim().toLowerCase().split('@');
+  return username || 'unknown';
+}
+
 // Custom analytics events for the customer portal
 export const analytics = {
   // User authentication events
-  userLogin: (email: string) => {
-    track('user_login', { email: email.split('@')[0] }); // Only track username part for privacy
+  userLogin: (email: string | null | undefined, context?: UserTrackingContext) => {
+    track('user_login', {
+      user: anonymizeEmail(email),
+      role: context?.role ?? 'unknown',
+      userType: context?.userType ?? 'unknown',
+      impersonationActive: Boolean(context?.impersonationActive)
+    });
   },
 
-  userLogout: () => {
-    track('user_logout');
+  userLogout: (email?: string | null, context?: UserTrackingContext) => {
+    track('user_logout', {
+      user: anonymizeEmail(email),
+      role: context?.role ?? 'unknown',
+      userType: context?.userType ?? 'unknown',
+      impersonationActive: Boolean(context?.impersonationActive)
+    });
   },
 
   userRegistration: (email: string) => {
-    track('user_registration', { email: email.split('@')[0] });
+    track('user_registration', { user: anonymizeEmail(email) });
+  },
+
+  userContext: (userId: string, email: string | null | undefined, context?: UserTrackingContext) => {
+    track('user_context', {
+      userId,
+      user: anonymizeEmail(email),
+      role: context?.role ?? 'unknown',
+      userType: context?.userType ?? 'unknown',
+      impersonationActive: Boolean(context?.impersonationActive),
+      impersonatedCustomer: anonymizeEmail(context?.impersonatedCustomer)
+    });
   },
 
   // Navigation events
@@ -22,6 +67,16 @@ export const analytics = {
 
   tabNavigation: (tab: string) => {
     track('tab_navigation', { tab });
+  },
+
+  uiClick: (event: UiClickEvent) => {
+    track('ui_click', {
+      pathname: event.pathname,
+      elementType: event.elementType,
+      target: event.target,
+      label: event.label ?? 'unknown',
+      href: event.href ?? 'none'
+    });
   },
 
   // Project interactions
@@ -101,7 +156,7 @@ export const analytics = {
 // Utility function to track page views automatically
 export const trackPageView = (pathname: string) => {
   const page = pathname.split('/').filter(Boolean).join('_') || 'home';
-  analytics.pageView(page);
+  track('page_view', { page, pathname });
 };
 
 // Error boundary analytics

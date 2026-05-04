@@ -1,6 +1,8 @@
 import "./globals.css";
 import AvaWidgetEmbed from "./AvaWidgetEmbed";
 import RouteLoadingOverlay from "./route-loading-overlay";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 
 
@@ -16,6 +18,8 @@ export default function RootLayout({ children }) {
         <RouteLoadingOverlay />
         {children}
         <AvaWidgetEmbed />
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );
