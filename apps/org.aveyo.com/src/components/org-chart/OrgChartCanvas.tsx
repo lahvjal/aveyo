@@ -27,6 +27,7 @@ import {
   useCreateFlashQuizScore,
 } from '../../lib/queries'
 import { Button } from '../ui/button'
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 import { Save, Loader2, ChevronLeft, ChevronRight, Shuffle } from 'lucide-react'
 
 interface OrgChartCanvasProps {
@@ -172,6 +173,14 @@ function shuffleValues<T>(values: T[]) {
     shuffled[j] = currentValue
   }
   return shuffled
+}
+
+function getInitials(value: string) {
+  const trimmed = value.trim()
+  if (!trimmed) return '??'
+  const parts = trimmed.split(/\s+/).filter(Boolean)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
 }
 
 function OrgChartCanvasInner({ 
@@ -719,12 +728,30 @@ function OrgChartCanvasInner({
               ) : (
                 flashQuizLeaderboardQuery.data.map((entry, index) => (
                   <div key={entry.id} className="rounded-md border border-gray-200 bg-gray-50 px-2 py-1.5">
-                    <p className="text-xs font-medium text-foreground">
-                      #{index + 1} · {entry.player_name} · {entry.correct_count}/{entry.total_questions} correct
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {entry.accuracy_pct.toFixed(0)}% · {(entry.average_response_ms / 1000).toFixed(2)}s avg
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-7 w-7 border border-gray-200">
+                        {entry.player_photo_url ? (
+                          <AvatarImage src={entry.player_photo_url} alt={entry.player_name} />
+                        ) : null}
+                        <AvatarFallback className="text-[10px] font-semibold text-muted-foreground">
+                          {getInitials(entry.player_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="truncate text-xs font-medium text-foreground">
+                          #{index + 1} · {entry.player_name}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] leading-none">
+                          <span className="rounded-full bg-emerald-100 px-2 py-1 font-semibold text-emerald-800">
+                            {entry.correct_count}/{entry.total_questions} correct
+                          </span>
+                          <span className="rounded-full bg-sky-100 px-2 py-1 font-semibold text-sky-800">
+                            {(entry.average_response_ms / 1000).toFixed(2)}s avg
+                          </span>
+                          <span className="text-muted-foreground">{entry.accuracy_pct.toFixed(0)}%</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ))
               )}

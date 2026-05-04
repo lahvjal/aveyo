@@ -13,6 +13,7 @@ export interface FlashQuizLeaderboardEntry {
   accuracy_pct: number
   created_at: string
   player_name: string
+  player_photo_url: string | null
 }
 
 // Departments
@@ -242,7 +243,7 @@ export function useFlashQuizLeaderboard({ enabled = true }: { enabled?: boolean 
     queryFn: async () => {
       const { data, error } = await supabase
         .from('org_chart_flash_quiz_scores')
-        .select('id, profile_id, correct_count, total_questions, average_response_ms, accuracy_pct, created_at, profile:profiles!org_chart_flash_quiz_scores_profile_id_fkey(full_name)')
+        .select('id, profile_id, correct_count, total_questions, average_response_ms, accuracy_pct, created_at, profile:profiles!org_chart_flash_quiz_scores_profile_id_fkey(full_name, profile_photo_url)')
         .order('correct_count', { ascending: false })
         .order('accuracy_pct', { ascending: false })
         .order('average_response_ms', { ascending: true })
@@ -259,12 +260,13 @@ export function useFlashQuizLeaderboard({ enabled = true }: { enabled?: boolean 
         average_response_ms: number
         accuracy_pct: number
         created_at: string
-        profile: { full_name: string } | null
+        profile: { full_name: string; profile_photo_url: string | null } | null
       }
 
       return ((data ?? []) as Row[]).map((row) => ({
         ...row,
         player_name: row.profile?.full_name ?? 'Unknown player',
+        player_photo_url: row.profile?.profile_photo_url ?? null,
       })) as FlashQuizLeaderboardEntry[]
     },
   })
