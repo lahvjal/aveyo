@@ -197,7 +197,11 @@ async function main() {
   const dryRun = toBoolean(getArg("dry-run", "true"), true);
   const limit = toNumber(getArg("limit", "0"), 0);
   const supportEmail = getArg("support-email", "customercare@aveyo.com");
-  const unsubscribeUrl = getArg("unsubscribe-url", process.env.MARKETING_UNSUBSCRIBE_URL || "");
+  const defaultUnsubscribeUrl = `${portalUrl.replace(/\/$/, "")}/preferences/unsubscribe`;
+  const unsubscribeUrl = getArg(
+    "unsubscribe-url",
+    process.env.MARKETING_UNSUBSCRIBE_URL || defaultUnsubscribeUrl
+  );
   const unsubscribeApiUrl = getArg(
     "unsubscribe-api-url",
     process.env.MARKETING_UNSUBSCRIBE_API_URL || ""
