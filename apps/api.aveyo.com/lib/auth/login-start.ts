@@ -2,7 +2,7 @@ import { type User } from "@supabase/supabase-js";
 import { getLocalAppUrl, resolveAppUrl, resolveEnvironment } from "@ava/config/runtime/app-urls";
 import { getMySqlCustomerProjectDetails } from "@/lib/mysql/customer-projects";
 import { ServiceError } from "@/lib/service-error";
-import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
+import { getSupabaseServerClient, getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 const LOCAL_HOST_PATTERN =
   /^(localhost|127(?:\.\d{1,3}){3}|10(?:\.\d{1,3}){3}|172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2}|192\.168(?:\.\d{1,3}){2}|0\.0\.0\.0|::1|.+\.local)$/i;
@@ -279,19 +279,34 @@ async function generateCustomerMagicLink(request: Request, email: string, reques
 }
 
 async function sendCustomerSignInEmailViaSupabase(request: Request, email: string, requestedReturnTo: unknown) {
-  const supabase = getSupabaseServiceRoleClient();
   const emailRedirectTo = buildHostedAuthCallbackUrl(request, requestedReturnTo);
-  const { error } = await supabase.auth.signInWithOtp({
+  const otpOptions = {
     email,
     options: {
       emailRedirectTo,
       shouldCreateUser: false
     }
-  });
+  } as const;
 
-  if (error) {
-    throw new ServiceError(500, "Failed to send secure sign-in email.");
+  // Primary path: standard anon-key OTP flow (matches hosted client behavior).
+  const anonClient = getSupabaseServerClient();
+  const { error: anonError } = await anonClient.auth.signInWithOtp(otpOptions);
+  if (!anonError) {
+    return;
   }
+
+  // Secondary fallback: service-role client, in case anon flow is restricted by policy.
+  const serviceClient = getSupabaseServiceRoleClient();
+  const { error: serviceError } = await serviceClient.auth.signInWithOtp(otpOptions);
+  if (!serviceError) {
+    return;
+  }
+
+  console.error("Supabase OTP delivery failed for customer sign-in", {
+    anonError: anonError.message,
+    serviceError: serviceError.message
+  });
+  throw new ServiceError(500, "Failed to send secure sign-in email.");
 }
 
 async function sendCustomerSignInEmail(email: string, actionLink: string) {
