@@ -278,6 +278,22 @@ async function generateCustomerMagicLink(request: Request, email: string, reques
   return actionLink;
 }
 
+async function sendCustomerSignInEmailViaSupabase(request: Request, email: string, requestedReturnTo: unknown) {
+  const supabase = getSupabaseServiceRoleClient();
+  const emailRedirectTo = buildHostedAuthCallbackUrl(request, requestedReturnTo);
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo,
+      shouldCreateUser: false
+    }
+  });
+
+  if (error) {
+    throw new ServiceError(500, "Failed to send secure sign-in email.");
+  }
+}
+
 async function sendCustomerSignInEmail(email: string, actionLink: string) {
   const resendApiKey = process.env.RESEND_API_KEY;
   if (!resendApiKey) {
@@ -360,8 +376,22 @@ export async function beginHostedLogin(request: Request, input: BeginHostedLogin
   }
 
   await ensureCustomerAuthUser(email, customerMatch.customerName);
-  const actionLink = await generateCustomerMagicLink(request, email, input.returnTo);
-  await sendCustomerSignInEmail(email, actionLink);
+  const resendApiKey = process.env.RESEND_API_KEY?.trim();
+  if (!resendApiKey) {
+    await sendCustomerSignInEmailViaSupabase(request, email, input.returnTo);
+    return {
+      email,
+      nextStep: "emailLinkNotice" as const
+    };
+  }
+
+  try {
+    const actionLink = await generateCustomerMagicLink(request, email, input.returnTo);
+    await sendCustomerSignInEmail(email, actionLink);
+  } catch (error) {
+    console.error("Customer magic-link email fallback triggered", error);
+    await sendCustomerSignInEmailViaSupabase(request, email, input.returnTo);
+  }
 
   return {
     email,
