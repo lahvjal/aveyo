@@ -347,7 +347,7 @@ function getPanelCopy(loginStep) {
       return {
         title: "Check your email",
         subtitle:
-          "If this email is associated with an active Aveyo project, we sent a secure sign-in link. Open it on this device to continue."
+          "We sent a secure sign-in link to the address below. If this email is in our active customer-project system, it will arrive there shortly."
       };
     case "noAccount":
       return {
@@ -859,11 +859,18 @@ export default function LoginPage() {
 
           {loginStep === "notice" ? (
             <div className="login-form">
+              <div className="login-notice-banner" role="status" aria-live="polite">
+                <span className="login-notice-banner-icon" aria-hidden="true">
+                  ✓
+                </span>
+                <span>Secure sign-in link sent</span>
+              </div>
               <div className="login-chip" aria-label="Email address">
                 {email}
               </div>
               <p className="login-note">
-                We only email secure sign-in links for active customer-project accounts.
+                If this email is in our active customer-project records, the link will be delivered to this inbox.
+                Check spam or promotions if you do not see it within a few minutes.
               </p>
               <button
                 type="button"

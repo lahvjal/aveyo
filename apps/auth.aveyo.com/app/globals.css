@@ -295,6 +295,36 @@ body {
   color: var(--auth-color-text-subtle);
 }
 
+.login-notice-banner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 38px;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 91, 51, 0.2);
+  background: rgba(34, 197, 94, 0.12);
+  color: #0f5b33;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.25;
+  padding: 8px 14px;
+}
+
+.login-notice-banner-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: #16a34a;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
 .login-primary-button:hover:not(:disabled),
 .login-primary-button:focus-visible:not(:disabled) {
   background: var(--auth-color-primary-hover);
