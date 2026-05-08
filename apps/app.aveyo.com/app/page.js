@@ -18,6 +18,7 @@ import { buildAuthLoginUrl } from "../lib/auth/config";
 import { authApiRequest, logoutAuthSession } from "../lib/auth/session";
 import { useAuthSession } from "../lib/auth/use-auth-session";
 import { summarizeDashboardAccess } from "../lib/dashboard-modules";
+import CustomerTrackingSection from "./customer-tracking";
 
 const hardcodedDashboardVideoUrl =
   "https://vz-bd3d2939-ded.b-cdn.net/340a5949-b949-4328-a27d-d1698a64b0ae/play_1080p.mp4";
@@ -702,6 +703,8 @@ export default function HomePage() {
               )
             )}
           </section>
+
+          {canAccessKpiDashboard && <CustomerTrackingSection />}
         </div>
       </section>
     </main>
