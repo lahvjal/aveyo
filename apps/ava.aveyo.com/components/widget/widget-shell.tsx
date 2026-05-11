@@ -350,7 +350,7 @@ export function WidgetShell({
     [clearHandoffQueueStatusTimeout]
   );
 
-  const canUseTestMode = authSession.authenticated && authSession.userType === "employee";
+  const canUseTestMode = authSession.authenticated && authSession.role === "super_admin";
   const hasActiveImpersonation = activeImpersonation !== null;
   const personalizedThread = useMemo(() => {
     if (!authSession.authenticated) {
