@@ -9,8 +9,6 @@ import { useRequireAuth } from "@/lib/auth/use-require-auth";
 import designSystem from "../../aveyo.com/design-system.json";
 import styles from "./marketing-request-page.module.css";
 
-const ASANA_REQUEST_FORM_URL =
-  process.env.NEXT_PUBLIC_MARKETING_ASANA_FORM_URL?.trim() || "https://app.asana.com/";
 
 const designTokens = designSystem.tokens;
 
@@ -100,7 +98,9 @@ function buildMarketingRequestSummary(form: MarketingRequestFormState, departmen
 export default function MarketingRequestPage() {
   const session = useRequireAuth();
   const [formState, setFormState] = useState<MarketingRequestFormState>(defaultFormState);
-  const [submissionMessage, setSubmissionMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
+  const [createdTaskUrl, setCreatedTaskUrl] = useState("");
   const [generatedSummary, setGeneratedSummary] = useState("");
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   const [departmentOptions, setDepartmentOptions] = useState<DepartmentOption[]>([]);
@@ -190,7 +190,7 @@ export default function MarketingRequestPage() {
   }
 
   const departmentCount = departmentOptions.length;
-  const submissionDisabled = departmentsLoading || departmentCount === 0;
+  const submissionDisabled = departmentsLoading || departmentCount === 0 || submitting;
 
   async function handleCopySummary() {
     if (!generatedSummary) {
@@ -205,7 +205,7 @@ export default function MarketingRequestPage() {
     }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const selectedDepartmentName =
@@ -214,18 +214,38 @@ export default function MarketingRequestPage() {
     const summary = buildMarketingRequestSummary(formState, selectedDepartmentName);
     setGeneratedSummary(summary);
     setCopyStatus("idle");
+    setSubmissionError("");
+    setCreatedTaskUrl("");
+    setSubmitting(true);
 
-    if (typeof window !== "undefined") {
-      const openedWindow = window.open(ASANA_REQUEST_FORM_URL, "_blank", "noopener,noreferrer");
-      if (openedWindow) {
-        setSubmissionMessage(
-          "Request brief generated and Asana opened in a new tab. Paste the brief into your task."
-        );
-      } else {
-        setSubmissionMessage(
-          "Request brief generated. Pop-up was blocked, so open Asana manually with the button below."
-        );
+    try {
+      const result = await authApiRequest<{ task?: { gid: string; permalinkUrl: string } }>(
+        "/api/marketing/requests",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: formState.title,
+            departmentName: selectedDepartmentName,
+            dueDate: formState.dueDate || undefined,
+            channel: formState.channel,
+            details: formState.details,
+            requesterName: formState.requesterName,
+            requesterEmail: formState.requesterEmail
+          })
+        }
+      );
+
+      if (result.task?.permalinkUrl) {
+        setCreatedTaskUrl(result.task.permalinkUrl);
+        setFormState(defaultFormState);
       }
+    } catch (error) {
+      setSubmissionError(
+        error instanceof Error ? error.message : "Unable to create the Asana task. Try again."
+      );
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -243,8 +263,8 @@ export default function MarketingRequestPage() {
             <p className={styles.heroEyebrow}>Aveyo Marketing Workspace</p>
             <h2 className={styles.heroTitle}>Build a cleaner handoff before work hits the queue.</h2>
             <p className={styles.heroDescription}>
-              Capture campaign context once, create a reusable brief, and send the request straight
-              into the marketing Asana workflow without losing the details your team needs to start.
+              Capture campaign context once and submit directly into the marketing Asana project.
+              Your task is created automatically — no copy-paste required.
             </p>
             <div className={styles.heroStats}>
               <div className={styles.statCard}>
@@ -294,14 +314,6 @@ export default function MarketingRequestPage() {
               <li>Pick the department first so routing and follow-up ownership are clear.</li>
               <li>Include audience, business goal, assets needed, and any immovable deadlines.</li>
             </ul>
-            <a
-              href={ASANA_REQUEST_FORM_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="secondary-button"
-            >
-              Open Asana directly
-            </a>
           </aside>
         </section>
 
@@ -311,8 +323,8 @@ export default function MarketingRequestPage() {
               <div>
                 <h2 className={styles.panelTitle}>Request brief</h2>
                 <p className={styles.panelDescription}>
-                  Fill in the core request details below. When you submit, the page generates a
-                  clean brief for copy-paste into Asana.
+                  Fill in the request details below. Submitting will create a task directly in the
+                  marketing Asana project.
                 </p>
               </div>
               <span className={styles.panelBadge}>Internal intake</span>
@@ -447,8 +459,8 @@ export default function MarketingRequestPage() {
               <div className={styles.formFootnotes}>
                 <p className="helper-text">Department options are loaded from Supabase.</p>
                 <p className="helper-text">
-                  Configure <code>NEXT_PUBLIC_MARKETING_ASANA_FORM_URL</code> to direct requests
-                  into the right Asana project.
+                  Tasks are created in the Asana project configured by{" "}
+                  <code>ASANA_MARKETING_PROJECT_GID</code>.
                 </p>
               </div>
 
@@ -456,20 +468,20 @@ export default function MarketingRequestPage() {
 
               <div className="button-row">
                 <button type="submit" className="primary-button" disabled={submissionDisabled}>
-                  Generate brief and open Asana
+                  {submitting ? "Creating task…" : "Submit to Asana"}
                 </button>
-                <a
-                  href={ASANA_REQUEST_FORM_URL}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="secondary-button"
-                >
-                  Open Asana
-                </a>
               </div>
             </form>
 
-            {submissionMessage ? <div className="notice success">{submissionMessage}</div> : null}
+            {createdTaskUrl ? (
+              <div className="notice success">
+                Task created.{" "}
+                <a href={createdTaskUrl} target="_blank" rel="noreferrer">
+                  Open in Asana →
+                </a>
+              </div>
+            ) : null}
+            {submissionError ? <div className="notice warning">{submissionError}</div> : null}
           </div>
 
           <div className={styles.sidebarStack}>
@@ -490,8 +502,7 @@ export default function MarketingRequestPage() {
               <section className={styles.summaryPanel} aria-label="Generated request brief">
                 <h2 className={styles.summaryTitle}>Generated request brief</h2>
                 <p className={styles.summaryDescription}>
-                  Paste this directly into the Asana task so the project starts with the same brief
-                  your team reviewed here.
+                  This is the brief that was sent to Asana. Keep it for your records or copy it to share.
                 </p>
                 <pre className="request-summary">{generatedSummary}</pre>
                 <div className={styles.summaryActionRow}>
