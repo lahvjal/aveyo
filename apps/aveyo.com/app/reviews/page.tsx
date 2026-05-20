@@ -77,6 +77,10 @@ function ReviewStars({ rating }: { rating: number }) {
   );
 }
 
+function getBunnyThumbnailUrl(videoUrl: string): string {
+  return videoUrl.replace(/\/play_[^/]+\.mp4$/, "/thumbnail.jpg");
+}
+
 function ReviewMedia({ item }: { item: ReviewGalleryItem }) {
   if (item.videoUrl) {
     return (
@@ -89,7 +93,7 @@ function ReviewMedia({ item }: { item: ReviewGalleryItem }) {
           controls
           playsInline
           preload="metadata"
-          poster={item.posterSrc}
+          poster={getBunnyThumbnailUrl(item.videoUrl)}
           className="h-full w-full object-cover"
         >
           <source src={item.videoUrl} type="video/mp4" />
