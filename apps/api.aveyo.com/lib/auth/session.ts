@@ -63,23 +63,29 @@ function toFailureFromTokenResolution(
   };
 }
 
-function getDisplayName(params: { email: string | null; fullName: unknown; username: unknown }) {
-  const fullName = typeof params.fullName === "string" ? params.fullName.trim() : "";
+function buildProfileDisplayName(params: {
+  fullName: string | null;
+  preferredName: string | null;
+  email: string | null;
+}): string {
+  const fullName = params.fullName?.trim() || null;
+  const preferredName = params.preferredName?.trim() || null;
+
   if (fullName) {
+    if (preferredName) {
+      const parts = fullName.split(" ").filter(Boolean);
+      const lastName = parts.length > 1 ? parts[parts.length - 1] : null;
+      return lastName ? `${preferredName} ${lastName}` : preferredName;
+    }
     return fullName;
   }
 
-  const username = typeof params.username === "string" ? params.username.trim() : "";
-  if (username) {
-    return username;
+  if (params.email) {
+    const [localPart] = params.email.split("@");
+    return localPart || "Account";
   }
 
-  if (!params.email) {
-    return "Account";
-  }
-
-  const [localPart] = params.email.split("@");
-  return localPart || "Account";
+  return "Account";
 }
 
 interface ProfileRoleRow {
@@ -89,6 +95,8 @@ interface ProfileRoleRow {
   is_executive: boolean | null;
   department_id: string | null;
   profile_photo_url: string | null;
+  full_name: string | null;
+  preferred_name: string | null;
 }
 
 interface DepartmentRow {
@@ -109,6 +117,8 @@ interface ResolvedSessionProfile {
   avatarUrl: string | null;
   userType: AppUserType;
   access: SessionAccessContext;
+  profileFullName: string | null;
+  profilePreferredName: string | null;
 }
 
 function normalizeProfilePhotoUrl(value: unknown): string | null {
@@ -249,7 +259,7 @@ export async function resolveRoleWithProfileFlags(
         supabaseServiceRoleClient
           .from("profiles")
           .select(
-            "is_super_admin, is_admin, is_manager, is_executive, department_id, profile_photo_url"
+            "is_super_admin, is_admin, is_manager, is_executive, department_id, profile_photo_url, full_name, preferred_name"
           )
           .eq("id", userId)
           .maybeSingle(),
@@ -261,7 +271,9 @@ export async function resolveRoleWithProfileFlags(
         role: safeFallbackRole,
         avatarUrl: null,
         userType: fallbackAccess.userType,
-        access: fallbackAccess
+        access: fallbackAccess,
+        profileFullName: null,
+        profilePreferredName: null
       };
     }
 
@@ -295,14 +307,18 @@ export async function resolveRoleWithProfileFlags(
         isAdmin,
         isExecutive,
         isSuperAdmin
-      }
+      },
+      profileFullName: typeof profileRole?.full_name === "string" ? profileRole.full_name.trim() || null : null,
+      profilePreferredName: typeof profileRole?.preferred_name === "string" ? profileRole.preferred_name.trim() || null : null
     };
   } catch {
     return {
       role: safeFallbackRole,
       avatarUrl: null,
       userType: fallbackAccess.userType,
-      access: fallbackAccess
+      access: fallbackAccess,
+      profileFullName: null,
+      profilePreferredName: null
     };
   }
 }
@@ -391,10 +407,10 @@ export async function getAuthSessionResultWithOptions(
     user: {
       id: data.user.id,
       email: data.user.email ?? null,
-      name: getDisplayName({
-        email: data.user.email ?? null,
-        fullName: data.user.user_metadata?.full_name,
-        username: data.user.user_metadata?.username
+      name: buildProfileDisplayName({
+        fullName: resolvedProfile.profileFullName,
+        preferredName: resolvedProfile.profilePreferredName,
+        email: data.user.email ?? null
       }),
       avatarUrl: resolvedProfile.avatarUrl
     },
