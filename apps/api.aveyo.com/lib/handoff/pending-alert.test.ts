@@ -43,8 +43,6 @@ describe("sendHandoffRequestedGChatAlert", () => {
     });
 
     expect(mockedSendGChat).toHaveBeenCalledWith({
-      requestId: "req-1",
-      conversationId: "conv-1",
       customerName: "Jane Doe",
       customerEmail: "jane@example.com",
       reason: "Need billing help",

@@ -11,8 +11,6 @@ describe("sendGChatHandoffRequestedAlert", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await sendGChatHandoffRequestedAlert({
-      requestId: "req-1",
-      conversationId: "conv-1",
       customerName: "Jane Doe",
       customerEmail: "jane@example.com",
       reason: "Cancel project",
@@ -24,10 +22,10 @@ describe("sendGChatHandoffRequestedAlert", () => {
     ) as { text: string };
 
     expect(body.text).toContain("New customer handoff requested");
-    expect(body.text).toContain("*Customer:* Jane Doe (jane@example.com)");
-    expect(body.text).toContain("*Reason:* Cancel project");
-    expect(body.text).toContain("conv-1");
-    expect(body.text).toContain("req-1");
+    expect(body.text).toContain("*Customer:* `Jane Doe` (jane@example.com)");
+    expect(body.text).toContain("*Reason:* `Cancel project`");
+    expect(body.text).not.toContain("Conversation:");
+    expect(body.text).not.toContain("Request ID:");
   });
 
   it("uses fallbacks when email and reason are missing", async () => {
@@ -35,8 +33,6 @@ describe("sendGChatHandoffRequestedAlert", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await sendGChatHandoffRequestedAlert({
-      requestId: "req-2",
-      conversationId: "conv-2",
       customerName: "  ",
       customerEmail: null,
       reason: null,
@@ -47,7 +43,7 @@ describe("sendGChatHandoffRequestedAlert", () => {
       (fetchMock.mock.calls[0]?.[1] as RequestInit).body as string
     ) as { text: string };
 
-    expect(body.text).toContain("*Customer:* Unknown (Unknown)");
-    expect(body.text).toContain("*Reason:* Not provided");
+    expect(body.text).toContain("*Customer:* `Unknown` (Unknown)");
+    expect(body.text).toContain("*Reason:* `Not provided`");
   });
 });

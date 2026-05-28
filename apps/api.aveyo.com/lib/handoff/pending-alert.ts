@@ -81,8 +81,6 @@ export async function sendHandoffRequestedGChatAlert(
 
   try {
     const result = await sendGChatHandoffRequestedAlert({
-      requestId: params.requestId,
-      conversationId: params.conversationId,
       customerName: params.customerName,
       customerEmail: params.customerEmail,
       reason: params.reason,
