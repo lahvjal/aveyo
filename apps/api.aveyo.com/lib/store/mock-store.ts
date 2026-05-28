@@ -8,6 +8,8 @@ import {
   type SystemEvent,
   type TimelineMessage
 } from "@ava/chat-domain";
+import { after } from "next/server";
+import { schedulePendingHandoffGChatAlert } from "@/lib/handoff/pending-alert";
 import {
   getMySqlCustomerProjectDetails,
   listMySqlIdentityProjects,
@@ -3364,6 +3366,15 @@ export async function requestHandoff(
     estimatedWaitSeconds: 180,
     elapsedWaitSeconds: 0
   };
+
+  after(() => {
+    void schedulePendingHandoffGChatAlert({
+      requestId: requestRow.id,
+      conversationId: requestRow.conversation_id,
+      reason: requestRow.reason,
+      requestedAt: requestRow.requested_at,
+    });
+  });
 
   return {
     thread,

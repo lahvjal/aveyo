@@ -58,7 +58,7 @@ describe("api proxy", () => {
     mockedExtractAccessTokenFromNextRequest.mockReturnValue(undefined);
 
     const response = proxy(
-      new NextRequest("https://api.aveyo.com/api/internal/ava/handoff/pending-alert")
+      new NextRequest("https://api.aveyo.com/api/internal/ava/automation")
     );
 
     expect(response.status).toBe(200);

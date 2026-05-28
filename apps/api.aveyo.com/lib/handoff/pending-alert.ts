@@ -1,86 +1,91 @@
 import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 import { sendGChatPendingHandoffAlert } from "@/lib/gchat/notify";
 
-const PENDING_THRESHOLD_MINUTES = 3;
+/** How long a handoff must stay pending (unclaimed) before GChat is notified. */
+export const PENDING_THRESHOLD_SECONDS = 5;
 
-export interface PendingAlertSweepResult {
-  checked: number;
-  alerted: number;
-  failed: number;
-  skippedNoWebhook: boolean;
-}
-
-interface PendingHandoffRow {
-  id: string;
-  conversation_id: string;
+export interface SchedulePendingHandoffGChatAlertParams {
+  requestId: string;
+  conversationId: string;
   reason: string | null;
-  requested_at: string;
+  requestedAt: string;
 }
 
-export async function runPendingHandoffAlertSweep(): Promise<PendingAlertSweepResult> {
-  const webhookUrl = process.env.GOOGLE_CHAT_WEBHOOK_URL?.trim() ?? null;
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
+/**
+ * Waits for the pending threshold, then sends a GChat alert if the handoff is still unclaimed.
+ * Intended to run inside Next.js `after()` from the handoff request path.
+ */
+export async function schedulePendingHandoffGChatAlert(
+  params: SchedulePendingHandoffGChatAlertParams
+): Promise<void> {
+  const webhookUrl = process.env.GOOGLE_CHAT_WEBHOOK_URL?.trim() ?? null;
   if (!webhookUrl) {
     console.warn(
       "GOOGLE_CHAT_WEBHOOK_URL is not configured; pending handoff GChat alerts are disabled."
     );
-    return { checked: 0, alerted: 0, failed: 0, skippedNoWebhook: true };
+    return;
   }
 
+  await sleep(PENDING_THRESHOLD_SECONDS * 1000);
+
   const supabase = getSupabaseServiceRoleClient();
-
-  const thresholdTime = new Date(
-    Date.now() - PENDING_THRESHOLD_MINUTES * 60 * 1000
-  ).toISOString();
-
   const { data, error } = await supabase
     .schema("ava")
     .from("handoff_requests")
-    .select("id, conversation_id, reason, requested_at")
-    .eq("status", "pending")
-    .lt("requested_at", thresholdTime)
-    .is("gchat_alerted_at", null);
+    .select("id, conversation_id, reason, requested_at, status, gchat_alerted_at")
+    .eq("id", params.requestId)
+    .maybeSingle();
 
   if (error) {
-    throw new Error(`Pending handoff alert query failed: ${error.message}`);
+    console.error("Pending handoff alert lookup failed", {
+      requestId: params.requestId,
+      error: error.message,
+    });
+    return;
   }
 
-  const rows = (data ?? []) as PendingHandoffRow[];
-  let alerted = 0;
-  let failed = 0;
+  if (!data || data.status !== "pending" || data.gchat_alerted_at != null) {
+    return;
+  }
 
-  for (const row of rows) {
-    try {
-      const result = await sendGChatPendingHandoffAlert({
-        requestId: row.id,
-        conversationId: row.conversation_id,
-        reason: row.reason,
-        requestedAt: row.requested_at,
-        webhookUrl,
-      });
+  try {
+    const result = await sendGChatPendingHandoffAlert({
+      requestId: data.id,
+      conversationId: data.conversation_id,
+      reason: data.reason,
+      requestedAt: data.requested_at,
+      webhookUrl,
+    });
 
-      if (result.ok) {
-        await supabase
-          .schema("ava")
-          .from("handoff_requests")
-          .update({ gchat_alerted_at: new Date().toISOString() })
-          .eq("id", row.id);
-        alerted++;
-      } else {
-        console.error("GChat webhook returned non-OK status", {
-          requestId: row.id,
-          status: result.status,
-        });
-        failed++;
-      }
-    } catch (err) {
-      console.error("Failed to send GChat pending handoff alert", {
-        requestId: row.id,
-        error: err,
+    if (!result.ok) {
+      console.error("GChat webhook returned non-OK status", {
+        requestId: data.id,
+        status: result.status,
       });
-      failed++;
+      return;
     }
-  }
 
-  return { checked: rows.length, alerted, failed, skippedNoWebhook: false };
+    const { error: updateError } = await supabase
+      .schema("ava")
+      .from("handoff_requests")
+      .update({ gchat_alerted_at: new Date().toISOString() })
+      .eq("id", data.id)
+      .is("gchat_alerted_at", null);
+
+    if (updateError) {
+      console.error("Failed to stamp gchat_alerted_at", {
+        requestId: data.id,
+        error: updateError.message,
+      });
+    }
+  } catch (err) {
+    console.error("Failed to send GChat pending handoff alert", {
+      requestId: params.requestId,
+      error: err,
+    });
+  }
 }

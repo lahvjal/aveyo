@@ -3,8 +3,12 @@ import {
   createHandoffRequestResult,
   type HandoffRequestBody
 } from "@/lib/handoff/service";
+import { PENDING_THRESHOLD_SECONDS } from "@/lib/handoff/pending-alert";
 import { perfErrorJson, runPerfRoute } from "@/lib/perf/route";
 import { ServiceError } from "@/lib/service-error";
+
+/** Room for post-response GChat alert delay in `after()`. */
+export const maxDuration = Math.max(15, PENDING_THRESHOLD_SECONDS + 10);
 
 export async function POST(request: Request) {
   try {

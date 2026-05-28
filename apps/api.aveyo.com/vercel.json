@@ -19,10 +19,6 @@
     {
       "path": "/api/internal/ava/automation",
       "schedule": "*/1 * * * *"
-    },
-    {
-      "path": "/api/internal/ava/handoff/pending-alert",
-      "schedule": "*/1 * * * *"
     }
   ]
 }

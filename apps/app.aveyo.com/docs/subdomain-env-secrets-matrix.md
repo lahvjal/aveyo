@@ -27,8 +27,8 @@ This file defines the required runtime variables for each app subdomain and serv
   - `SUPABASE_SERVICE_ROLE_KEY`
   - `DATABASE_URL`
   - `OPENAI_API_KEY`
-  - `CRON_SECRET` (Vercel cron auth for `/api/internal/ava/*` sweeps)
-  - `GOOGLE_CHAT_WEBHOOK_URL` (pending handoff alerts after 3 minutes unclaimed)
+  - `CRON_SECRET` (Vercel cron auth for `/api/internal/ava/automation`)
+  - `GOOGLE_CHAT_WEBHOOK_URL` (pending handoff alerts; delay in `apps/api.aveyo.com/lib/handoff/pending-alert.ts`)
 - Security config:
   - `AVA_ALLOWED_ORIGINS`
   - `AVA_SESSION_COOKIE_DOMAIN=.aveyo.com`
