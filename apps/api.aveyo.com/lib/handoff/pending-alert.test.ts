@@ -24,7 +24,7 @@ describe("sendHandoffRequestedGChatAlert", () => {
     delete process.env.GOOGLE_CHAT_WEBHOOK_URL;
   });
 
-  it("sends GChat immediately when webhook is configured", async () => {
+  it("sends GChat with customer name, email, and reason", async () => {
     const is = vi.fn().mockReturnValue({
       eq: vi.fn().mockResolvedValue({ error: null }),
     });
@@ -37,11 +37,19 @@ describe("sendHandoffRequestedGChatAlert", () => {
     await sendHandoffRequestedGChatAlert({
       requestId: "req-1",
       conversationId: "conv-1",
-      reason: "help",
-      requestedAt: "2026-05-28T15:00:00.000Z",
+      customerName: "Jane Doe",
+      customerEmail: "jane@example.com",
+      reason: "Need billing help",
     });
 
-    expect(mockedSendGChat).toHaveBeenCalledOnce();
+    expect(mockedSendGChat).toHaveBeenCalledWith({
+      requestId: "req-1",
+      conversationId: "conv-1",
+      customerName: "Jane Doe",
+      customerEmail: "jane@example.com",
+      reason: "Need billing help",
+      webhookUrl: "https://chat.example.com/webhook",
+    });
     expect(update).toHaveBeenCalled();
   });
 
@@ -51,8 +59,9 @@ describe("sendHandoffRequestedGChatAlert", () => {
     await sendHandoffRequestedGChatAlert({
       requestId: "req-1",
       conversationId: "conv-1",
+      customerName: "Jane Doe",
+      customerEmail: null,
       reason: null,
-      requestedAt: "2026-05-28T15:00:00.000Z",
     });
 
     expect(mockedGetSupabase).not.toHaveBeenCalled();

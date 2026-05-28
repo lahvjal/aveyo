@@ -4,8 +4,64 @@ import { sendGChatHandoffRequestedAlert } from "@/lib/gchat/notify";
 export interface HandoffRequestedGChatAlertParams {
   requestId: string;
   conversationId: string;
+  customerName: string;
+  customerEmail: string | null;
   reason: string | null;
-  requestedAt: string;
+}
+
+function asTrimmedString(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+/** Best-effort customer email for GChat handoff alerts. */
+export async function resolveCustomerEmailForHandoffAlert(
+  authUserId: string
+): Promise<string | null> {
+  const supabase = getSupabaseServiceRoleClient();
+
+  const { data: customerProfile } = await supabase
+    .schema("ava")
+    .from("customer_profiles")
+    .select("email")
+    .eq("auth_user_id", authUserId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const profileEmail = asTrimmedString(
+    (customerProfile as { email?: string | null } | null)?.email
+  );
+  if (profileEmail) {
+    return profileEmail;
+  }
+
+  const { data: platformProfile } = await supabase
+    .from("profiles")
+    .select("email")
+    .eq("id", authUserId)
+    .maybeSingle();
+
+  const platformEmail = asTrimmedString(
+    (platformProfile as { email?: string | null } | null)?.email
+  );
+  if (platformEmail) {
+    return platformEmail;
+  }
+
+  try {
+    const { data, error } = await supabase.auth.admin.getUserById(authUserId);
+    if (!error && data.user) {
+      return asTrimmedString(data.user.email);
+    }
+  } catch {
+    // Best-effort only.
+  }
+
+  return null;
 }
 
 /**
@@ -27,6 +83,8 @@ export async function sendHandoffRequestedGChatAlert(
     const result = await sendGChatHandoffRequestedAlert({
       requestId: params.requestId,
       conversationId: params.conversationId,
+      customerName: params.customerName,
+      customerEmail: params.customerEmail,
       reason: params.reason,
       webhookUrl,
     });

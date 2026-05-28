@@ -9,7 +9,10 @@ import {
   type TimelineMessage
 } from "@ava/chat-domain";
 import { after } from "next/server";
-import { sendHandoffRequestedGChatAlert } from "@/lib/handoff/pending-alert";
+import {
+  resolveCustomerEmailForHandoffAlert,
+  sendHandoffRequestedGChatAlert,
+} from "@/lib/handoff/pending-alert";
 import {
   getMySqlCustomerProjectDetails,
   listMySqlIdentityProjects,
@@ -3367,12 +3370,17 @@ export async function requestHandoff(
     elapsedWaitSeconds: 0
   };
 
+  const customerEmail = await resolveCustomerEmailForHandoffAlert(
+    conversation.customer_auth_user_id
+  );
+
   after(() => {
     void sendHandoffRequestedGChatAlert({
       requestId: requestRow.id,
       conversationId: requestRow.conversation_id,
+      customerName: params.customerName,
+      customerEmail,
       reason: requestRow.reason,
-      requestedAt: requestRow.requested_at,
     });
   });
 
