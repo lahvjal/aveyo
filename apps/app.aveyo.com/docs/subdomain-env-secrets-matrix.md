@@ -28,7 +28,7 @@ This file defines the required runtime variables for each app subdomain and serv
   - `DATABASE_URL`
   - `OPENAI_API_KEY`
   - `CRON_SECRET` (Vercel cron auth for `/api/internal/ava/automation`)
-  - `GOOGLE_CHAT_WEBHOOK_URL` (pending handoff alerts; delay in `apps/api.aveyo.com/lib/handoff/pending-alert.ts`)
+  - `GOOGLE_CHAT_WEBHOOK_URL` (GChat alert on each new handoff request)
 - Security config:
   - `AVA_ALLOWED_ORIGINS`
   - `AVA_SESSION_COOKIE_DOMAIN=.aveyo.com`

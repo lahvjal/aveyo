@@ -6,9 +6,6 @@ import {
 import { perfErrorJson, runPerfRoute } from "@/lib/perf/route";
 import { ServiceError } from "@/lib/service-error";
 
-/** Room for post-response GChat delay in `after()` (must exceed PENDING_THRESHOLD_SECONDS + buffer). */
-export const maxDuration = 15;
-
 export async function POST(request: Request) {
   try {
     const auth = await requireAuthenticatedRequest(request);

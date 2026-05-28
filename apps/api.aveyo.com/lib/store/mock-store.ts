@@ -9,7 +9,7 @@ import {
   type TimelineMessage
 } from "@ava/chat-domain";
 import { after } from "next/server";
-import { schedulePendingHandoffGChatAlert } from "@/lib/handoff/pending-alert";
+import { sendHandoffRequestedGChatAlert } from "@/lib/handoff/pending-alert";
 import {
   getMySqlCustomerProjectDetails,
   listMySqlIdentityProjects,
@@ -3368,7 +3368,7 @@ export async function requestHandoff(
   };
 
   after(() => {
-    void schedulePendingHandoffGChatAlert({
+    void sendHandoffRequestedGChatAlert({
       requestId: requestRow.id,
       conversationId: requestRow.conversation_id,
       reason: requestRow.reason,
