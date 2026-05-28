@@ -13,8 +13,15 @@ const publicApiPaths = new Set([
   "/api/marketing/news/posts"
 ]);
 const publicApiPathPrefixes = ["/api/marketing/news/posts/slug/"];
+// Cron routes authenticate with CRON_SECRET in the route handler, not session cookies.
+const internalCronApiPathPrefixes = ["/api/internal/ava/"];
+
 function isPublicPath(pathname: string) {
   return publicApiPaths.has(pathname) || publicApiPathPrefixes.some((prefix) => pathname.startsWith(prefix));
+}
+
+function isInternalCronPath(pathname: string) {
+  return internalCronApiPathPrefixes.some((prefix) => pathname.startsWith(prefix));
 }
 
 function appendVary(response: NextResponse, value: string) {
@@ -83,7 +90,7 @@ export function proxy(request: NextRequest) {
     return response;
   }
 
-  if (isPublicPath(pathname)) {
+  if (isPublicPath(pathname) || isInternalCronPath(pathname)) {
     return withCors(request, NextResponse.next());
   }
 

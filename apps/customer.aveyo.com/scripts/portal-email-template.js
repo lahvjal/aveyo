@@ -23,17 +23,24 @@ function escapeHtml(value) {
 function buildFooter({
   unsubscribeUrl,
   preferencesUrl,
-  privacyPolicyUrl
+  privacyPolicyUrl,
+  companyName,
+  companyAddress
 }) {
   const safeUnsubscribeUrl = escapeHtml(unsubscribeUrl);
   const safePreferencesUrl = escapeHtml(preferencesUrl || "");
   const safePrivacyPolicyUrl = escapeHtml(privacyPolicyUrl || "");
+  const safeCompanyName = escapeHtml(companyName || "");
+  const safeCompanyAddress = escapeHtml(companyAddress || "");
 
   const preferencesRow = preferencesUrl
     ? `<a href="${safePreferencesUrl}" style="color:${AVEYO_COLORS.accent};">Manage preferences</a> • `
     : "";
   const privacyRow = privacyPolicyUrl
     ? ` • <a href="${safePrivacyPolicyUrl}" style="color:${AVEYO_COLORS.accent};">Privacy Policy</a>`
+    : "";
+  const addressRow = safeCompanyAddress
+    ? `<p style="margin:0 0 10px 0;">${safeCompanyName ? `${safeCompanyName} • ` : ""}${safeCompanyAddress}</p>`
     : "";
 
   return `
@@ -47,6 +54,7 @@ function buildFooter({
       <p style="margin:0 0 10px 0;">
         For help, chat with Ava at <a href="https://www.aveyo.com" style="color:${AVEYO_COLORS.accent};">aveyo.com</a>.
       </p>
+      ${addressRow}
     </div>
   `;
 }

@@ -21,6 +21,9 @@ export async function runPendingHandoffAlertSweep(): Promise<PendingAlertSweepRe
   const webhookUrl = process.env.GOOGLE_CHAT_WEBHOOK_URL?.trim() ?? null;
 
   if (!webhookUrl) {
+    console.warn(
+      "GOOGLE_CHAT_WEBHOOK_URL is not configured; pending handoff GChat alerts are disabled."
+    );
     return { checked: 0, alerted: 0, failed: 0, skippedNoWebhook: true };
   }
 

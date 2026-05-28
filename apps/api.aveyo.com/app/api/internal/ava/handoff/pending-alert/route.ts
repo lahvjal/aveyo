@@ -36,6 +36,9 @@ async function handleSweep(request: Request) {
 
   try {
     const result = await runPendingHandoffAlertSweep();
+    if (result.skippedNoWebhook) {
+      return NextResponse.json(result, { status: 503 });
+    }
     return NextResponse.json(result, {
       status: result.alerted > 0 ? 200 : 202,
     });

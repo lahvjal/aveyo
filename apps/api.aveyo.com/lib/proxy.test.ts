@@ -53,4 +53,15 @@ describe("api proxy", () => {
     expect(response.status).toBe(401);
     expect(response.headers.get("content-type")).toContain("application/json");
   });
+
+  it("allows internal cron routes without an auth token", () => {
+    mockedExtractAccessTokenFromNextRequest.mockReturnValue(undefined);
+
+    const response = proxy(
+      new NextRequest("https://api.aveyo.com/api/internal/ava/handoff/pending-alert")
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-middleware-next")).toBe("1");
+  });
 });

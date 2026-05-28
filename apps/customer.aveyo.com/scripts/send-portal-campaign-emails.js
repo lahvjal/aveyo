@@ -208,7 +208,10 @@ async function main() {
   );
   const preferencesUrl = getArg("preferences-url", process.env.MARKETING_PREFERENCES_URL || "");
   const companyName = getArg("company-name", process.env.MARKETING_COMPANY_NAME || "Aveyo");
-  const companyAddress = getArg("company-address", process.env.MARKETING_COMPANY_ADDRESS || "");
+  const companyAddress = getArg(
+    "company-address",
+    process.env.MARKETING_COMPANY_ADDRESS || "1261 S 820 E #300, American Fork, UT 84003"
+  );
 
   const recipients = collectRecipients(csvPath);
   const limitedRecipients = limit > 0 ? recipients.slice(0, limit) : recipients;
