@@ -6,7 +6,8 @@ import { useCarouselAutoplay } from "@/components/ui/use-carousel-autoplay";
 import { useCarouselWheelNavigation } from "@/components/ui/use-carousel-wheel-navigation";
 import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
-import Image from "next/image";
+import { EditableSiteImage } from "@/components/site/editable-site-image";
+import { EditableSiteVideo } from "@/components/site/editable-site-video";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -32,6 +33,9 @@ const testimonials = [
     image: "/images/8dc0606780d56d1febf32090a940fda53f20c567.png",
   },
 ];
+
+const HERO_VIDEO_SRC =
+  "https://vz-bd3d2939-ded.b-cdn.net/c9675c67-889d-4806-8f16-9afd092addcb/play_1080p.mp4";
 
 export default function Hero() {
   const [activeSlide, setActiveSlide] = useState(0);
@@ -94,8 +98,11 @@ export default function Hero() {
     >
       {/* Background Video with Gradient Overlay */}
       <div className="absolute inset-0 z-0 overflow-hidden">
-        <video
+        <EditableSiteVideo
           ref={heroVideoRef}
+          src={HERO_VIDEO_SRC}
+          label="Homepage hero background video"
+          editPlacement="bottom-left"
           data-site-hero-video="true"
           autoPlay
           loop
@@ -103,12 +110,10 @@ export default function Hero() {
           playsInline
           preload="auto"
           className="absolute inset-0 w-full h-full object-cover"
-        >
-          <source src="https://vz-bd3d2939-ded.b-cdn.net/c9675c67-889d-4806-8f16-9afd092addcb/play_1080p.mp4" type="video/mp4" />
-        </video>
+        />
         {/* Dark radial gradient overlay for text readability */}
         <div 
-          className="absolute inset-0 opacity-80"
+          className="pointer-events-none absolute inset-0 opacity-80"
           style={{
             background: "radial-gradient(ellipse at 14% 47%, rgba(0,0,0,1) 0%, rgba(0,0,0,0) 70%)"
           }}
@@ -168,7 +173,7 @@ export default function Hero() {
             {/* Avatar Stack */}
             <div className="flex items-center pr-2.5">
               <div className="relative w-[43px] h-[43px] rounded-full overflow-hidden -mr-2.5">
-                <Image
+                <EditableSiteImage
                   src="/images/9b1764311761fff86e6a0fc0da2b83c8349b2232.png"
                   alt="Customer"
                   fill
@@ -176,7 +181,7 @@ export default function Hero() {
                 />
               </div>
               <div className="relative w-[43px] h-[43px] rounded-full overflow-hidden -mr-2.5">
-                <Image
+                <EditableSiteImage
                   src="/images/670245b8e18e43e51438ec1398a32333ad7e8550.png"
                   alt="Customer"
                   fill
@@ -184,7 +189,7 @@ export default function Hero() {
                 />
               </div>
               <div className="relative w-[43px] h-[43px] rounded-full overflow-hidden -mr-2.5">
-                <Image
+                <EditableSiteImage
                   src="/images/8dc0606780d56d1febf32090a940fda53f20c567.png"
                   alt="Customer"
                   fill
@@ -236,7 +241,7 @@ export default function Hero() {
                         </p>
                         <div className="flex items-center gap-2.5">
                           <div className="relative w-[27px] h-[27px] rounded-full overflow-hidden">
-                            <Image
+                            <EditableSiteImage
                               src={testimonial.image}
                               alt={testimonial.name}
                               fill

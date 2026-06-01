@@ -10,7 +10,8 @@ import { useCarouselAutoplay } from "@/components/ui/use-carousel-autoplay";
 import { useCarouselWheelNavigation } from "@/components/ui/use-carousel-wheel-navigation";
 import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
-import Image from "next/image";
+import { EditableSiteImage } from "@/components/site/editable-site-image";
+import { EditableSiteVideo } from "@/components/site/editable-site-video";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const benefitSlides: BenefitSlideCardData[] = [
@@ -259,16 +260,16 @@ export default function Benefits() {
           style={{ background: "#5f91af" }}
         >
           <div className="absolute inset-0">
-            <video
+            <EditableSiteVideo
               ref={savingsVideoRef}
+              src={SAVINGS_VIDEO_SRC}
+              label="Savings calculator background video"
               muted
               playsInline
               preload="auto"
               className="h-full w-full object-cover"
               aria-hidden="true"
-            >
-              <source src={SAVINGS_VIDEO_SRC} type="video/mp4" />
-            </video>
+            />
           </div>
           <div
             className="absolute inset-0"
@@ -382,14 +383,14 @@ export default function Benefits() {
             className="relative h-[545px] overflow-hidden rounded-[var(--home-card-radius)]"
             delayMs={180}
           >
-            <Image
+            <EditableSiteImage
               src="/images/c71bbfe115affc201a1c2f1a5878d801dcfcaa9a.png"
               alt=""
               fill
               className="object-cover"
               sizes="(min-width: 1024px) calc((100vw - 60px) / 2), 100vw"
             />
-            <Image
+            <EditableSiteImage
               src="/images/07a138d4d98b66756dd6ed3a82d673a7eb8b76f8.png"
               alt="Aerial view of homes with rooftop solar panels"
               fill
@@ -401,7 +402,7 @@ export default function Benefits() {
             className="relative h-[545px] overflow-hidden rounded-[var(--home-card-radius)]"
             delayMs={260}
           >
-            <Image
+            <EditableSiteImage
               src="/images/6101f18224076c77286f18820dfd5c3e40ad55fb.png"
               alt="Family preparing food in a bright kitchen"
               fill

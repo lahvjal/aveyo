@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { EditableSiteImage } from "@/components/site/editable-site-image";
+import { EditableSiteVideo } from "@/components/site/editable-site-video";
 import Link from "next/link";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
@@ -19,7 +21,10 @@ function StateHero({ data }: { data: StatePageData }) {
       <div className="absolute inset-0 z-0 bg-[#212120]">
         {data.heroVideoUrl ? (
           // eslint-disable-next-line jsx-a11y/media-has-caption
-          <video
+          <EditableSiteVideo
+            src={data.heroVideoUrl}
+            label={`${data.name} hero video`}
+            editPlacement="bottom-left"
             data-site-hero-video="true"
             autoPlay
             loop
@@ -27,16 +32,16 @@ function StateHero({ data }: { data: StatePageData }) {
             playsInline
             poster={data.heroBackgroundImage}
             className="h-full w-full object-cover"
-            src={data.heroVideoUrl}
           />
         ) : (
-          <Image
+          <EditableSiteImage
             src={data.heroBackgroundImage}
             alt={`Solar home in ${data.name}`}
             fill
             className="object-cover"
             sizes="100vw"
             priority
+            editPlacement="bottom-left"
           />
         )}
       </div>

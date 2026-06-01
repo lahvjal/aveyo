@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { EditableSiteImage } from "@/components/site/editable-site-image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -321,7 +322,7 @@ export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: 
             </div>
 
             <div className="absolute inset-x-0 bottom-0 h-[920px] w-full sm:h-[1080px] xl:h-[var(--footer-image-height)]">
-              <Image
+              <EditableSiteImage
                 src={image ?? footerTokens.assets.houseImage}
                 alt=""
                 fill

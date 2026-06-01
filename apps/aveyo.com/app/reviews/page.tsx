@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { EditableSiteImage } from "@/components/site/editable-site-image";
 import type { Metadata } from "next";
 import { SiteHero, SitePageShell } from "@/components/site/page-kit";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
@@ -104,7 +104,7 @@ function ReviewMedia({ item }: { item: ReviewGalleryItem }) {
 
   return (
     <div className="relative aspect-[4/5] overflow-hidden bg-[#09111f]">
-      <Image
+      <EditableSiteImage
         src={item.posterSrc}
         alt={item.posterAlt}
         fill

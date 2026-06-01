@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { EditableSiteImage } from "@/components/site/editable-site-image";
 
 export default function LifestyleGallery() {
   const images = [
@@ -43,7 +43,7 @@ export default function LifestyleGallery() {
                 : "col-span-1 row-span-1 aspect-square"
             }`}
           >
-            <Image
+            <EditableSiteImage
               src={image.src}
               alt={image.alt}
               fill

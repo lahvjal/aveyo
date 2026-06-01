@@ -10,7 +10,8 @@ const publicApiPaths = new Set([
   "/api/auth/session/bootstrap",
   "/api/auth/session/logout",
   "/api/public/ava/guest-reply",
-  "/api/marketing/news/posts"
+  "/api/marketing/news/posts",
+  "/api/marketing/site-photos"
 ]);
 const publicApiPathPrefixes = ["/api/marketing/news/posts/slug/"];
 // Cron routes authenticate with CRON_SECRET in the route handler, not session cookies.

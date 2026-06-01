@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import MarkdownArticle from "@/components/site/markdown-article";
+import { NewsArticleHeroImage } from "@/components/site/news-article-hero-image";
 import { SiteHero, SitePageShell, SiteSection } from "@/components/site/page-kit";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
 import { formatNewsDate, getPublicMarketingNewsPost } from "@/lib/news";
@@ -64,8 +65,7 @@ export default async function NewsArticlePage({
           post.heroImageUrl ? (
             <div className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-white/[0.06] shadow-[0_28px_80px_rgba(0,0,0,0.24)]">
               <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={post.heroImageUrl} alt="" className="h-full min-h-[320px] w-full object-cover" />
+              <NewsArticleHeroImage src={post.heroImageUrl} alt={post.title} />
             </div>
           ) : (
             <div className="relative overflow-hidden rounded-[var(--site-radius-corner)] bg-white/[0.06] p-[var(--site-card-padding-comfortable)] shadow-[0_28px_80px_rgba(0,0,0,0.24)] backdrop-blur-[12px]">

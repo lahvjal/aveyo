@@ -1,7 +1,7 @@
-import Image from "next/image";
 import type { CSSProperties, ReactNode } from "react";
 import Navbar from "@/components/Navbar";
 import Footer, { type FooterCtaConfig } from "@/components/Footer";
+import { EditableSiteImage } from "@/components/site/editable-site-image";
 import { SiteButtonLink } from "@/components/site/site-button-link";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
 import { sitePageStyleVars } from "@/lib/site-page-design-system";
@@ -102,13 +102,14 @@ export function SiteHero({
       {hasBgImage ? (
         <>
           <div className="absolute inset-0 z-0 bg-[#212120]">
-            <Image
+            <EditableSiteImage
               src={backgroundSrc}
               alt={backgroundAlt ?? ""}
               fill
               className="object-cover"
               sizes="100vw"
               priority
+              editPlacement="bottom-left"
             />
           </div>
           <div
@@ -178,7 +179,7 @@ export function SiteHero({
         ) : imageSrc ? (
           <div className="relative min-h-[320px] overflow-hidden rounded-[var(--site-radius-corner)] bg-white/[0.05] shadow-[0_28px_80px_rgba(0,0,0,0.25)] backdrop-blur-[12px]">
             <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
-            <Image
+            <EditableSiteImage
               src={imageSrc}
               alt={imageAlt ?? ""}
               fill
@@ -356,7 +357,7 @@ export function SiteCard({
       <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
       {hasImage ? (
         <div className="relative h-[200px] w-full shrink-0">
-          <Image src={imageSrc} alt={imageAlt ?? ""} fill className="object-cover" sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw" />
+          <EditableSiteImage src={imageSrc} alt={imageAlt ?? ""} fill className="object-cover" sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw" />
         </div>
       ) : null}
       <div className={`relative z-[2] ${hasImage ? "p-[var(--site-card-padding-comfortable)]" : ""}`}>
@@ -457,7 +458,7 @@ export function SiteImageRow({
           className="relative h-[400px] overflow-hidden rounded-[var(--site-radius-corner)] lg:h-[545px]"
         >
           {image.src ? (
-            <Image
+            <EditableSiteImage
               src={image.src}
               alt={image.alt}
               fill
@@ -508,7 +509,7 @@ export function SiteArticleCard({
       <CardGradientBorder className="rounded-[var(--site-radius-corner)]" />
       {imageSrc ? (
         <div className="relative h-[200px] w-full shrink-0">
-          <Image src={imageSrc} alt={imageAlt ?? ""} fill className="object-cover" sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw" />
+          <EditableSiteImage src={imageSrc} alt={imageAlt ?? ""} fill className="object-cover" sizes="(min-width: 1280px) 33vw, (min-width: 768px) 50vw, 100vw" />
         </div>
       ) : null}
       <div className="relative z-[2] flex h-full flex-col p-[var(--site-card-padding-compact)]">

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { CSSProperties } from "react";
-import Image from "next/image";
+import { EditableSiteImage } from "@/components/site/editable-site-image";
 import {
   SiteCard,
   SiteCardGrid,
@@ -163,7 +163,7 @@ export default function WhySolarPage() {
         }
         visual={
           <div className="relative h-[400px] overflow-hidden rounded-[var(--site-radius-corner)]">
-            <Image
+            <EditableSiteImage
               src="/images/web_photos/highendPanels.jpg"
               alt="Black rooftop solar panels installed on a sloped house roof in warm sunlight"
               fill

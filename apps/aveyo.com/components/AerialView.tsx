@@ -1,6 +1,7 @@
 /* eslint-disable jsx-a11y/media-has-caption */
 "use client";
 
+import { EditableSiteVideo } from "@/components/site/editable-site-video";
 import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
 import type { AerialViewContent } from "@/lib/state-page-data";
@@ -142,13 +143,14 @@ export default function AerialView({ content }: { content?: AerialViewContent })
       >
         <div className="sticky top-0 h-screen w-screen overflow-hidden">
           <div className="absolute inset-0 z-[1]">
-            <video
+            <EditableSiteVideo
               autoPlay
               loop
               muted
               playsInline
               className="h-full w-full object-cover"
               src={c.videoUrl}
+              label="Aerial background video"
             />
           </div>
 

@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { EditableSiteImage } from "@/components/site/editable-site-image";
 import { CardGradientBorder } from "@/components/ui/card-gradient-border";
 import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
@@ -45,7 +45,7 @@ const UV50_SEAL_SRC =
 function GoogleSealMark() {
   return (
     <div className="flex w-full items-center justify-center">
-      <Image
+      <EditableSiteImage
         src={GOOGLE_G_ICON_SRC}
         alt=""
         aria-hidden="true"
@@ -77,7 +77,7 @@ function BbbSealMark() {
 function Uv50SealMark() {
   return (
     <div className="flex w-full max-w-[250px] items-center justify-center">
-      <Image
+      <EditableSiteImage
         src={UV50_SEAL_SRC}
         alt="UV50 2025 Winner seal"
         width={1024}

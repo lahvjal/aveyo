@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import Image from "next/image";
+import { EditableSiteImage } from "@/components/site/editable-site-image";
 import ContactAvaGuidance from "./contact-ava-guidance";
 import {
   SiteCard,
@@ -150,7 +150,7 @@ export default function ContactPage() {
       >
         <div className="grid gap-5 lg:grid-cols-[1fr_1fr]">
           <div className="relative h-[300px] overflow-hidden rounded-[var(--site-radius-corner)] lg:h-auto">
-            <Image
+            <EditableSiteImage
               src="/images/web_photos/Newsfeed_02_Featured-Article-New-Office.jpg"
               alt="Aveyo office building exterior with branded signage, modern glass facade"
               fill

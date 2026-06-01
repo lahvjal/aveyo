@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { EditableSiteImage } from "@/components/site/editable-site-image";
 
 export type BenefitSlideCardData = {
   title: string;
@@ -33,7 +33,7 @@ export function BenefitSlideCard({
       style={{ width, height }}
     >
       {slide.image ? (
-        <Image
+        <EditableSiteImage
           src={slide.image}
           alt={slide.alt}
           fill

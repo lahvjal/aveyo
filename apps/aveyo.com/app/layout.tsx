@@ -3,6 +3,7 @@ import "./globals.css";
 import AvaWidgetEmbed from "@/components/AvaWidgetEmbed";
 import { PricingPlansModal } from "@/components/PricingPlansModal";
 import { SiteLoadOverlay } from "@/components/site-load-overlay";
+import { SitePhotoEditorProvider } from "@/components/site/site-photo-editor-provider";
 import { metadataBase, siteDescription, siteName, siteTitle } from "@/lib/site-metadata";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -50,7 +51,7 @@ export default function RootLayout({
           <style>{`.viewport-reveal{opacity:1!important;transform:none!important;}`}</style>
         </noscript>
         <SiteLoadOverlay />
-        {children}
+        <SitePhotoEditorProvider>{children}</SitePhotoEditorProvider>
         <PricingPlansModal />
         <AvaWidgetEmbed />
         <Analytics />

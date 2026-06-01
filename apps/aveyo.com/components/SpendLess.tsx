@@ -5,7 +5,8 @@ import { useCarouselAutoplay } from "@/components/ui/use-carousel-autoplay";
 import { useCarouselWheelNavigation } from "@/components/ui/use-carousel-wheel-navigation";
 import { ViewportReveal } from "@/components/ui/viewport-reveal";
 import { homepageStyleVars } from "@/lib/homepage-design-system";
-import Image from "next/image";
+import { EditableSiteImage } from "@/components/site/editable-site-image";
+import { EditableSiteVideo } from "@/components/site/editable-site-video";
 import { useState, useEffect, useCallback, useRef, useMemo, type MutableRefObject } from "react";
 import { defaultSpendLessSlides, type SpendLessSlide } from "@/lib/state-page-data";
 
@@ -82,8 +83,10 @@ function VideoSlide({ slide, isActive, logicalIndex, playbackPositionsRef }: Vid
   }, [logicalIndex, playbackPositionsRef]);
 
   return (
-    <video
+    <EditableSiteVideo
       ref={videoRef}
+      src={slide.src}
+      label={slide.title}
       autoPlay={isActive}
       muted
       loop
@@ -92,9 +95,7 @@ function VideoSlide({ slide, isActive, logicalIndex, playbackPositionsRef }: Vid
       poster={slide.poster}
       className="absolute inset-0 h-full w-full object-cover"
       onLoadedMetadata={handleLoadedMetadata}
-    >
-      <source src={slide.src} type="video/mp4" />
-    </video>
+    />
   );
 }
 
@@ -208,7 +209,7 @@ export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
             playbackPositionsRef={playbackPositionsRef}
           />
         ) : (
-          <Image
+          <EditableSiteImage
             src={slide.src}
             alt={slide.title}
             fill

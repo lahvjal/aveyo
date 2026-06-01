@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { EditableSiteImage } from "@/components/site/editable-site-image";
 import type { Metadata } from "next";
 import Testimonials from "@/components/Testimonials";
 import {
@@ -269,7 +269,7 @@ export default function ProcessPage() {
         }
         visual={
           <div className="relative h-[400px] overflow-hidden rounded-[var(--site-radius-corner)] shadow-[0_20px_60px_rgba(10,22,40,0.12)]">
-            <Image
+            <EditableSiteImage
               src="/images/web_photos/customerPortal.png"
               alt="Man viewing the Aveyo customer portal on a laptop at a kitchen table"
               fill

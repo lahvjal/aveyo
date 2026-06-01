@@ -1,4 +1,4 @@
-import Image from "next/image";
+import { EditableSiteImage } from "@/components/site/editable-site-image";
 
 export default function SavingsCalculator() {
   return (
@@ -43,7 +43,7 @@ export default function SavingsCalculator() {
                 <div className="h-4 bg-gray-700 -mx-4 -mb-4 rounded-b-2xl mt-4" />
               </div>
               {/* Actual image overlay */}
-              <Image
+              <EditableSiteImage
                 src="/images/laptop-mockup.png"
                 alt="Savings calculator on laptop"
                 width={600}
