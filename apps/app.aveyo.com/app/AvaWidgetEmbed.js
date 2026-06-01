@@ -19,5 +19,11 @@ export default function AvaWidgetEmbed() {
     };
   }, [authSession.authenticated, authSession.role, authSession.userType, authSession.user]);
 
-  return <AvaWidgetEmbedBridge hostSessionSnapshot={hostSessionSnapshot} registerGlobalApi />;
+  return (
+    <AvaWidgetEmbedBridge
+      hostSessionSnapshot={hostSessionSnapshot}
+      registerGlobalApi
+      usePortalMobileNav
+    />
+  );
 }

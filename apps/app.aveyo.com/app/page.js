@@ -13,6 +13,7 @@ import {
   PLATFORM_UTILITY_NAV_ITEMS,
   resolvePlatformNavHref
 } from "@ava/config/runtime/platform-nav";
+import { openAvaWidgetFromHost } from "@ava/widget";
 import { PlatformSideNav } from "@packages/ui/src/shell/platform-side-nav";
 import { buildAuthLoginUrl } from "../lib/auth/config";
 import { authApiRequest, logoutAuthSession } from "../lib/auth/session";
@@ -260,6 +261,9 @@ function AppPlatformSideNav({
         initials,
         disabled: isSigningOut,
         onClick: onSignOut
+      }}
+      onMobileAvaClick={() => {
+        openAvaWidgetFromHost();
       }}
     />
   );

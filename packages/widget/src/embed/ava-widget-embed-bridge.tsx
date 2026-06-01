@@ -15,6 +15,8 @@ const DEFAULT_OPEN_IFRAME_WIDTH_PX = 480;
 const DEFAULT_OPEN_IFRAME_HEIGHT_PX = 800;
 const DEFAULT_HOST_SESSION_POLL_INTERVAL_MS = 30000;
 const DEFAULT_WIDGET_URL = "https://ava.aveyo.com/embed";
+const PORTAL_MOBILE_NAV_MAX_WIDTH_PX = 980;
+const PORTAL_MOBILE_NAV_BOTTOM_OFFSET_PX = 76;
 
 interface LegacyAvaSessionData {
   email?: string;
@@ -49,6 +51,7 @@ export interface AvaWidgetEmbedBridgeProps {
   closedIframeSizePx?: number;
   openIframeWidthPx?: number;
   openIframeHeightPx?: number;
+  usePortalMobileNav?: boolean;
 }
 
 function normalizeLegacySession(value: LegacyAvaSessionData): HostSessionSnapshot | null {
@@ -100,12 +103,14 @@ export function AvaWidgetEmbedBridge({
   iframeTitle = "Ava support chat",
   closedIframeSizePx = DEFAULT_CLOSED_IFRAME_SIZE_PX,
   openIframeWidthPx = DEFAULT_OPEN_IFRAME_WIDTH_PX,
-  openIframeHeightPx = DEFAULT_OPEN_IFRAME_HEIGHT_PX
+  openIframeHeightPx = DEFAULT_OPEN_IFRAME_HEIGHT_PX,
+  usePortalMobileNav = false
 }: AvaWidgetEmbedBridgeProps) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [resolvedWidgetUrl, setResolvedWidgetUrl] = useState(widgetUrl ?? DEFAULT_WIDGET_URL);
   const [isWidgetOpen, setIsWidgetOpen] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [isPortalMobileViewport, setIsPortalMobileViewport] = useState(false);
   const [polledHostSessionSnapshot, setPolledHostSessionSnapshot] = useState<HostSessionSnapshot | null>(
     null
   );
@@ -168,6 +173,46 @@ export function AvaWidgetEmbedBridge({
     },
     [widgetOrigin]
   );
+
+  const postPortalMobileNavMode = useCallback(() => {
+    if (!widgetOrigin || !iframeRef.current?.contentWindow) {
+      return;
+    }
+
+    iframeRef.current.contentWindow.postMessage(
+      {
+        source: "aveyo-host",
+        type: "portal-mobile-nav-mode",
+        enabled: usePortalMobileNav && isPortalMobileViewport
+      },
+      widgetOrigin
+    );
+  }, [widgetOrigin, usePortalMobileNav, isPortalMobileViewport]);
+
+  useEffect(() => {
+    if (!usePortalMobileNav || typeof window === "undefined") {
+      setIsPortalMobileViewport(false);
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(`(max-width: ${PORTAL_MOBILE_NAV_MAX_WIDTH_PX}px)`);
+    const syncViewport = () => {
+      setIsPortalMobileViewport(mediaQuery.matches);
+    };
+
+    syncViewport();
+    mediaQuery.addEventListener("change", syncViewport);
+    return () => {
+      mediaQuery.removeEventListener("change", syncViewport);
+    };
+  }, [usePortalMobileNav]);
+
+  useEffect(() => {
+    if (!iframeLoaded) {
+      return;
+    }
+    postPortalMobileNavMode();
+  }, [iframeLoaded, postPortalMobileNavMode]);
 
   useEffect(() => {
     if (desiredOpenState === null) {
@@ -336,19 +381,26 @@ export function AvaWidgetEmbedBridge({
     };
   }, [registerGlobalApi, effectiveHostSessionSnapshot, postOpenStateCommand, isWidgetOpen]);
 
+  const portalMobileNavActive = usePortalMobileNav && isPortalMobileViewport;
+  const iframeBottom = portalMobileNavActive && isWidgetOpen ? `${PORTAL_MOBILE_NAV_BOTTOM_OFFSET_PX}px` : "0";
+  const closedIframeSize =
+    portalMobileNavActive && !isWidgetOpen ? 0 : closedIframeSizePx;
+  const openIframeHeight = portalMobileNavActive
+    ? `min(${openIframeHeightPx}px, calc(100vh - 24px - ${PORTAL_MOBILE_NAV_BOTTOM_OFFSET_PX}px))`
+    : `min(${openIframeHeightPx}px, calc(100vh - 24px))`;
+
   const iframeStyle: CSSProperties = {
     position: "fixed",
     right: "0",
-    bottom: "0",
+    bottom: iframeBottom,
     width: isWidgetOpen
       ? `min(${openIframeWidthPx}px, calc(100vw - 24px))`
-      : `${closedIframeSizePx}px`,
-    height: isWidgetOpen
-      ? `min(${openIframeHeightPx}px, calc(100vh - 24px))`
-      : `${closedIframeSizePx}px`,
+      : `${closedIframeSize}px`,
+    height: isWidgetOpen ? openIframeHeight : `${closedIframeSize}px`,
     border: 0,
     zIndex: 2147483000,
-    background: "transparent"
+    background: "transparent",
+    pointerEvents: portalMobileNavActive && !isWidgetOpen ? "none" : "auto"
   };
 
   return (

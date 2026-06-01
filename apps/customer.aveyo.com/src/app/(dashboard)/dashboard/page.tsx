@@ -1,5 +1,6 @@
 'use client';
 
+import { openAvaWidgetFromHost } from '@ava/widget';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import '@/styles/brand-colors.css';
 import Link from 'next/link';
@@ -283,13 +284,8 @@ export default function DashboardPage() {
 
   const openAvaChat = () => {
     analytics.avaChatOpened('banner');
-    const avaAuth = typeof window !== 'undefined' ? (window as Window & { AvaAuth?: { open: () => void } }).AvaAuth : undefined;
-    if (avaAuth) {
-      try {
-        avaAuth.open();
-      } catch (error) {
-        console.error('Error opening Ava chat from dashboard panel:', error);
-      }
+    if (!openAvaWidgetFromHost()) {
+      console.error('Error opening Ava chat from dashboard panel: AvaAuth API unavailable');
     }
   };
 

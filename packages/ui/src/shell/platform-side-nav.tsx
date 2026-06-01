@@ -48,6 +48,8 @@ export interface PlatformSideNavProps {
   canAccessAdminPanel?: boolean;
   canAccessKpiDashboard?: boolean;
   canAccessCustomerPortal?: boolean;
+  onMobileAvaClick?: () => void;
+  mobileAvaLabel?: string;
 }
 
 const DEFAULT_PATHNAME = "/";
@@ -407,7 +409,9 @@ export function PlatformSideNav({
   canAccessManagerPanel,
   canAccessAdminPanel,
   canAccessKpiDashboard,
-  canAccessCustomerPortal
+  canAccessCustomerPortal,
+  onMobileAvaClick,
+  mobileAvaLabel = "Ava"
 }: PlatformSideNavProps) {
   const classNames = SHARED_CLASS_NAMES;
   const [runtimeEnvironment, setRuntimeEnvironment] = useState<RuntimeEnvironment>(
@@ -549,6 +553,28 @@ export function PlatformSideNav({
       <span className={classNames.navLabel}>Logout</span>
     </>
   );
+  const mobileAvaIconSrc = getPlatformNavIconSrc("ava", { prefix: iconPrefix });
+  const showMobileAvaTab = Boolean(onMobileAvaClick);
+  const showMobilePanelTab = Boolean(panelHref);
+  const mobileTabBarClassName = [
+    styles.mobileTabBar,
+    showMobileAvaTab && showMobilePanelTab ? styles.mobileTabBarWithAva : ""
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const mobileAvaTab = showMobileAvaTab ? (
+    <button
+      type="button"
+      className={styles.mobileTabButton}
+      aria-label={mobileAvaLabel}
+      onClick={onMobileAvaClick}
+    >
+      <span className={styles.mobileTabIcon}>
+        {mobileAvaIconSrc ? <img src={mobileAvaIconSrc} alt="" aria-hidden="true" /> : null}
+      </span>
+      <span className={styles.mobileTabLabel}>{mobileAvaLabel}</span>
+    </button>
+  ) : null;
 
   return (
     <aside
@@ -707,7 +733,7 @@ export function PlatformSideNav({
         </button>
       </div>
 
-      <nav className={styles.mobileTabBar} aria-label="Mobile navigation">
+      <nav className={mobileTabBarClassName} aria-label="Mobile navigation">
         {renderLink({
           key: "mobile-dashboard",
           href: mobileDashboardHref,
@@ -746,7 +772,7 @@ export function PlatformSideNav({
           <span className={styles.mobileTabLabel}>Apps</span>
         </button>
 
-        {panelHref ? (
+        {showMobilePanelTab ? (
           renderLink({
             key: "mobile-panel",
             href: panelHref,
@@ -761,6 +787,8 @@ export function PlatformSideNav({
               </>
             )
           })
+        ) : showMobileAvaTab ? (
+          mobileAvaTab
         ) : (
           <button
             type="button"
@@ -774,6 +802,8 @@ export function PlatformSideNav({
             <span className={styles.mobileTabLabel}>{panelLabel}</span>
           </button>
         )}
+
+        {showMobileAvaTab && showMobilePanelTab ? mobileAvaTab : null}
 
         {renderLink({
           key: "mobile-profile",

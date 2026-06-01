@@ -37,6 +37,7 @@ interface HostWidgetCommandMessage {
   source?: string;
   type?: string;
   open?: boolean;
+  enabled?: boolean;
 }
 
 interface AvaWidgetShellProps {
@@ -815,6 +816,7 @@ export function AvaWidgetShell({
   const [timelineResetAtMs, setTimelineResetAtMs] = useState<number | null>(null);
   const panelRef = useRef<HTMLElement | null>(null);
   const launcherRef = useRef<HTMLDivElement | null>(null);
+  const [portalMobileNavMode, setPortalMobileNavMode] = useState(false);
   const closeTimerRef = useRef<number | null>(null);
   const avaTypingTimeoutRef = useRef<number | null>(null);
   const avaTypingStopTimeoutRef = useRef<number | null>(null);
@@ -1788,7 +1790,16 @@ export function AvaWidgetShell({
       }
 
       const payload = event.data as HostWidgetCommandMessage;
-      if (payload.source !== "aveyo-host" || payload.type !== "set-open-state") {
+      if (payload.source !== "aveyo-host" || !payload.type) {
+        return;
+      }
+
+      if (payload.type === "portal-mobile-nav-mode") {
+        setPortalMobileNavMode(Boolean(payload.enabled));
+        return;
+      }
+
+      if (payload.type !== "set-open-state") {
         return;
       }
 
@@ -1807,6 +1818,22 @@ export function AvaWidgetShell({
       window.removeEventListener("message", onHostMessage);
     };
   }, [closePanel, openPanel]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const embedRoot = document.querySelector(".widget-embed-root");
+    if (!(embedRoot instanceof HTMLElement)) {
+      return;
+    }
+
+    embedRoot.classList.toggle("portal-mobile-nav-mode", portalMobileNavMode);
+    return () => {
+      embedRoot.classList.remove("portal-mobile-nav-mode");
+    };
+  }, [portalMobileNavMode]);
 
   useEffect(() => {
     if (!isOpen) {

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useMemo, useState } from "react";
+import { openAvaWidgetFromHost } from "@ava/widget";
+import { useCallback, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useProfile } from "@/hooks/useProfile";
@@ -157,6 +158,10 @@ export function EmployeeSideNav() {
     }
   };
 
+  const openAvaChat = useCallback(() => {
+    openAvaWidgetFromHost();
+  }, []);
+
   return (
     <PlatformSideNav
       pathname={pathname}
@@ -189,6 +194,7 @@ export function EmployeeSideNav() {
         disabled: isSigningOut,
         onClick: handleSignOut
       }}
+      onMobileAvaClick={openAvaChat}
     />
   );
 }

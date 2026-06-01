@@ -1,4 +1,6 @@
 export { AvaWidgetEmbedBridge } from "./embed/ava-widget-embed-bridge";
+export type { AvaWidgetEmbedBridgeProps } from "./embed/ava-widget-embed-bridge";
+export { openAvaWidgetFromHost } from "./open-ava-host";
 export type {
   HostSessionSnapshot,
   HostSessionUser,

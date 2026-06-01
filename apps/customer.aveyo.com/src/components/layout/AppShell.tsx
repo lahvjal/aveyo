@@ -1,5 +1,6 @@
 'use client';
 
+import { openAvaWidgetFromHost } from '@ava/widget';
 import { getAveyoSiteUrl } from '@ava/config/runtime/platform-nav';
 import { resolveEnvironment } from '@ava/config/runtime/app-urls';
 import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -148,14 +149,8 @@ export default function AppShell({ children }: AppShellProps) {
   const openAvaChat = useCallback(() => {
     analytics.tabNavigation('support');
     analytics.avaChatOpened('support_tab');
-
-    const avaAuth = typeof window !== 'undefined' ? (window as Window & { AvaAuth?: { open: () => void } }).AvaAuth : undefined;
-    if (avaAuth) {
-      try {
-        avaAuth.open();
-      } catch (error) {
-        console.error('Error opening Ava chat from sidebar:', error);
-      }
+    if (!openAvaWidgetFromHost()) {
+      console.error('Error opening Ava chat from sidebar: AvaAuth API unavailable');
     }
   }, []);
 

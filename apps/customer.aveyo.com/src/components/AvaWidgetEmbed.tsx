@@ -20,5 +20,11 @@ export default function AvaWidgetEmbed() {
       }
     : createSignedOutSnapshot();
 
-  return <AvaWidgetEmbedBridge hostSessionSnapshot={hostSessionSnapshot} registerGlobalApi />;
+  return (
+    <AvaWidgetEmbedBridge
+      hostSessionSnapshot={hostSessionSnapshot}
+      registerGlobalApi
+      usePortalMobileNav
+    />
+  );
 }
