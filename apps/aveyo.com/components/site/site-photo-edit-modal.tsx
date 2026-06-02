@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ImageCropDialog } from "@/components/site/image-crop-dialog";
 import { ModalOverlay } from "@/components/site/modal-overlay";
-import { compressImage, formatFileSize } from "@/lib/imageCompression";
+import { compressImageForSiteUpload } from "@/lib/imageCompression";
 import {
   resetMarketingSitePhoto,
   uploadMarketingSitePhoto,
@@ -43,15 +43,24 @@ export function SitePhotoEditModal({
   const [resetting, setResetting] = useState(false);
   const [showCropDialog, setShowCropDialog] = useState(false);
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const cropObjectUrlRef = useRef<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const clearCropPreview = useCallback(() => {
+    if (cropObjectUrlRef.current) {
+      URL.revokeObjectURL(cropObjectUrlRef.current);
+      cropObjectUrlRef.current = null;
+    }
+    setImageToCrop(null);
+  }, []);
 
   useEffect(() => {
     if (!open) {
       setError("");
       setShowCropDialog(false);
-      setImageToCrop(null);
+      clearCropPreview();
     }
-  }, [open]);
+  }, [open, clearCropPreview]);
 
   const handleClose = () => {
     if (compressing || uploading || resetting) {
@@ -79,22 +88,12 @@ export function SitePhotoEditModal({
       return;
     }
 
-    const maxSizeBeforeCompression = 10 * 1024 * 1024;
-    if (file.size > maxSizeBeforeCompression) {
-      setError(`Image must be less than ${formatFileSize(maxSizeBeforeCompression)}.`);
-      return;
-    }
-
     setError("");
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImageToCrop(reader.result as string);
-      setShowCropDialog(true);
-    };
-    reader.onerror = () => {
-      setError("Failed to read image file.");
-    };
-    reader.readAsDataURL(file);
+    clearCropPreview();
+    const objectUrl = URL.createObjectURL(file);
+    cropObjectUrlRef.current = objectUrl;
+    setImageToCrop(objectUrl);
+    setShowCropDialog(true);
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -103,20 +102,12 @@ export function SitePhotoEditModal({
 
   const uploadCroppedFile = async (croppedFile: File) => {
     setShowCropDialog(false);
-    setImageToCrop(null);
+    clearCropPreview();
 
     try {
-      let fileToUpload = croppedFile;
-
-      if (croppedFile.size > 2.5 * 1024 * 1024) {
-        setCompressing(true);
-        fileToUpload = await compressImage(croppedFile, {
-          maxSizeMB: 2.5,
-          targetSizeMB: 2,
-          maxWidthOrHeight: 2048
-        });
-        setCompressing(false);
-      }
+      setCompressing(true);
+      const fileToUpload = await compressImageForSiteUpload(croppedFile);
+      setCompressing(false);
 
       setUploading(true);
       const photo = await uploadMarketingSitePhoto({
@@ -166,7 +157,7 @@ export function SitePhotoEditModal({
                 Edit Site Photo
               </h2>
               <p id="site-photo-edit-description" className="mt-1 text-sm text-[#5f646b]">
-                Replace or recrop this image. Large uploads are compressed automatically.
+                Replace or recrop this image. Any size is accepted and compressed under 2MB before upload.
               </p>
             </div>
             <button
@@ -234,7 +225,7 @@ export function SitePhotoEditModal({
           onOpenChange={(nextOpen) => {
             setShowCropDialog(nextOpen);
             if (!nextOpen) {
-              setImageToCrop(null);
+              clearCropPreview();
             }
           }}
           imageSrc={imageToCrop}

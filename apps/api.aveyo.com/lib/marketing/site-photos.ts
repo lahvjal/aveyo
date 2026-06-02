@@ -4,7 +4,7 @@ import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 const SITE_PHOTOS_TABLE = "marketing_site_photos";
 const SITE_MEDIA_BUCKET = "marketing-site-media";
-const IMAGE_UPLOAD_LIMIT_BYTES = 10 * 1024 * 1024;
+const IMAGE_UPLOAD_LIMIT_BYTES = 3 * 1024 * 1024;
 const VIDEO_UPLOAD_LIMIT_BYTES = 40 * 1024 * 1024;
 const IMAGE_MIME_TYPE_EXTENSIONS = new Map<string, string>([
   ["image/avif", "avif"],
