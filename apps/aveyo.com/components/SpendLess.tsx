@@ -8,16 +8,36 @@ import { homepageStyleVars } from "@/lib/homepage-design-system";
 import { EditableSiteImage } from "@/components/site/editable-site-image";
 import { EditableSiteVideo } from "@/components/site/editable-site-video";
 import { useState, useEffect, useCallback, useRef, useMemo, type MutableRefObject } from "react";
+import { usePathname } from "next/navigation";
+import { isHomePath } from "@/lib/pricing-navigation";
 import { defaultSpendLessSlides, type SpendLessSlide } from "@/lib/state-page-data";
 
 type SpendLessProps = {
   slides?: SpendLessSlide[];
+  /** Overrides pathname-derived slot keys (e.g. for Storybook). */
+  slotPrefix?: string;
 };
+
+function resolveSpendLessSlotPrefix(pathname: string, override?: string) {
+  if (override) {
+    return override;
+  }
+  if (isHomePath(pathname)) {
+    return "homepage-spendless";
+  }
+  const slug = pathname.replace(/^\/+|\/+$/g, "").split("/")[0];
+  return slug ? `${slug}-spendless` : "homepage-spendless";
+}
+
+function buildSpendLessSlideSlot(prefix: string, logicalIndex: number) {
+  return `${prefix}-slide-${logicalIndex}`;
+}
 
 type VideoSlideProps = {
   slide: SpendLessSlide;
   isActive: boolean;
   logicalIndex: number;
+  mediaSlot: string;
   playbackPositionsRef: MutableRefObject<Record<number, number>>;
 };
 
@@ -42,7 +62,7 @@ function restoreVideoPlaybackPosition(
   }
 }
 
-function VideoSlide({ slide, isActive, logicalIndex, playbackPositionsRef }: VideoSlideProps) {
+function VideoSlide({ slide, isActive, logicalIndex, mediaSlot, playbackPositionsRef }: VideoSlideProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const handleLoadedMetadata = useCallback(() => {
@@ -86,6 +106,7 @@ function VideoSlide({ slide, isActive, logicalIndex, playbackPositionsRef }: Vid
     <EditableSiteVideo
       ref={videoRef}
       src={slide.src}
+      videoSlot={mediaSlot}
       label={slide.title}
       autoPlay={isActive}
       muted
@@ -103,7 +124,9 @@ function getLogicalSlideIndex(index: number, slideCount: number) {
   return ((index % slideCount) + slideCount) % slideCount;
 }
 
-export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
+export default function SpendLess({ slides: slidesProp, slotPrefix: slotPrefixProp }: SpendLessProps) {
+  const pathname = usePathname() ?? "/";
+  const slotPrefix = resolveSpendLessSlotPrefix(pathname, slotPrefixProp);
   const slides = slidesProp ?? defaultSpendLessSlides;
   const extendedSlides = useMemo(() => [...slides, ...slides, ...slides], [slides]);
 
@@ -184,6 +207,7 @@ export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
   const renderSlide = (slide: SpendLessSlide, index: number) => {
     const isCenter = index === currentIndex;
     const logicalIndex = getLogicalSlideIndex(index, slides.length);
+    const mediaSlot = buildSpendLessSlideSlot(slotPrefix, logicalIndex);
 
     return (
       <div
@@ -206,11 +230,13 @@ export default function SpendLess({ slides: slidesProp }: SpendLessProps) {
             slide={slide}
             isActive={isCenter}
             logicalIndex={logicalIndex}
+            mediaSlot={mediaSlot}
             playbackPositionsRef={playbackPositionsRef}
           />
         ) : (
           <EditableSiteImage
             src={slide.src}
+            photoSlot={mediaSlot}
             alt={slide.title}
             fill
             className="object-cover"

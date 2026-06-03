@@ -230,8 +230,28 @@ function AskAvaBadge() {
   );
 }
 
-export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: string }) {
+function resolveFooterPhotoSlot(pathname: string, override?: string) {
+  if (override) {
+    return override;
+  }
+  if (isHomePath(pathname)) {
+    return "homepage-footer";
+  }
+  const slug = pathname.replace(/^\/+|\/+$/g, "").split("/")[0];
+  return slug ? `${slug}-footer` : "homepage-footer";
+}
+
+export default function Footer({
+  cta,
+  image,
+  photoSlot: photoSlotProp
+}: {
+  cta?: FooterCtaConfig;
+  image?: string;
+  photoSlot?: string;
+}) {
   const pathname = usePathname() ?? "/";
+  const footerPhotoSlot = resolveFooterPhotoSlot(pathname, photoSlotProp);
   const router = useRouter();
   const resolvedCta = {
     title: cta?.title ?? defaultCta.title,
@@ -324,6 +344,7 @@ export default function Footer({ cta, image }: { cta?: FooterCtaConfig; image?: 
             <div className="absolute inset-x-0 bottom-0 h-[920px] w-full sm:h-[1080px] xl:h-[var(--footer-image-height)]">
               <EditableSiteImage
                 src={image ?? footerTokens.assets.houseImage}
+                photoSlot={footerPhotoSlot}
                 alt=""
                 fill
                 sizes="100vw"
