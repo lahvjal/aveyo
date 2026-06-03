@@ -20,6 +20,7 @@ import { authApiRequest, logoutAuthSession } from "../lib/auth/session";
 import { useAuthSession } from "../lib/auth/use-auth-session";
 import { summarizeDashboardAccess } from "../lib/dashboard-modules";
 import CustomerTrackingSection from "./customer-tracking";
+import { DashboardCultureEventPosterCarousel } from "./dashboard-culture-event-poster-carousel";
 
 const hardcodedDashboardVideoUrl =
   "https://vz-bd3d2939-ded.b-cdn.net/340a5949-b949-4328-a27d-d1698a64b0ae/play_1080p.mp4";
@@ -104,6 +105,38 @@ function isCurrentOrUpcomingCultureEvent(event) {
   return endAt !== null ? now <= endAt : startAt >= now;
 }
 
+function getCultureEventPosters(event) {
+  if (!event) {
+    return [];
+  }
+
+  const posters = Array.isArray(event.posters) ? event.posters : [];
+  const normalizedPosters = [...posters]
+    .filter((poster) => poster?.url)
+    .sort((left, right) => (left?.sortOrder ?? 0) - (right?.sortOrder ?? 0))
+    .map((poster, index) => ({
+      id: poster.id ?? `${poster.url}-${index}`,
+      kind: poster.kind === "video" ? "video" : "image",
+      url: poster.url
+    }));
+
+  if (normalizedPosters.length > 0) {
+    return normalizedPosters;
+  }
+
+  if (event.posterUrl) {
+    return [
+      {
+        id: event.id ? `${event.id}-legacy-poster` : event.posterUrl,
+        kind: event.posterKind === "video" ? "video" : "image",
+        url: event.posterUrl
+      }
+    ];
+  }
+
+  return [];
+}
+
 function sortCultureEvents(events) {
   return [...events].sort((left, right) => {
     const leftTime = Date.parse(`${left?.date}T${left?.time}`);
@@ -181,6 +214,27 @@ function toRoleLabel(role, flags = {}) {
     default:
       return "Employee";
   }
+}
+
+function CultureEventNavGlyph({ direction }) {
+  return (
+    <svg
+      aria-hidden="true"
+      width="8"
+      height="14"
+      viewBox="0 0 8 14"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d={direction === "left" ? "M7 1L1 7L7 13" : "M1 1L7 7L1 13"}
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }
 
 function LogoutGlyph() {
@@ -281,9 +335,10 @@ export default function HomePage() {
   const [cultureHighlights, setCultureHighlights] = useState({
     loading: true,
     error: "",
-    nextEvent: null,
+    upcomingEvents: [],
     latestAnnouncement: null
   });
+  const [upcomingEventIndex, setUpcomingEventIndex] = useState(0);
   const dashboardVideoRef = useRef(null);
 
   useEffect(() => {
@@ -373,9 +428,10 @@ export default function HomePage() {
         setCultureHighlights({
           loading: false,
           error: "",
-          nextEvent: upcomingEvents[0] ?? null,
+          upcomingEvents,
           latestAnnouncement: announcements[0] ?? null
         });
+        setUpcomingEventIndex(0);
       } catch (error) {
         if (cancelled) {
           return;
@@ -384,9 +440,10 @@ export default function HomePage() {
         setCultureHighlights({
           loading: false,
           error: error instanceof Error ? error.message : "Unable to load culture highlights.",
-          nextEvent: null,
+          upcomingEvents: [],
           latestAnnouncement: null
         });
+        setUpcomingEventIndex(0);
       }
     }
 
@@ -395,6 +452,16 @@ export default function HomePage() {
       cancelled = true;
     };
   }, [onboardingChecked, session.authenticated, session.loading, session.userType]);
+
+  useEffect(() => {
+    const eventCount = cultureHighlights.upcomingEvents.length;
+    if (eventCount === 0) {
+      setUpcomingEventIndex(0);
+      return;
+    }
+
+    setUpcomingEventIndex((current) => Math.min(current, eventCount - 1));
+  }, [cultureHighlights.upcomingEvents]);
 
   const orgAppUrl = useMemo(() => {
     const orgNavItem = PLATFORM_PRIMARY_NAV_ITEMS.find((item) => item.id === "org");
@@ -462,8 +529,32 @@ export default function HomePage() {
     ],
     [orgAppUrl, orgProfileUrl, paychexUrl]
   );
-  const nextEvent = cultureHighlights.nextEvent;
+  const upcomingEvents = cultureHighlights.upcomingEvents;
+  const selectedUpcomingEvent = upcomingEvents[upcomingEventIndex] ?? null;
+  const selectedEventPosters = useMemo(
+    () => getCultureEventPosters(selectedUpcomingEvent),
+    [selectedUpcomingEvent]
+  );
   const latestAnnouncement = cultureHighlights.latestAnnouncement;
+  const canBrowseUpcomingEvents = upcomingEvents.length > 1;
+
+  function showPreviousUpcomingEvent() {
+    if (!canBrowseUpcomingEvents) {
+      return;
+    }
+
+    setUpcomingEventIndex(
+      (current) => (current - 1 + upcomingEvents.length) % upcomingEvents.length
+    );
+  }
+
+  function showNextUpcomingEvent() {
+    if (!canBrowseUpcomingEvents) {
+      return;
+    }
+
+    setUpcomingEventIndex((current) => (current + 1) % upcomingEvents.length);
+  }
 
   async function handleSignOut() {
     if (isSigningOut) {
@@ -593,7 +684,31 @@ export default function HomePage() {
 
             <aside className="dashboard-culture-rail" aria-label="Culture highlights">
               <div className="dashboard-culture-rail-heading">
-                <p>Next Upcoming Event</p>
+                <p className="dashboard-culture-rail-heading-title">Next Upcoming Event</p>
+                {canBrowseUpcomingEvents ? (
+                  <div
+                    className="dashboard-culture-rail-event-nav"
+                    role="group"
+                    aria-label="Browse upcoming events"
+                  >
+                    <button
+                      type="button"
+                      className="dashboard-culture-rail-event-nav-button"
+                      onClick={showPreviousUpcomingEvent}
+                      aria-label="Previous upcoming event"
+                    >
+                      <CultureEventNavGlyph direction="left" />
+                    </button>
+                    <button
+                      type="button"
+                      className="dashboard-culture-rail-event-nav-button"
+                      onClick={showNextUpcomingEvent}
+                      aria-label="Next upcoming event"
+                    >
+                      <CultureEventNavGlyph direction="right" />
+                    </button>
+                  </div>
+                ) : null}
               </div>
 
               <div className="dashboard-culture-event-slot">
@@ -601,32 +716,17 @@ export default function HomePage() {
                   <div className="dashboard-culture-event-empty">
                     <p>Loading next event...</p>
                   </div>
-                ) : nextEvent?.posterUrl ? (
-                  nextEvent.posterKind === "video" ? (
-                    <video
-                      className="dashboard-culture-event-media"
-                      src={nextEvent.posterUrl}
-                      autoPlay
-                      muted
-                      loop
-                      playsInline
-                      preload="metadata"
-                    />
-                  ) : (
-                    <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        className="dashboard-culture-event-media"
-                        src={nextEvent.posterUrl}
-                        alt={`${nextEvent.title} poster`}
-                      />
-                    </>
-                  )
-                ) : nextEvent ? (
+                ) : selectedEventPosters.length > 0 ? (
+                  <DashboardCultureEventPosterCarousel
+                    key={selectedUpcomingEvent?.id ?? upcomingEventIndex}
+                    posters={selectedEventPosters}
+                    eventTitle={selectedUpcomingEvent?.title ?? "Culture event"}
+                  />
+                ) : selectedUpcomingEvent ? (
                   <div className="dashboard-culture-event-empty">
-                    <p className="dashboard-culture-event-title">{nextEvent.title}</p>
-                    <p>{nextEvent.location}</p>
-                    <p>{formatCultureEventDateTime(nextEvent)}</p>
+                    <p className="dashboard-culture-event-title">{selectedUpcomingEvent.title}</p>
+                    <p>{selectedUpcomingEvent.location}</p>
+                    <p>{formatCultureEventDateTime(selectedUpcomingEvent)}</p>
                   </div>
                 ) : (
                   <div className="dashboard-culture-event-empty">
