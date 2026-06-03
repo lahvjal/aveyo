@@ -213,6 +213,171 @@
   background: #060606;
 }
 
+.eventPosterCarousel {
+  position: absolute;
+  inset: 0;
+}
+
+.eventPosterCarouselTrack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.eventPosterCarouselSlide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 700ms ease;
+}
+
+.eventPosterCarouselSlideActive {
+  opacity: 1;
+}
+
+.eventPosterCarouselDots {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transform: translateX(-50%);
+}
+
+.eventPosterCarouselDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.eventPosterCarouselDotActive {
+  background: #ffffff;
+}
+
+.eventPosterCarouselDayLabel {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  margin: 0;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.posterSection {
+  display: grid;
+  gap: 16px;
+}
+
+.posterSectionHeader {
+  display: grid;
+  gap: 4px;
+}
+
+.posterRows {
+  display: grid;
+  gap: 16px;
+}
+
+.posterRow {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--marketing-color-border-muted, #e8e8e8);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.posterRowHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.posterRowTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.posterRowGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.posterOrderList {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.posterOrderItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--marketing-color-border-muted, #e8e8e8);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.posterOrderMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.posterOrderIndex {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #111111;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.posterOrderCopy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.posterOrderCopy strong,
+.posterOrderCopy span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.posterOrderCopy span {
+  color: #5f5f5f;
+  font-size: 12px;
+}
+
+.posterOrderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .eventActionOverlay {
   position: absolute;
   inset: auto 10px 10px;

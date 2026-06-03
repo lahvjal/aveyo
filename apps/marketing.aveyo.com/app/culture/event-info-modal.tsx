@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useId } from "react";
-import type { CultureEvent } from "@/lib/culture";
+import { getEventPosters, type CultureEvent } from "@/lib/culture";
+import { EventPosterCarousel } from "./event-poster-carousel";
 import {
   CultureCalendarIcon,
   CultureCloseIcon,
@@ -107,22 +108,11 @@ export function EventInfoModal({
         onClick={(event) => event.stopPropagation()}
       >
         <div className={styles.eventInfoVisualPane}>
-          {event.posterUrl ? (
-            event.posterKind === "video" ? (
-              <video
-                className={styles.eventInfoPosterVideo}
-                src={event.posterUrl}
-                autoPlay
-                muted
-                loop
-                playsInline
-                preload="metadata"
-              />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img className={styles.eventInfoPosterMedia} src={event.posterUrl} alt="" />
-            )
-          ) : null}
+          <EventPosterCarousel
+            posters={getEventPosters(event)}
+            imageClassName={styles.eventInfoPosterMedia}
+            videoClassName={styles.eventInfoPosterVideo}
+          />
         </div>
 
         <div className={styles.eventInfoContent}>

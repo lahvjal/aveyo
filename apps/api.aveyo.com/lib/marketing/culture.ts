@@ -4,6 +4,8 @@ import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
 
 const CULTURE_EVENTS_TABLE = "culture_events";
 const CULTURE_ANNOUNCEMENTS_TABLE = "culture_announcements";
+const CULTURE_EVENT_COLUMNS =
+  "id, title, event_date, event_end_date, is_all_day, event_time, location, owner_name, description, posters, poster_media_kind, poster_media_url, created_at, updated_at";
 const CULTURE_MEDIA_BUCKET = "culture-event-media";
 const IMAGE_UPLOAD_LIMIT_BYTES = 10 * 1024 * 1024;
 const VIDEO_UPLOAD_LIMIT_BYTES = 40 * 1024 * 1024;
@@ -30,6 +32,7 @@ interface CultureEventRow {
   location: string;
   owner_name: string;
   description: string;
+  posters: unknown;
   poster_media_kind: "image" | "video" | null;
   poster_media_url: string | null;
   created_at: string;
@@ -47,6 +50,13 @@ interface CultureAnnouncementRow {
   updated_at: string;
 }
 
+export interface CultureEventPoster {
+  id: string;
+  kind: "image" | "video";
+  url: string;
+  sortOrder: number;
+}
+
 export interface CultureEvent {
   id: string;
   title: string;
@@ -57,6 +67,7 @@ export interface CultureEvent {
   location: string;
   owner: string;
   description: string;
+  posters: CultureEventPoster[];
   posterKind: "image" | "video" | null;
   posterUrl: string | null;
   createdAt: string;
@@ -86,6 +97,13 @@ export class MarketingCultureError extends Error {
   }
 }
 
+interface NormalizedCultureEventPosterInput {
+  sortOrder: number;
+  posterKind: "image" | "video" | null;
+  posterUrl: string | null;
+  posterFile: File | null;
+}
+
 interface CreateCultureEventPayload {
   title: string;
   date: string;
@@ -95,9 +113,7 @@ interface CreateCultureEventPayload {
   location: string;
   owner: string;
   description: string;
-  posterKind: "image" | "video" | null;
-  posterUrl: string | null;
-  posterFile: File | null;
+  posters: NormalizedCultureEventPosterInput[];
 }
 
 interface CreateCultureAnnouncementPayload {
@@ -156,6 +172,104 @@ function validateEventDateRange(startDate: string, endDate: string | null) {
   if (Date.parse(`${endDate}T00:00:00.000Z`) < Date.parse(`${startDate}T00:00:00.000Z`)) {
     throw new MarketingCultureError("End date cannot be earlier than the start date.");
   }
+}
+
+function isPosterInputEmpty(poster: NormalizedCultureEventPosterInput) {
+  return !poster.posterFile && !poster.posterUrl;
+}
+
+function parsePostersJson(value: unknown) {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed : null;
+  } catch {
+    throw new MarketingCultureError("Posters payload must be valid JSON.");
+  }
+}
+
+function readPosterFileFromFormData(formData: FormData, fileKey: string | undefined) {
+  if (!fileKey) {
+    return null;
+  }
+  return readFormDataFile(formData, fileKey);
+}
+
+function normalizePosterSortOrder(value: unknown, fallback: number) {
+  const sortOrder = Number(value);
+  if (!Number.isFinite(sortOrder) || sortOrder < 0) {
+    return fallback;
+  }
+  return Math.floor(sortOrder);
+}
+
+function normalizePosterInputRecord(
+  record: Record<string, unknown>,
+  formData: FormData | null,
+  fallbackSortOrder: number
+): NormalizedCultureEventPosterInput {
+  const sortOrder = normalizePosterSortOrder(
+    record.sortOrder ?? record.sort_order,
+    fallbackSortOrder
+  );
+  const posterKind = normalizePosterKind(record.posterKind ?? record.poster_kind);
+  const posterUrl = normalizeOptionalHttpUrl(
+    record.posterUrl ?? record.poster_url,
+    "Poster media URL"
+  );
+  const fileKey = trimString(record.fileKey ?? record.file_key);
+  const posterFile = formData ? readPosterFileFromFormData(formData, fileKey || undefined) : null;
+
+  if (isPosterInputEmpty({ sortOrder, posterKind, posterUrl, posterFile })) {
+    return { sortOrder, posterKind: null, posterUrl: null, posterFile: null };
+  }
+
+  if (!posterFile && ((posterKind && !posterUrl) || (!posterKind && posterUrl))) {
+    throw new MarketingCultureError(
+      "Each poster must include media type and URL together, or an uploaded file."
+    );
+  }
+
+  return { sortOrder, posterKind, posterUrl, posterFile };
+}
+
+function normalizePosterInputs(
+  rawPosters: unknown,
+  formData: FormData | null,
+  legacyPoster?: {
+    posterKind: "image" | "video" | null;
+    posterUrl: string | null;
+    posterFile: File | null;
+  }
+) {
+  const parsedPosters = Array.isArray(rawPosters)
+    ? rawPosters
+    : legacyPoster &&
+        (legacyPoster.posterFile || legacyPoster.posterUrl || legacyPoster.posterKind)
+      ? [
+          {
+            sortOrder: 0,
+            posterKind: legacyPoster.posterKind,
+            posterUrl: legacyPoster.posterUrl,
+            fileKey: legacyPoster.posterFile ? "posterFile" : undefined
+          }
+        ]
+      : [];
+
+  const normalized = parsedPosters.map((entry, index) => {
+    if (!entry || typeof entry !== "object") {
+      throw new MarketingCultureError("Each poster entry must be an object.");
+    }
+    return normalizePosterInputRecord(entry as Record<string, unknown>, formData, index);
+  });
+
+  return normalized
+    .filter((poster) => !isPosterInputEmpty(poster))
+    .sort((left, right) => left.sortOrder - right.sortOrder)
+    .map((poster, index) => ({ ...poster, sortOrder: index }));
 }
 
 function normalizeEventTime(value: unknown) {
@@ -265,7 +379,53 @@ function resolvePosterFileExtension(file: File, kind: "image" | "video") {
 }
 
 function isFileValue(value: FormDataEntryValue | null | undefined): value is File {
-  return typeof File !== "undefined" && value instanceof File;
+  if (value === null || value === undefined) {
+    return false;
+  }
+
+  if (typeof File !== "undefined" && value instanceof File) {
+    return true;
+  }
+
+  return (
+    typeof value === "object" &&
+    "arrayBuffer" in value &&
+    typeof (value as File).arrayBuffer === "function"
+  );
+}
+
+function isFormDataPayload(value: unknown): value is FormData {
+  if (typeof FormData !== "undefined" && value instanceof FormData) {
+    return true;
+  }
+
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as FormData).get === "function" &&
+    typeof (value as FormData).append === "function"
+  );
+}
+
+export async function parseCultureEventRequestBody(request: Request) {
+  const contentType = request.headers.get("content-type") ?? "";
+
+  if (contentType.includes("multipart/form-data")) {
+    return request.formData();
+  }
+
+  if (contentType.includes("application/json")) {
+    const jsonBody = await request.json().catch(() => null);
+    if (jsonBody === null) {
+      throw new MarketingCultureError("Request body must be valid JSON.", 400);
+    }
+    return jsonBody;
+  }
+
+  throw new MarketingCultureError(
+    "Request body must be sent as JSON or multipart form data.",
+    400
+  );
 }
 
 function readFormDataText(formData: FormData, key: string) {
@@ -299,7 +459,73 @@ function toTimestamp(event: Pick<CultureEvent, "date" | "time">) {
   return Date.parse(`${event.date}T${event.time}`);
 }
 
+function sortCultureEventPosters(posters: CultureEventPoster[]) {
+  return [...posters].sort((left, right) => left.sortOrder - right.sortOrder);
+}
+
+function normalizeStoredCultureEventPoster(value: unknown): CultureEventPoster | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const record = value as Record<string, unknown>;
+  const kind = trimString(record.kind ?? record.poster_media_kind).toLowerCase();
+  const url = trimString(record.url ?? record.poster_media_url);
+  const id = trimString(record.id) || randomUUID();
+  const sortOrder = Number(record.sortOrder ?? record.sort_order ?? 0);
+
+  if ((kind !== "image" && kind !== "video") || !url) {
+    return null;
+  }
+
+  return {
+    id,
+    kind,
+    url,
+    sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0
+  };
+}
+
+function parseCultureEventPosters(row: CultureEventRow) {
+  if (Array.isArray(row.posters) && row.posters.length > 0) {
+    const posters = row.posters
+      .map((entry) => normalizeStoredCultureEventPoster(entry))
+      .filter((entry): entry is CultureEventPoster => entry !== null);
+    if (posters.length > 0) {
+      return sortCultureEventPosters(posters);
+    }
+  }
+
+  if (row.poster_media_kind && row.poster_media_url) {
+    return [
+      {
+        id: `${row.id}-legacy-poster`,
+        kind: row.poster_media_kind,
+        url: row.poster_media_url,
+        sortOrder: 0
+      }
+    ];
+  }
+
+  return [];
+}
+
+function serializeCultureEventPosters(posters: CultureEventPoster[]) {
+  return sortCultureEventPosters(posters).map((poster, index) => ({
+    id: poster.id,
+    kind: poster.kind,
+    url: poster.url,
+    sortOrder: index
+  }));
+}
+
+function getPrimaryCultureEventPoster(posters: CultureEventPoster[]) {
+  return posters[0] ?? null;
+}
+
 function mapCultureEventRow(row: CultureEventRow): CultureEvent {
+  const posters = parseCultureEventPosters(row);
+  const primaryPoster = getPrimaryCultureEventPoster(posters);
   return {
     id: row.id,
     title: row.title,
@@ -310,8 +536,9 @@ function mapCultureEventRow(row: CultureEventRow): CultureEvent {
     location: row.location,
     owner: row.owner_name,
     description: row.description,
-    posterKind: row.poster_media_kind,
-    posterUrl: row.poster_media_url,
+    posters,
+    posterKind: primaryPoster?.kind ?? row.poster_media_kind,
+    posterUrl: primaryPoster?.url ?? row.poster_media_url,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -350,15 +577,39 @@ function assertEmployeeCultureAccess(session: AuthSessionResult) {
   }
 }
 
+function isMarketingDepartmentName(value: string | null | undefined) {
+  return typeof value === "string" && value.toLowerCase().includes("marketing");
+}
+
+export function canManageCulture(session: AuthSessionResult) {
+  if (!session.authenticated || session.userType !== "employee") {
+    return false;
+  }
+
+  if (session.access.isAdmin || session.access.isSuperAdmin) {
+    return true;
+  }
+
+  if (isMarketingDepartmentName(session.access.departmentName)) {
+    return true;
+  }
+
+  return session.access.departmentPath.some((department) =>
+    isMarketingDepartmentName(department.name)
+  );
+}
+
 function assertManageCultureAccess(session: AuthSessionResult) {
-  assertEmployeeCultureAccess(session);
-  if (!session.access.isAdmin) {
-    throw new MarketingCultureError("Admin access required.", 403);
+  if (!session.authenticated) {
+    throw new MarketingCultureError("Authentication required.", 401);
+  }
+  if (!canManageCulture(session)) {
+    throw new MarketingCultureError("Marketing team access required.", 403);
   }
 }
 
 function coerceCultureEventPayload(payload: unknown): CreateCultureEventPayload {
-  if (payload instanceof FormData) {
+  if (isFormDataPayload(payload)) {
     const date = normalizeEventDate(readFormDataText(payload, "date"));
     const endDate = normalizeOptionalEventDate(
       readFormDataText(payload, "endDate") ?? readFormDataText(payload, "end_date")
@@ -367,22 +618,24 @@ function coerceCultureEventPayload(payload: unknown): CreateCultureEventPayload 
     const isAllDay = normalizeIsAllDay(
       readFormDataText(payload, "isAllDay") ?? readFormDataText(payload, "is_all_day")
     );
-
-    const posterKind = normalizePosterKind(
+    const legacyPosterKind = normalizePosterKind(
       readFormDataText(payload, "posterKind") ?? readFormDataText(payload, "poster_kind")
     );
-    const posterUrl = normalizeOptionalHttpUrl(
+    const legacyPosterUrl = normalizeOptionalHttpUrl(
       readFormDataText(payload, "posterUrl") ?? readFormDataText(payload, "poster_url"),
       "Poster media URL"
     );
-    const posterFile =
+    const legacyPosterFile =
       readFormDataFile(payload, "posterFile") ?? readFormDataFile(payload, "poster_file");
-
-    if (!posterFile && ((posterKind && !posterUrl) || (!posterKind && posterUrl))) {
-      throw new MarketingCultureError(
-        "Poster media type and poster media URL must be provided together."
-      );
-    }
+    const posters = normalizePosterInputs(
+      parsePostersJson(readFormDataText(payload, "posters") ?? "") ?? [],
+      payload,
+      {
+        posterKind: legacyPosterKind,
+        posterUrl: legacyPosterUrl,
+        posterFile: legacyPosterFile
+      }
+    );
 
     return {
       title: normalizeRequiredText(readFormDataText(payload, "title"), "Title"),
@@ -393,9 +646,7 @@ function coerceCultureEventPayload(payload: unknown): CreateCultureEventPayload 
       location: normalizeRequiredText(readFormDataText(payload, "location"), "Location"),
       owner: normalizeRequiredText(readFormDataText(payload, "owner"), "Owner"),
       description: normalizeRequiredText(readFormDataText(payload, "description"), "Description"),
-      posterKind,
-      posterUrl,
-      posterFile
+      posters
     };
   }
 
@@ -404,22 +655,27 @@ function coerceCultureEventPayload(payload: unknown): CreateCultureEventPayload 
   }
 
   const record = payload as Record<string, unknown>;
-  const posterKind = normalizePosterKind(record.posterKind ?? record.poster_kind);
-  const posterUrl = normalizeOptionalHttpUrl(
+  const date = normalizeEventDate(record.date);
+  const endDate = normalizeOptionalEventDate(record.endDate ?? record.end_date);
+  validateEventDateRange(date, endDate);
+  const isAllDay = normalizeIsAllDay(record.isAllDay ?? record.is_all_day);
+  const legacyPosterKind = normalizePosterKind(record.posterKind ?? record.poster_kind);
+  const legacyPosterUrl = normalizeOptionalHttpUrl(
     record.posterUrl ?? record.poster_url,
     "Poster media URL"
   );
 
-  if ((posterKind && !posterUrl) || (!posterKind && posterUrl)) {
+  if ((legacyPosterKind && !legacyPosterUrl) || (!legacyPosterKind && legacyPosterUrl)) {
     throw new MarketingCultureError(
       "Poster media type and poster media URL must be provided together."
     );
   }
 
-  const date = normalizeEventDate(record.date);
-  const endDate = normalizeOptionalEventDate(record.endDate ?? record.end_date);
-  validateEventDateRange(date, endDate);
-  const isAllDay = normalizeIsAllDay(record.isAllDay ?? record.is_all_day);
+  const posters = normalizePosterInputs(record.posters, null, {
+    posterKind: legacyPosterKind,
+    posterUrl: legacyPosterUrl,
+    posterFile: null
+  });
 
   return {
     title: normalizeRequiredText(record.title, "Title"),
@@ -430,14 +686,12 @@ function coerceCultureEventPayload(payload: unknown): CreateCultureEventPayload 
     location: normalizeRequiredText(record.location, "Location"),
     owner: normalizeRequiredText(record.owner, "Owner"),
     description: normalizeRequiredText(record.description, "Description"),
-    posterKind,
-    posterUrl,
-    posterFile: null
+    posters
   };
 }
 
 function coerceCreateCultureAnnouncementPayload(payload: unknown): CreateCultureAnnouncementPayload {
-  if (!payload || typeof payload !== "object" || payload instanceof FormData) {
+  if (!payload || typeof payload !== "object" || isFormDataPayload(payload)) {
     throw new MarketingCultureError("Request body must be a JSON object.");
   }
 
@@ -539,13 +793,78 @@ async function deleteCulturePosterMediaByUrl(url: string | null) {
   await deleteCulturePosterMedia(objectPath);
 }
 
+async function cleanupRemovedCultureEventPosterMedia(
+  previousPosters: CultureEventPoster[],
+  nextPosters: CultureEventPoster[]
+) {
+  const nextUrls = new Set(nextPosters.map((poster) => poster.url));
+  for (const poster of previousPosters) {
+    if (!nextUrls.has(poster.url)) {
+      await deleteCulturePosterMediaByUrl(poster.url).catch(() => undefined);
+    }
+  }
+}
+
+async function resolveCultureEventPosters(
+  posterInputs: NormalizedCultureEventPosterInput[],
+  session: AuthSessionResult
+) {
+  const uploadedPaths: string[] = [];
+  const resolvedPosters: CultureEventPoster[] = [];
+
+  try {
+    for (const [index, posterInput] of posterInputs.entries()) {
+      let posterKind = posterInput.posterKind;
+      let posterUrl = posterInput.posterUrl;
+
+      if (posterInput.posterFile) {
+        const uploadResult = await uploadCulturePosterMedia(
+          posterInput.posterFile,
+          session,
+          posterInput.posterKind
+        );
+        posterKind = uploadResult.kind;
+        posterUrl = uploadResult.publicUrl;
+        uploadedPaths.push(uploadResult.objectPath);
+      }
+
+      if (!posterKind || !posterUrl) {
+        throw new MarketingCultureError(
+          "Each poster must include media type and URL or a file upload."
+        );
+      }
+
+      resolvedPosters.push({
+        id: randomUUID(),
+        kind: posterKind,
+        url: posterUrl,
+        sortOrder: posterInput.sortOrder
+      });
+    }
+
+    return sortCultureEventPosters(resolvedPosters);
+  } catch (error) {
+    for (const objectPath of uploadedPaths) {
+      await deleteCulturePosterMedia(objectPath).catch(() => undefined);
+    }
+    throw error;
+  }
+}
+
+function buildCultureEventPosterFields(posters: CultureEventPoster[]) {
+  const primaryPoster = getPrimaryCultureEventPoster(posters);
+  return {
+    posters: serializeCultureEventPosters(posters),
+    poster_media_kind: primaryPoster?.kind ?? null,
+    poster_media_url: primaryPoster?.url ?? null
+  };
+}
+
 async function getCultureEventRowById(eventId: string) {
   const supabaseServiceRoleClient = getSupabaseServiceRoleClient();
   const { data, error } = await supabaseServiceRoleClient
     .from(CULTURE_EVENTS_TABLE)
-    .select(
-      "id, title, event_date, event_end_date, is_all_day, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
-    )
+    .select(CULTURE_EVENT_COLUMNS)
     .eq("id", eventId)
     .maybeSingle();
 
@@ -560,9 +879,7 @@ async function listCultureEvents() {
   const supabaseServiceRoleClient = getSupabaseServiceRoleClient();
   const { data, error } = await supabaseServiceRoleClient
     .from(CULTURE_EVENTS_TABLE)
-    .select(
-      "id, title, event_date, event_end_date, is_all_day, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
-    )
+    .select(CULTURE_EVENT_COLUMNS)
     .order("event_date", { ascending: true })
     .order("event_time", { ascending: true })
     .limit(200);
@@ -611,56 +928,33 @@ export async function createCultureEvent(payload: unknown, session: AuthSessionR
   assertManageCultureAccess(session);
 
   const normalizedPayload = coerceCultureEventPayload(payload);
-  let posterKind = normalizedPayload.posterKind;
-  let posterUrl = normalizedPayload.posterUrl;
-  let uploadedPosterPath: string | null = null;
-
-  if (normalizedPayload.posterFile) {
-    const uploadResult = await uploadCulturePosterMedia(
-      normalizedPayload.posterFile,
-      session,
-      normalizedPayload.posterKind
-    );
-    posterKind = uploadResult.kind;
-    posterUrl = uploadResult.publicUrl;
-    uploadedPosterPath = uploadResult.objectPath;
-  }
-
+  const posters = await resolveCultureEventPosters(normalizedPayload.posters, session);
   const supabaseServiceRoleClient = getSupabaseServiceRoleClient();
-  try {
-    const { data, error } = await supabaseServiceRoleClient
-      .from(CULTURE_EVENTS_TABLE)
-      .insert({
-        title: normalizedPayload.title,
-        event_date: normalizedPayload.date,
-        event_end_date: normalizedPayload.endDate,
-        is_all_day: normalizedPayload.isAllDay,
-        event_time: normalizedPayload.time,
-        location: normalizedPayload.location,
-        owner_name: normalizedPayload.owner,
-        description: normalizedPayload.description,
-        poster_media_kind: posterKind,
-        poster_media_url: posterUrl
-      })
-      .select(
-        "id, title, event_date, event_end_date, is_all_day, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
-      )
-      .maybeSingle();
 
-    if (error || !data) {
-      throw new MarketingCultureError(
-        `Unable to create culture event: ${error?.message ?? "Unknown database error."}`,
-        500
-      );
-    }
+  const { data, error } = await supabaseServiceRoleClient
+    .from(CULTURE_EVENTS_TABLE)
+    .insert({
+      title: normalizedPayload.title,
+      event_date: normalizedPayload.date,
+      event_end_date: normalizedPayload.endDate,
+      is_all_day: normalizedPayload.isAllDay,
+      event_time: normalizedPayload.time,
+      location: normalizedPayload.location,
+      owner_name: normalizedPayload.owner,
+      description: normalizedPayload.description,
+      ...buildCultureEventPosterFields(posters)
+    })
+    .select(CULTURE_EVENT_COLUMNS)
+    .maybeSingle();
 
-    return mapCultureEventRow(data as CultureEventRow);
-  } catch (error) {
-    if (uploadedPosterPath) {
-      await deleteCulturePosterMedia(uploadedPosterPath).catch(() => undefined);
-    }
-    throw error;
+  if (error || !data) {
+    throw new MarketingCultureError(
+      `Unable to create culture event: ${error?.message ?? "Unknown database error."}`,
+      500
+    );
   }
+
+  return mapCultureEventRow(data as CultureEventRow);
 }
 
 export async function updateCultureEvent(
@@ -677,62 +971,37 @@ export async function updateCultureEvent(
   }
 
   const normalizedPayload = coerceCultureEventPayload(payload);
-  let posterKind = normalizedPayload.posterKind;
-  let posterUrl = normalizedPayload.posterUrl;
-  let uploadedPosterPath: string | null = null;
-
-  if (normalizedPayload.posterFile) {
-    const uploadResult = await uploadCulturePosterMedia(
-      normalizedPayload.posterFile,
-      session,
-      normalizedPayload.posterKind
-    );
-    posterKind = uploadResult.kind;
-    posterUrl = uploadResult.publicUrl;
-    uploadedPosterPath = uploadResult.objectPath;
-  }
+  const existingPosters = parseCultureEventPosters(existingEvent);
+  const posters = await resolveCultureEventPosters(normalizedPayload.posters, session);
+  await cleanupRemovedCultureEventPosterMedia(existingPosters, posters);
 
   const supabaseServiceRoleClient = getSupabaseServiceRoleClient();
-  try {
-    const { data, error } = await supabaseServiceRoleClient
-      .from(CULTURE_EVENTS_TABLE)
-      .update({
-        title: normalizedPayload.title,
-        event_date: normalizedPayload.date,
-        event_end_date: normalizedPayload.endDate,
-        is_all_day: normalizedPayload.isAllDay,
-        event_time: normalizedPayload.time,
-        location: normalizedPayload.location,
-        owner_name: normalizedPayload.owner,
-        description: normalizedPayload.description,
-        poster_media_kind: posterKind,
-        poster_media_url: posterUrl
-      })
-      .eq("id", normalizedEventId)
-      .select(
-        "id, title, event_date, event_end_date, is_all_day, event_time, location, owner_name, description, poster_media_kind, poster_media_url, created_at, updated_at"
-      )
-      .maybeSingle();
+  const { data, error } = await supabaseServiceRoleClient
+    .from(CULTURE_EVENTS_TABLE)
+    .update({
+      title: normalizedPayload.title,
+      event_date: normalizedPayload.date,
+      event_end_date: normalizedPayload.endDate,
+      is_all_day: normalizedPayload.isAllDay,
+      event_time: normalizedPayload.time,
+      location: normalizedPayload.location,
+      owner_name: normalizedPayload.owner,
+      description: normalizedPayload.description,
+      ...buildCultureEventPosterFields(posters)
+    })
+    .eq("id", normalizedEventId)
+    .select(CULTURE_EVENT_COLUMNS)
+    .maybeSingle();
 
-    if (error) {
-      throw new MarketingCultureError(`Unable to update culture event: ${error.message}`, 500);
-    }
-
-    if (!data) {
-      throw new MarketingCultureError("Culture event not found.", 404);
-    }
-
-    if (existingEvent.poster_media_url && existingEvent.poster_media_url !== posterUrl) {
-      await deleteCulturePosterMediaByUrl(existingEvent.poster_media_url).catch(() => undefined);
-    }
-
-    return mapCultureEventRow(data as CultureEventRow);
-  } catch (error) {
-    if (uploadedPosterPath) {
-      await deleteCulturePosterMedia(uploadedPosterPath).catch(() => undefined);
-    }
-    throw error;
+  if (error) {
+    throw new MarketingCultureError(`Unable to update culture event: ${error.message}`, 500);
   }
+
+  if (!data) {
+    throw new MarketingCultureError("Culture event not found.", 404);
+  }
+
+  return mapCultureEventRow(data as CultureEventRow);
 }
 
 export async function createCultureAnnouncement(payload: unknown, session: AuthSessionResult) {
@@ -766,12 +1035,22 @@ export async function deleteCultureEvent(eventId: string, session: AuthSessionRe
   assertManageCultureAccess(session);
 
   const normalizedEventId = normalizeResourceId(eventId, "Event ID");
+  const existingEvent = await getCultureEventRowById(normalizedEventId);
+  if (!existingEvent) {
+    throw new MarketingCultureError("Culture event not found.", 404);
+  }
+
+  const existingPosters = parseCultureEventPosters(existingEvent);
+  for (const poster of existingPosters) {
+    await deleteCulturePosterMediaByUrl(poster.url).catch(() => undefined);
+  }
+
   const supabaseServiceRoleClient = getSupabaseServiceRoleClient();
   const { data, error } = await supabaseServiceRoleClient
     .from(CULTURE_EVENTS_TABLE)
     .delete()
     .eq("id", normalizedEventId)
-    .select("id, poster_media_url")
+    .select("id")
     .maybeSingle();
 
   if (error) {
@@ -781,10 +1060,6 @@ export async function deleteCultureEvent(eventId: string, session: AuthSessionRe
   if (!data) {
     throw new MarketingCultureError("Culture event not found.", 404);
   }
-
-  await deleteCulturePosterMediaByUrl((data as { poster_media_url: string | null }).poster_media_url).catch(
-    () => undefined
-  );
 }
 
 export async function deleteCultureAnnouncement(

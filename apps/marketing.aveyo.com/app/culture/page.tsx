@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { MarketingShell } from "@/components/marketing-shell";
+import { canManageCultureFromSession } from "@/lib/auth/culture-access";
 import { useRequireAuth } from "@/lib/auth/use-require-auth";
 import {
   deleteCultureAnnouncement,
   deleteCultureEvent,
+  getEventPosters,
   listCultureFeed,
   type CultureAnnouncement,
   type CultureEvent
 } from "@/lib/culture";
+import { EventPosterCarousel } from "./event-poster-carousel";
 import { CreateCultureAnnouncementModal } from "./create-announcement-modal";
 import {
   CulturePencilIcon,
@@ -186,7 +189,7 @@ export default function CulturePage() {
     return <main className="loading-shell">Checking session...</main>;
   }
 
-  const canManageCulture = session.access.isAdmin;
+  const canManageCulture = canManageCultureFromSession(session);
   const upcomingEvents = events.filter((event) => isUpcomingEvent(event));
   const placeholderCount = Math.max(0, MIN_EVENT_SLOTS - upcomingEvents.length);
 
@@ -347,7 +350,9 @@ export default function CulturePage() {
                   <span>Create Event</span>
                 </button>
               ) : (
-                <p className={styles.boardHint}>Only admins can create, edit, or delete events.</p>
+                <p className={styles.boardHint}>
+                  Only marketing team members can create, edit, or delete events.
+                </p>
               )}
             </div>
           </div>
@@ -366,22 +371,7 @@ export default function CulturePage() {
                   aria-label={`Open details for ${buildEventSummary(event)}`}
                 >
                   <div className={styles.eventVisual} aria-hidden="true">
-                    {event.posterUrl ? (
-                      event.posterKind === "video" ? (
-                        <video
-                          className={styles.eventPosterVideo}
-                          src={event.posterUrl}
-                          autoPlay
-                          muted
-                          loop
-                          playsInline
-                          preload="metadata"
-                        />
-                      ) : (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img className={styles.eventPosterMedia} src={event.posterUrl} alt="" />
-                      )
-                    ) : null}
+                    <EventPosterCarousel posters={getEventPosters(event)} />
                   </div>
                 </button>
                 {canManageCulture ? (

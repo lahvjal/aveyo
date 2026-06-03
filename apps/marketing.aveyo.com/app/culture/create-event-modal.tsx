@@ -3,11 +3,20 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import {
   createCultureEvent,
+  getEventPosters,
   updateCultureEvent,
   type CultureEvent,
+  type CultureEventPosterInput,
   type CulturePosterKind
 } from "@/lib/culture";
+import {
+  compressImageForCulturePosterUpload,
+  formatFileSize
+} from "@/lib/imageCompression";
 import styles from "./culture-page.module.css";
+
+const VIDEO_UPLOAD_LIMIT_BYTES = 40 * 1024 * 1024;
+const MAX_POSTER_UPLOAD_BATCH_BYTES = 45 * 1024 * 1024;
 
 interface CreateEventFormState {
   title: string;
@@ -18,8 +27,15 @@ interface CreateEventFormState {
   location: string;
   owner: string;
   description: string;
-  posterKind: CulturePosterKind | "";
-  posterUrl: string;
+}
+
+interface PosterDraft {
+  id: string;
+  kind: CulturePosterKind;
+  existingUrl: string;
+  file: File | null;
+  sortOrder: number;
+  label: string;
 }
 
 interface CultureEventModalProps {
@@ -45,9 +61,7 @@ function buildFormState(
       time: event.time,
       location: event.location,
       owner: event.owner,
-      description: event.description,
-      posterKind: event.posterKind ?? "",
-      posterUrl: event.posterUrl ?? ""
+      description: event.description
     };
   }
 
@@ -59,10 +73,31 @@ function buildFormState(
     time: "",
     location: "",
     owner: currentUserName?.trim() || "",
-    description: "",
-    posterKind: "",
-    posterUrl: ""
+    description: ""
   };
+}
+
+function buildPosterLabel(kind: CulturePosterKind, source: string) {
+  const fileName = source.split("/").pop()?.split("?")[0]?.trim();
+  if (fileName) {
+    return fileName;
+  }
+  return kind === "video" ? "Video poster" : "Image poster";
+}
+
+function buildPosterDraftsFromEvent(event: CultureEvent | null | undefined): PosterDraft[] {
+  return getEventPosters(event).map((poster) => ({
+    id: poster.id,
+    kind: poster.kind,
+    existingUrl: poster.url,
+    file: null,
+    sortOrder: poster.sortOrder,
+    label: buildPosterLabel(poster.kind, poster.url)
+  }));
+}
+
+function reindexPosterDrafts(drafts: PosterDraft[]) {
+  return drafts.map((draft, index) => ({ ...draft, sortOrder: index }));
 }
 
 function inferPosterKindFromFile(file: File): CulturePosterKind | null {
@@ -77,12 +112,16 @@ function inferPosterKindFromFile(file: File): CulturePosterKind | null {
   return null;
 }
 
-function formatFileSize(bytes: number) {
-  if (bytes < 1024 * 1024) {
-    return `${Math.max(1, Math.round(bytes / 1024))}KB`;
+function movePosterDraft(drafts: PosterDraft[], id: string, direction: -1 | 1) {
+  const index = drafts.findIndex((draft) => draft.id === id);
+  const targetIndex = index + direction;
+  if (index < 0 || targetIndex < 0 || targetIndex >= drafts.length) {
+    return drafts;
   }
 
-  return `${Math.round((bytes / (1024 * 1024)) * 10) / 10}MB`;
+  const next = [...drafts];
+  [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
+  return reindexPosterDrafts(next);
 }
 
 export function CultureEventModal({
@@ -96,24 +135,26 @@ export function CultureEventModal({
 }: CultureEventModalProps) {
   const titleId = useId();
   const descriptionId = useId();
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const [formState, setFormState] = useState<CreateEventFormState>(() =>
     buildFormState(currentUserName, initialEvent)
   );
-  const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [posterDrafts, setPosterDrafts] = useState<PosterDraft[]>([]);
   const [useDateRange, setUseDateRange] = useState(() => Boolean(initialEvent?.endDate));
   const [isSaving, setIsSaving] = useState(false);
+  const [isCompressingPosters, setIsCompressingPosters] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const isEditing = mode === "edit";
 
   useEffect(() => {
     setFormState(buildFormState(currentUserName, isOpen ? initialEvent : null));
     setUseDateRange(Boolean(isOpen ? initialEvent?.endDate : null));
-    setPosterFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+    setPosterDrafts(isOpen && initialEvent ? buildPosterDraftsFromEvent(initialEvent) : []);
+    if (uploadInputRef.current) {
+      uploadInputRef.current.value = "";
     }
     setIsSaving(false);
+    setIsCompressingPosters(false);
     setErrorMessage("");
   }, [currentUserName, initialEvent, isOpen]);
 
@@ -146,37 +187,79 @@ export function CultureEventModal({
     return null;
   }
 
-  function clearPosterFile() {
-    setPosterFile(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  async function handlePosterUploadChange(event: ChangeEvent<HTMLInputElement>) {
+    const selectedFiles = Array.from(event.target.files ?? []);
+    if (uploadInputRef.current) {
+      uploadInputRef.current.value = "";
     }
-    setFormState((state) => ({
-      ...state,
-      posterKind: state.posterUrl.trim() ? state.posterKind : ""
-    }));
+
+    if (selectedFiles.length === 0) {
+      return;
+    }
+
+    setIsCompressingPosters(true);
+    setErrorMessage("");
+
+    try {
+      const nextDrafts: PosterDraft[] = [];
+
+      for (const file of selectedFiles) {
+        const kind = inferPosterKindFromFile(file);
+        if (!kind) {
+          setErrorMessage(
+            "Poster uploads must be images or videos (jpg, png, webp, gif, avif, mp4, webm, mov)."
+          );
+          return;
+        }
+
+        if (kind === "video" && file.size > VIDEO_UPLOAD_LIMIT_BYTES) {
+          setErrorMessage(`${file.name} is too large. Each video must be 40MB or smaller.`);
+          return;
+        }
+
+        const uploadFile = kind === "image" ? await compressImageForCulturePosterUpload(file) : file;
+
+        nextDrafts.push({
+          id: crypto.randomUUID(),
+          kind,
+          existingUrl: "",
+          file: uploadFile,
+          sortOrder: 0,
+          label: uploadFile.name
+        });
+      }
+
+      const combinedUploadBytes = [...posterDrafts, ...nextDrafts].reduce(
+        (total, draft) => total + (draft.file?.size ?? 0),
+        0
+      );
+      if (combinedUploadBytes > MAX_POSTER_UPLOAD_BATCH_BYTES) {
+        setErrorMessage(
+          "Total poster upload size is too large. Keep the combined upload under 45MB, or upload fewer posters at once."
+        );
+        return;
+      }
+
+      setPosterDrafts((current) => reindexPosterDrafts([...current, ...nextDrafts]));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Unable to prepare poster files for upload."
+      );
+    } finally {
+      setIsCompressingPosters(false);
+    }
   }
 
-  function handlePosterFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const nextFile = event.target.files?.[0] ?? null;
-    if (!nextFile) {
-      clearPosterFile();
-      return;
-    }
+  function removePosterDraft(id: string) {
+    setPosterDrafts((current) => reindexPosterDrafts(current.filter((draft) => draft.id !== id)));
+  }
 
-    const inferredPosterKind = inferPosterKindFromFile(nextFile);
-    if (!inferredPosterKind) {
-      event.target.value = "";
-      setPosterFile(null);
-      setErrorMessage("Poster upload must be an image or video file.");
-      return;
-    }
-
-    setPosterFile(nextFile);
-    setErrorMessage("");
-    setFormState((state) => ({
-      ...state,
-      posterKind: inferredPosterKind
+  function buildPostersForSubmit(): CultureEventPosterInput[] {
+    return posterDrafts.map((draft, index) => ({
+      sortOrder: index,
+      posterKind: draft.kind,
+      posterUrl: draft.existingUrl,
+      posterFile: draft.file
     }));
   }
 
@@ -196,12 +279,11 @@ export function CultureEventModal({
       return;
     }
 
-    const trimmedPosterUrl = formState.posterUrl.trim();
-    if (
-      !posterFile &&
-      ((formState.posterKind && !trimmedPosterUrl) || (!formState.posterKind && trimmedPosterUrl))
-    ) {
-      setErrorMessage("Choose a poster type and add a file or URL, or leave poster media empty.");
+    const totalUploadBytes = posterDrafts.reduce((total, draft) => total + (draft.file?.size ?? 0), 0);
+    if (totalUploadBytes > MAX_POSTER_UPLOAD_BATCH_BYTES) {
+      setErrorMessage(
+        "Total poster upload size is too large. Keep the combined upload under 45MB, or upload fewer posters at once."
+      );
       return;
     }
 
@@ -209,25 +291,18 @@ export function CultureEventModal({
     setErrorMessage("");
 
     try {
+      const requestInput = {
+        ...formState,
+        endDate: useDateRange ? trimmedEndDate : "",
+        posters: buildPostersForSubmit()
+      };
+
       const savedEvent = isEditing
-        ? await updateCultureEvent(initialEvent!.id, {
-            ...formState,
-            endDate: useDateRange ? trimmedEndDate : "",
-            posterUrl: trimmedPosterUrl,
-            posterFile
-          })
-        : await createCultureEvent({
-            ...formState,
-            endDate: useDateRange ? trimmedEndDate : "",
-            posterUrl: trimmedPosterUrl,
-            posterFile
-          });
+        ? await updateCultureEvent(initialEvent!.id, requestInput)
+        : await createCultureEvent(requestInput);
 
       setFormState(buildFormState(currentUserName, null));
-      setPosterFile(null);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+      setPosterDrafts([]);
       onSaved(savedEvent, mode);
     } catch (error) {
       setErrorMessage(
@@ -240,6 +315,9 @@ export function CultureEventModal({
       setIsSaving(false);
     }
   }
+
+  const hasUploadingPoster = posterDrafts.some((draft) => Boolean(draft.file));
+  const isPosterBusy = isCompressingPosters || isSaving;
 
   return (
     <div className={styles.modalOverlay} role="presentation" onClick={onClose}>
@@ -259,7 +337,7 @@ export function CultureEventModal({
             </h2>
             <p id={descriptionId} className={styles.modalDescription}>
               {isEditing
-                ? "Update the event details, schedule, or poster media."
+                ? "Update the event details, schedule, or poster carousel media."
                 : "Publish a company culture event for everyone on the platform."}
             </p>
           </div>
@@ -411,100 +489,105 @@ export function CultureEventModal({
                   />
                 </div>
 
-                <div className="field">
-                  <label htmlFor="event-poster-kind">Poster media</label>
-                  <select
-                    id="event-poster-kind"
-                    value={formState.posterKind}
-                    disabled={Boolean(posterFile)}
-                    onChange={(event) =>
-                      setFormState((state) => ({
-                        ...state,
-                        posterKind: event.target.value as CulturePosterKind | ""
-                      }))
-                    }
-                  >
-                    <option value="">No poster media</option>
-                    <option value="image">Image</option>
-                    <option value="video">Looping video</option>
-                  </select>
-                  <p className="helper-text">
-                    {posterFile
-                      ? "Media type was inferred from the uploaded file."
-                      : "Pick a type if you want to use a media URL instead of uploading a file."}
-                  </p>
-                </div>
+                <div className={`field full ${styles.posterSection}`}>
+                  <div className={styles.posterSectionHeader}>
+                    <label htmlFor="event-poster-upload">Event posters</label>
+                    <p className="helper-text">
+                      Upload multiple images or looping videos. Drag order with the move buttons;
+                      the carousel follows this order.
+                    </p>
+                  </div>
 
-                <div className="field full">
-                  <label htmlFor="event-poster-upload">Upload poster media</label>
                   <input
-                    ref={fileInputRef}
+                    ref={uploadInputRef}
                     id="event-poster-upload"
                     type="file"
+                    multiple
                     accept="image/*,video/mp4,video/webm,video/quicktime"
-                    onChange={handlePosterFileChange}
-                    disabled={isSaving}
+                    onChange={(event) => {
+                      void handlePosterUploadChange(event);
+                    }}
+                    disabled={isPosterBusy}
                   />
                   <p className="helper-text">
-                    Optional. Upload an image or short looping video. Images can be up to 10MB
-                    and videos up to 40MB.
+                    Images are compressed to about 1MB before upload. Videos are uploaded as-is,
+                    up to 40MB each. Combined uploads should stay under 45MB per save.
                   </p>
-                  {posterFile ? (
-                    <div className={styles.uploadSummary}>
-                      <span>
-                        {posterFile.name} ({formatFileSize(posterFile.size)})
-                      </span>
-                      <button
-                        type="button"
-                        className="secondary-button"
-                        onClick={clearPosterFile}
-                        disabled={isSaving}
-                      >
-                        Remove upload
-                      </button>
-                    </div>
+                  {isCompressingPosters ? (
+                    <p className="helper-text">Compressing images...</p>
                   ) : null}
-                </div>
 
-                <div className="field full">
-                  <label htmlFor="event-poster-url">Poster media URL</label>
-                  <input
-                    id="event-poster-url"
-                    type="url"
-                    value={formState.posterUrl}
-                    disabled={Boolean(posterFile)}
-                    onChange={(event) =>
-                      setFormState((state) => ({ ...state, posterUrl: event.target.value }))
-                    }
-                    placeholder={
-                      formState.posterKind === "video"
-                        ? "https://example.com/event-loop.mp4"
-                        : "https://example.com/event-poster.jpg"
-                    }
-                  />
-                  <p className="helper-text">
-                    {posterFile
-                      ? "The uploaded file will be used for the poster."
-                      : isEditing
-                        ? "Keep the current media URL, replace it with a new upload or URL, or clear both poster fields to remove it."
-                        : "Optional. Paste an existing image or short muted looping video URL instead of uploading a file."}
-                  </p>
+                  {posterDrafts.length > 0 ? (
+                    <ol className={styles.posterOrderList}>
+                      {posterDrafts.map((draft, index) => (
+                        <li key={draft.id} className={styles.posterOrderItem}>
+                          <div className={styles.posterOrderMeta}>
+                            <span className={styles.posterOrderIndex}>{index + 1}</span>
+                            <div className={styles.posterOrderCopy}>
+                              <strong>{draft.label}</strong>
+                              <span>
+                                {draft.kind === "video" ? "Looping video" : "Image"}
+                                {draft.file ? ` · ${formatFileSize(draft.file.size)}` : " · Saved"}
+                              </span>
+                            </div>
+                          </div>
+                          <div className={styles.posterOrderActions}>
+                            <button
+                              type="button"
+                              className="secondary-button"
+                              onClick={() =>
+                                setPosterDrafts((current) => movePosterDraft(current, draft.id, -1))
+                              }
+                              disabled={isPosterBusy || index === 0}
+                              aria-label={`Move ${draft.label} earlier`}
+                            >
+                              Up
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary-button"
+                              onClick={() =>
+                                setPosterDrafts((current) => movePosterDraft(current, draft.id, 1))
+                              }
+                              disabled={isPosterBusy || index === posterDrafts.length - 1}
+                              aria-label={`Move ${draft.label} later`}
+                            >
+                              Down
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary-button"
+                              onClick={() => removePosterDraft(draft.id)}
+                              disabled={isPosterBusy}
+                              aria-label={`Remove ${draft.label}`}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ol>
+                  ) : (
+                    <p className="helper-text">No posters added yet.</p>
+                  )}
                 </div>
               </div>
 
               {errorMessage ? <div className="notice warning">{errorMessage}</div> : null}
 
               <div className={styles.modalActions}>
-                <button type="submit" className="primary-button" disabled={isSaving}>
+                <button type="submit" className="primary-button" disabled={isSaving || isCompressingPosters}>
                   {isSaving
-                    ? posterFile
+                    ? hasUploadingPoster
                       ? "Uploading..."
                       : isEditing
                         ? "Saving..."
                         : "Creating..."
-                    : isEditing
-                      ? "Save changes"
-                      : "Create event"}
+                    : isCompressingPosters
+                      ? "Compressing..."
+                      : isEditing
+                        ? "Save changes"
+                        : "Create event"}
                 </button>
                 <button
                   type="button"
