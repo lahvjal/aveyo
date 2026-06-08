@@ -4,7 +4,9 @@ import { buildAuthLoginUrl, getApiBaseUrl } from "@/lib/auth/config";
 
 const protectedRoutePrefixes = [
   "/dashboard",
+  "/operations",
   "/processes",
+  "/sops",
   "/manager",
   "/admin",
   "/profile",

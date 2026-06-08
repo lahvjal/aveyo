@@ -20,7 +20,7 @@ type UtilityNavItem = PlatformUtilityNavItem & {
 
 const primaryNavMatchPrefixes: Record<string, string[]> = {
   org: ["/dashboard"],
-  operations: ["/processes"]
+  operations: ["/operations", "/processes", "/sops"]
 };
 
 const utilityNavItems: UtilityNavItem[] = PLATFORM_UTILITY_NAV_ITEMS.map((item) => {
@@ -169,7 +169,7 @@ export function EmployeeSideNav() {
       iconPrefix="/images/"
       sameAppHrefByItemId={{
         org: "/dashboard",
-        operations: "/processes",
+        operations: "/operations",
         profile: "/profile",
         manager: "/manager",
         admin: "/admin"

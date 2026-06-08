@@ -60,6 +60,7 @@ export interface SocialLinks {
 export interface Department {
   id: string
   name: string
+  slug?: string | null
   color: string
   description: string | null
   parent_id: string | null

@@ -99,7 +99,7 @@ export function resolvePlatformNavHref(item, environment, options = {}) {
   }
 
   if (item.externalAppKey === "operations") {
-    return withPath(baseUrl, "/processes");
+    return withPath(baseUrl, "/operations");
   }
 
   if (item.id === "culture") {

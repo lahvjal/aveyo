@@ -22,16 +22,26 @@ export function Header() {
     await signOut()
   }
 
-  const navLinkClass = (path: string) =>
+  const isActivePath = (path: string, matchPrefixes?: string[]) => {
+    if (location.pathname === path) {
+      return true
+    }
+
+    return (matchPrefixes ?? []).some(
+      (prefix) => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`)
+    )
+  }
+
+  const navLinkClass = (path: string, matchPrefixes?: string[]) =>
     `text-sm transition-colors ${
-      location.pathname === path
+      isActivePath(path, matchPrefixes)
         ? 'text-foreground font-medium'
         : 'text-muted-foreground hover:text-foreground'
     }`
 
-  const mobileNavLinkClass = (path: string) =>
+  const mobileNavLinkClass = (path: string, matchPrefixes?: string[]) =>
     `block px-4 py-3 text-base transition-colors border-b border-border last:border-0 ${
-      location.pathname === path
+      isActivePath(path, matchPrefixes)
         ? 'text-foreground font-medium bg-accent'
         : 'text-muted-foreground hover:text-foreground hover:bg-accent'
     }`
@@ -40,7 +50,7 @@ export function Header() {
     <>
       <Link to="/dashboard" className={navLinkClass('/dashboard')}>Org Chart</Link>
       <Link to="/profile" className={navLinkClass('/profile')}>My Profile</Link>
-      <Link to="/processes" className={navLinkClass('/processes')}>Processes</Link>
+      <Link to="/operations" className={navLinkClass('/operations', ['/operations', '/processes', '/sops'])}>Operations</Link>
       {isManager && (
         <Link to="/manager" className={navLinkClass('/manager')}>Manager Panel</Link>
       )}
@@ -62,7 +72,7 @@ export function Header() {
     <>
       <Link to="/dashboard" className={mobileNavLinkClass('/dashboard')} onClick={() => setMobileMenuOpen(false)}>Org Chart</Link>
       <Link to="/profile" className={mobileNavLinkClass('/profile')} onClick={() => setMobileMenuOpen(false)}>My Profile</Link>
-      <Link to="/processes" className={mobileNavLinkClass('/processes')} onClick={() => setMobileMenuOpen(false)}>Processes</Link>
+      <Link to="/operations" className={mobileNavLinkClass('/operations', ['/operations', '/processes', '/sops'])} onClick={() => setMobileMenuOpen(false)}>Operations</Link>
       {isManager && (
         <Link to="/manager" className={mobileNavLinkClass('/manager')} onClick={() => setMobileMenuOpen(false)}>Manager Panel</Link>
       )}

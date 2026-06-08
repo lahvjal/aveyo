@@ -126,10 +126,72 @@ export interface Database {
           },
         ]
       }
+      department_sop_documents: {
+        Row: {
+          id: string
+          department_id: string
+          title: string
+          description: string
+          url: string
+          sort_order: number
+          created_by: string
+          updated_by: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          department_id: string
+          title: string
+          description?: string
+          url: string
+          sort_order?: number
+          created_by: string
+          updated_by: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          department_id?: string
+          title?: string
+          description?: string
+          url?: string
+          sort_order?: number
+          created_by?: string
+          updated_by?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'department_sop_documents_department_id_fkey'
+            columns: ['department_id']
+            isOneToOne: false
+            referencedRelation: 'departments'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'department_sop_documents_created_by_fkey'
+            columns: ['created_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'department_sop_documents_updated_by_fkey'
+            columns: ['updated_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       departments: {
         Row: {
           id: string
           name: string
+          slug: string | null
           color: string
           description: string | null
           parent_id: string | null
@@ -138,6 +200,7 @@ export interface Database {
         Insert: {
           id?: string
           name: string
+          slug?: string | null
           color: string
           description?: string | null
           parent_id?: string | null
@@ -146,6 +209,7 @@ export interface Database {
         Update: {
           id?: string
           name?: string
+          slug?: string | null
           color?: string
           description?: string | null
           parent_id?: string | null

@@ -88,7 +88,7 @@ export function Header() {
   const navLinks = [
     { label: "Org Chart", href: ORG_CHART_URL, external: true },
     { label: "My Profile", href: `${ORG_CHART_URL}/profile`, external: true },
-    { label: "Processes", href: `${ORG_CHART_URL}/processes`, external: true },
+    { label: "Operations", href: `${ORG_CHART_URL}/operations`, external: true },
     { label: "Admin Panel", href: `${ORG_CHART_URL}/admin`, external: true },
     { label: "KPI Dashboard", href: "/", external: false },
     // { label: "Settings", href: "/settings", external: false },
