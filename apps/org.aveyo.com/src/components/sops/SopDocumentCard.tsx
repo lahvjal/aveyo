@@ -77,14 +77,15 @@ export function SopDocumentCard({
 
   const handleSave = async () => {
     const title = draft.title.trim()
-    const url = normalizeSopUrl(draft.url)
+    const rawUrl = draft.url.trim()
+    const url = rawUrl ? normalizeSopUrl(rawUrl) : ''
 
     if (!title) {
       setError('Title is required.')
       return
     }
 
-    if (!isValidSopUrl(url)) {
+    if (!isValidSopUrl(rawUrl)) {
       setError('Enter a valid link (for example, a Google Drive URL).')
       return
     }
@@ -135,7 +136,7 @@ export function SopDocumentCard({
           <Input
             value={draft.url}
             onChange={(event) => setDraft((current) => ({ ...current, url: event.target.value }))}
-            placeholder="https://docs.google.com/..."
+            placeholder="https://docs.google.com/... (optional)"
             disabled={isSaving}
           />
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
@@ -153,7 +154,8 @@ export function SopDocumentCard({
     )
   }
 
-  const kindLabel = getSopDocumentKindLabel(getSopDocumentKind(document?.url ?? ''))
+  const documentUrl = document?.url ?? ''
+  const kindLabel = getSopDocumentKindLabel(getSopDocumentKind(documentUrl), documentUrl)
 
   return (
     <div className="group rounded-lg border bg-white p-5 shadow-sm transition-all hover:border-gray-300 hover:shadow-md">
@@ -198,15 +200,19 @@ export function SopDocumentCard({
       </div>
 
       <div className="mt-4 border-t border-gray-100 pt-4">
-        <a
-          href={document?.url}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-        >
-          Open document
-          <ExternalLink className="h-4 w-4" aria-hidden="true" />
-        </a>
+        {documentUrl.trim() ? (
+          <a
+            href={documentUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+          >
+            Open document
+            <ExternalLink className="h-4 w-4" aria-hidden="true" />
+          </a>
+        ) : (
+          <p className="text-sm text-muted-foreground">Link not added yet</p>
+        )}
       </div>
     </div>
   )

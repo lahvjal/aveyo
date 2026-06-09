@@ -14,7 +14,12 @@ export function normalizeSopUrl(rawUrl: string): string {
 }
 
 export function isValidSopUrl(rawUrl: string): boolean {
-  const normalized = normalizeSopUrl(rawUrl)
+  const trimmed = rawUrl.trim()
+  if (!trimmed) {
+    return true
+  }
+
+  const normalized = normalizeSopUrl(trimmed)
   if (!normalized) {
     return false
   }
@@ -55,7 +60,11 @@ export function getSopDocumentKind(url: string): SopDocumentKind {
   return 'link'
 }
 
-export function getSopDocumentKindLabel(kind: SopDocumentKind): string {
+export function getSopDocumentKindLabel(kind: SopDocumentKind, url = ''): string {
+  if (!url.trim()) {
+    return 'SOP item'
+  }
+
   switch (kind) {
     case 'slides':
       return 'Slide deck'
