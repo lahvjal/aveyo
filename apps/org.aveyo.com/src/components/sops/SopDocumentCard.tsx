@@ -11,8 +11,9 @@ import {
 } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
+import { Select } from '../ui/select'
 import { Textarea } from '../ui/textarea'
-import type { DepartmentSopDocument, SopDocumentDraft } from '../../types/sops'
+import type { DepartmentSopDocument, DepartmentSopFolder, SopDocumentDraft } from '../../types/sops'
 import {
   getSopDocumentKind,
   getSopDocumentKindLabel,
@@ -22,6 +23,8 @@ import {
 
 interface SopDocumentCardProps {
   document?: DepartmentSopDocument
+  folders?: DepartmentSopFolder[]
+  defaultFolderId?: string | null
   canEdit: boolean
   isSaving?: boolean
   startInEditMode?: boolean
@@ -49,6 +52,8 @@ function KindIcon({ url }: { url: string }) {
 
 export function SopDocumentCard({
   document,
+  folders = [],
+  defaultFolderId = null,
   canEdit,
   isSaving = false,
   startInEditMode = false,
@@ -61,6 +66,7 @@ export function SopDocumentCard({
     title: document?.title ?? '',
     description: document?.description ?? '',
     url: document?.url ?? '',
+    folderId: document?.folder_id ?? defaultFolderId,
   })
   const [error, setError] = useState<string | null>(null)
 
@@ -70,10 +76,11 @@ export function SopDocumentCard({
         title: document?.title ?? '',
         description: document?.description ?? '',
         url: document?.url ?? '',
+        folderId: document?.folder_id ?? defaultFolderId,
       })
       setError(null)
     }
-  }, [document, isEditing])
+  }, [document, defaultFolderId, isEditing])
 
   const handleSave = async () => {
     const title = draft.title.trim()
@@ -95,6 +102,7 @@ export function SopDocumentCard({
       title,
       description: draft.description.trim(),
       url,
+      folderId: draft.folderId,
     })
     setIsEditing(false)
   }
@@ -109,6 +117,7 @@ export function SopDocumentCard({
       title: document.title,
       description: document.description,
       url: document.url,
+      folderId: document.folder_id,
     })
     setError(null)
     setIsEditing(false)
@@ -139,6 +148,28 @@ export function SopDocumentCard({
             placeholder="https://docs.google.com/... (optional)"
             disabled={isSaving}
           />
+          {folders.length > 0 ? (
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-foreground">Folder</label>
+              <Select
+                value={draft.folderId ?? ''}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    folderId: event.target.value ? event.target.value : null,
+                  }))
+                }
+                disabled={isSaving}
+              >
+                <option value="">Unfiled</option>
+                {folders.map((folder) => (
+                  <option key={folder.id} value={folder.id}>
+                    {folder.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          ) : null}
           {error ? <p className="text-sm text-red-600">{error}</p> : null}
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={handleCancel} disabled={isSaving}>

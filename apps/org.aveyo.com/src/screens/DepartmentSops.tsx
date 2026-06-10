@@ -1,20 +1,26 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { ArrowLeft, Loader2, Plus } from 'lucide-react'
+import { ArrowLeft, FolderPlus, Loader2, Plus } from 'lucide-react'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { useAuth } from '../hooks/useAuth'
 import { useProfile } from '../hooks/useProfile'
 import { usePermissions } from '../hooks/usePermissions'
 import { getDepartmentAncestorPath, useDepartments } from '../lib/queries'
 import { canManageDepartmentSops } from '../lib/sop-permissions'
+import { buildSopFolderSections } from '../lib/sop-layout'
 import {
   useCreateDepartmentSopDocument,
+  useCreateDepartmentSopFolder,
   useDeleteDepartmentSopDocument,
+  useDeleteDepartmentSopFolder,
   useDepartmentBySlug,
   useDepartmentSopDocuments,
+  useDepartmentSopFolders,
   useUpdateDepartmentSopDocument,
+  useUpdateDepartmentSopFolder,
 } from '../hooks/useSops'
 import { SopDocumentCard } from '../components/sops/SopDocumentCard'
+import { SopFolderCard } from '../components/sops/SopFolderCard'
 import { Button } from '../components/ui/button'
 import type { SopDocumentDraft } from '../types/sops'
 
@@ -28,15 +34,23 @@ export default function DepartmentSops({ slug }: DepartmentSopsProps) {
   const { isLoading: permissionsLoading } = usePermissions()
   const { data: departments = [] } = useDepartments()
   const { data: department, isLoading: departmentLoading } = useDepartmentBySlug(slug)
+  const { data: folders = [], isLoading: foldersLoading } = useDepartmentSopFolders(
+    department?.id ?? null
+  )
   const { data: documents = [], isLoading: documentsLoading } = useDepartmentSopDocuments(
     department?.id ?? null
   )
 
+  const createFolder = useCreateDepartmentSopFolder()
+  const updateFolder = useUpdateDepartmentSopFolder()
+  const deleteFolder = useDeleteDepartmentSopFolder()
   const createDocument = useCreateDepartmentSopDocument()
   const updateDocument = useUpdateDepartmentSopDocument()
   const deleteDocument = useDeleteDepartmentSopDocument()
 
-  const [isCreating, setIsCreating] = useState(false)
+  const [openFolderId, setOpenFolderId] = useState<string | null>(null)
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false)
+  const [isCreatingDocument, setIsCreatingDocument] = useState(false)
   const [activeMutationId, setActiveMutationId] = useState<string | null>(null)
 
   const ancestorPath = useMemo(
@@ -49,32 +63,131 @@ export default function DepartmentSops({ slug }: DepartmentSopsProps) {
     [profile, department?.id, departments]
   )
 
-  usePageTitle(department ? `${department.name} SOPs` : 'Department SOPs')
+  const sections = useMemo(
+    () => buildSopFolderSections(folders, documents),
+    [folders, documents]
+  )
 
-  const isLoading = departmentLoading || documentsLoading || permissionsLoading
-  const nextSortOrder =
+  const openFolder = useMemo(
+    () => folders.find((folder) => folder.id === openFolderId) ?? null,
+    [folders, openFolderId]
+  )
+
+  const unfiledSection = useMemo(
+    () => sections.find((section) => section.folder === null) ?? { folder: null, documents: [] },
+    [sections]
+  )
+
+  const openFolderSection = useMemo(
+    () =>
+      openFolderId
+        ? sections.find((section) => section.folder?.id === openFolderId) ?? {
+            folder: openFolder,
+            documents: [],
+          }
+        : null,
+    [sections, openFolderId, openFolder]
+  )
+
+  usePageTitle(
+    department
+      ? openFolder
+        ? `${openFolder.name} · ${department.name} SOPs`
+        : `${department.name} SOPs`
+      : 'Department SOPs'
+  )
+
+  const isLoading =
+    departmentLoading || foldersLoading || documentsLoading || permissionsLoading
+
+  const nextDocumentSortOrder =
     documents.reduce((max, document) => Math.max(max, document.sort_order), -1) + 1
 
-  const handleCreate = async (draft: SopDocumentDraft) => {
+  const nextFolderSortOrder =
+    folders.reduce((max, folder) => Math.max(max, folder.sort_order), -1) + 1
+
+  const handleCreateFolder = async (name: string) => {
     if (!department || !user?.id) {
       return
     }
 
-    setActiveMutationId('create')
+    setActiveMutationId('create-folder')
     try {
-      await createDocument.mutateAsync({
+      await createFolder.mutateAsync({
         departmentId: department.id,
         userId: user.id,
-        draft,
-        sortOrder: nextSortOrder,
+        name,
+        sortOrder: nextFolderSortOrder,
       })
-      setIsCreating(false)
+      setIsCreatingFolder(false)
     } finally {
       setActiveMutationId(null)
     }
   }
 
-  const handleUpdate = async (documentId: string, draft: SopDocumentDraft) => {
+  const handleRenameFolder = async (folderId: string, name: string) => {
+    if (!user?.id) {
+      return
+    }
+
+    setActiveMutationId(`folder-${folderId}`)
+    try {
+      await updateFolder.mutateAsync({
+        id: folderId,
+        userId: user.id,
+        name,
+      })
+    } finally {
+      setActiveMutationId(null)
+    }
+  }
+
+  const handleDeleteFolder = async (folderId: string) => {
+    if (!department) {
+      return
+    }
+
+    if (!window.confirm('Delete this folder? Documents inside will move to Unfiled.')) {
+      return
+    }
+
+    setActiveMutationId(`folder-${folderId}`)
+    try {
+      await deleteFolder.mutateAsync({
+        id: folderId,
+        departmentId: department.id,
+      })
+      if (openFolderId === folderId) {
+        setOpenFolderId(null)
+      }
+    } finally {
+      setActiveMutationId(null)
+    }
+  }
+
+  const handleCreateDocument = async (draft: SopDocumentDraft) => {
+    if (!department || !user?.id) {
+      return
+    }
+
+    setActiveMutationId('create-document')
+    try {
+      await createDocument.mutateAsync({
+        departmentId: department.id,
+        userId: user.id,
+        draft: {
+          ...draft,
+          folderId: openFolderId ?? draft.folderId,
+        },
+        sortOrder: nextDocumentSortOrder,
+      })
+      setIsCreatingDocument(false)
+    } finally {
+      setActiveMutationId(null)
+    }
+  }
+
+  const handleUpdateDocument = async (documentId: string, draft: SopDocumentDraft) => {
     if (!user?.id) {
       return
     }
@@ -91,7 +204,7 @@ export default function DepartmentSops({ slug }: DepartmentSopsProps) {
     }
   }
 
-  const handleDelete = async (documentId: string) => {
+  const handleDeleteDocument = async (documentId: string) => {
     if (!department) {
       return
     }
@@ -137,6 +250,18 @@ export default function DepartmentSops({ slug }: DepartmentSopsProps) {
     )
   }
 
+  const visibleFolders = folders.filter(
+    (folder) => canEdit || (sections.find((section) => section.folder?.id === folder.id)?.documents.length ?? 0) > 0
+  )
+
+  const hasRootContent =
+    visibleFolders.length > 0 ||
+    unfiledSection.documents.length > 0 ||
+    isCreatingFolder ||
+    isCreatingDocument
+
+  const folderDocuments = openFolderSection?.documents ?? []
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="mb-8">
@@ -147,6 +272,20 @@ export default function DepartmentSops({ slug }: DepartmentSopsProps) {
           <ArrowLeft className="h-4 w-4" />
           All departments
         </Link>
+
+        {openFolder ? (
+          <button
+            type="button"
+            onClick={() => {
+              setOpenFolderId(null)
+              setIsCreatingDocument(false)
+            }}
+            className="mb-4 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to folders
+          </button>
+        ) : null}
 
         {ancestorPath.length > 1 ? (
           <p className="text-sm text-muted-foreground mb-2">
@@ -165,53 +304,147 @@ export default function DepartmentSops({ slug }: DepartmentSopsProps) {
                 style={{ backgroundColor: department.color }}
                 aria-hidden="true"
               />
-              <h1 className="text-3xl font-bold">{department.name}</h1>
+              <h1 className="text-3xl font-bold">
+                {openFolder ? openFolder.name : department.name}
+              </h1>
             </div>
             <p className="text-muted-foreground">
-              {canEdit
-                ? 'Manage Google Drive links for this department’s standard operating procedures.'
-                : 'Google Drive links for this department’s standard operating procedures.'}
+              {openFolder
+                ? canEdit
+                  ? 'Documents inside this folder.'
+                  : 'Documents in this folder.'
+                : canEdit
+                  ? 'Open a folder or manage unfiled documents for this department’s SOPs.'
+                  : 'Folders and documents for this department’s standard operating procedures.'}
             </p>
           </div>
 
           {canEdit ? (
-            <Button onClick={() => setIsCreating(true)} disabled={isCreating}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add document
-            </Button>
+            openFolder ? (
+              <Button onClick={() => setIsCreatingDocument(true)} disabled={isCreatingDocument}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add document
+              </Button>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => setIsCreatingFolder(true)} disabled={isCreatingFolder}>
+                  <FolderPlus className="mr-2 h-4 w-4" />
+                  Add folder
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsCreatingDocument(true)}
+                  disabled={isCreatingDocument}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add unfiled document
+                </Button>
+              </div>
+            )
           ) : null}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {isCreating ? (
-          <SopDocumentCard
-            canEdit
-            startInEditMode
-            isSaving={activeMutationId === 'create'}
-            onSave={handleCreate}
-            onCancelCreate={() => setIsCreating(false)}
-          />
-        ) : null}
+      {openFolder ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {isCreatingDocument ? (
+            <SopDocumentCard
+              canEdit
+              folders={folders}
+              defaultFolderId={openFolder.id}
+              startInEditMode
+              isSaving={activeMutationId === 'create-document'}
+              onSave={handleCreateDocument}
+              onCancelCreate={() => setIsCreatingDocument(false)}
+            />
+          ) : null}
 
-        {documents.map((document) => (
-          <SopDocumentCard
-            key={document.id}
-            document={document}
-            canEdit={canEdit}
-            isSaving={activeMutationId === document.id}
-            onSave={(draft) => handleUpdate(document.id, draft)}
-            onDelete={() => handleDelete(document.id)}
-          />
-        ))}
-      </div>
+          {folderDocuments.map((document) => (
+            <SopDocumentCard
+              key={document.id}
+              document={document}
+              folders={folders}
+              canEdit={canEdit}
+              isSaving={activeMutationId === document.id}
+              onSave={(draft) => handleUpdateDocument(document.id, draft)}
+              onDelete={() => handleDeleteDocument(document.id)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {isCreatingFolder ? (
+            <SopFolderCard
+              documentCount={0}
+              canEdit
+              startInEditMode
+              isSaving={activeMutationId === 'create-folder'}
+              onSaveName={handleCreateFolder}
+              onCancelCreate={() => setIsCreatingFolder(false)}
+            />
+          ) : null}
 
-      {!isCreating && documents.length === 0 ? (
+          {visibleFolders.map((folder) => {
+            const folderDocumentsCount =
+              sections.find((section) => section.folder?.id === folder.id)?.documents.length ?? 0
+
+            return (
+              <SopFolderCard
+                key={folder.id}
+                folder={folder}
+                documentCount={folderDocumentsCount}
+                canEdit={canEdit}
+                isSaving={activeMutationId === `folder-${folder.id}`}
+                onOpen={() => setOpenFolderId(folder.id)}
+                onSaveName={(name) => handleRenameFolder(folder.id, name)}
+                onDelete={() => handleDeleteFolder(folder.id)}
+              />
+            )
+          })}
+
+          {isCreatingDocument ? (
+            <SopDocumentCard
+              canEdit
+              folders={folders}
+              defaultFolderId={null}
+              startInEditMode
+              isSaving={activeMutationId === 'create-document'}
+              onSave={handleCreateDocument}
+              onCancelCreate={() => setIsCreatingDocument(false)}
+            />
+          ) : null}
+
+          {unfiledSection.documents.map((document) => (
+            <SopDocumentCard
+              key={document.id}
+              document={document}
+              folders={folders}
+              canEdit={canEdit}
+              isSaving={activeMutationId === document.id}
+              onSave={(draft) => handleUpdateDocument(document.id, draft)}
+              onDelete={() => handleDeleteDocument(document.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {openFolder && !isCreatingDocument && folderDocuments.length === 0 ? (
         <div className="mt-6 rounded-lg border border-dashed px-6 py-12 text-center text-muted-foreground">
-          <p className="font-medium text-foreground mb-1">No documents yet</p>
+          <p className="font-medium text-foreground mb-1">This folder is empty</p>
           <p className="text-sm">
             {canEdit
-              ? 'Add your first Google Drive link to get this department SOP page started.'
+              ? 'Add your first document to this folder.'
+              : 'No documents have been added to this folder yet.'}
+          </p>
+        </div>
+      ) : null}
+
+      {!openFolder && !hasRootContent ? (
+        <div className="mt-6 rounded-lg border border-dashed px-6 py-12 text-center text-muted-foreground">
+          <p className="font-medium text-foreground mb-1">No SOP content yet</p>
+          <p className="text-sm">
+            {canEdit
+              ? 'Create a folder or add your first document to get started.'
               : 'This department has not published any SOP documents yet.'}
           </p>
         </div>
