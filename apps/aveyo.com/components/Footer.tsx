@@ -50,14 +50,8 @@ const footerColumns: Array<{
     links: [
       { name: "FAQs", href: "/contact" },
       { name: "Support", href: AVEYO_CUSTOMER_CARE_PHONE_HREF },
-      {
-        name: "Terms of Use",
-        href: `${AVEYO_INFO_EMAIL_HREF}?subject=${encodeURIComponent("Aveyo Terms Of Use")}`
-      },
-      {
-        name: "Privacy Policy",
-        href: `${AVEYO_INFO_EMAIL_HREF}?subject=${encodeURIComponent("Aveyo Privacy Policy")}`
-      }
+      { name: "Terms of Use", href: "/terms-of-service" },
+      { name: "Privacy Policy", href: "/privacy-policy" }
     ]
   },
   {
@@ -69,11 +63,11 @@ const footerColumns: Array<{
 const legalLinks = [
   {
     name: "Privacy Policy",
-    href: `${AVEYO_INFO_EMAIL_HREF}?subject=${encodeURIComponent("Aveyo Privacy Policy")}`
+    href: "/privacy-policy"
   },
   {
     name: "Terms of Service",
-    href: `${AVEYO_INFO_EMAIL_HREF}?subject=${encodeURIComponent("Aveyo Terms Of Service")}`
+    href: "/terms-of-service"
   },
   {
     name: "Cookies Policy",
