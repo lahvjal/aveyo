@@ -76,6 +76,25 @@ export function getDepartmentAncestorPath(id: string, flat: Department[]): Depar
   return path
 }
 
+const DEPARTMENT_PATH_SEPARATOR = ' › '
+
+/** Formats a department's full hierarchy path, e.g. "Operations › Customer Care". */
+export function formatDepartmentPath(
+  departmentId: string | null | undefined,
+  flat: Department[],
+  options?: { fallback?: string }
+): string {
+  if (!departmentId) return options?.fallback ?? ''
+  const path = getDepartmentAncestorPath(departmentId, flat)
+  if (path.length === 0) return options?.fallback ?? ''
+  return path.map((d) => d.name).join(DEPARTMENT_PATH_SEPARATOR)
+}
+
+/** Returns true when the department has one or more direct child departments. */
+export function departmentHasChildren(departmentId: string, flat: Department[]): boolean {
+  return flat.some((d) => d.parent_id === departmentId)
+}
+
 export function useCreateDepartment() {
   const queryClient = useQueryClient()
 

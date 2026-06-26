@@ -11,6 +11,7 @@ import { Edit2, UserPlus, Mail, Clock, Trash2, Shield, Users, Loader2 } from 'lu
 import { AddEmployeeDialog } from './AddEmployeeDialog'
 import { RemoveEmployeeDialog } from './RemoveEmployeeDialog'
 import { AdminUserEditorDialog } from './AdminUserEditorDialog'
+import { DepartmentBadge } from '../DepartmentBadge'
 
 export function UserManagement() {
   const { data: profiles, isLoading } = useProfiles({ status: 'all' })
@@ -135,12 +136,7 @@ export function UserManagement() {
                         </div>
                         <p className="text-sm text-muted-foreground truncate">{profile.job_title}</p>
                         {profile.department && (
-                          <Badge
-                            className="mt-1"
-                            style={{ backgroundColor: profile.department.color, color: 'white' }}
-                          >
-                            {profile.department.name}
-                          </Badge>
+                          <DepartmentBadge department={profile.department} className="mt-1" />
                         )}
                       </div>
                     </div>

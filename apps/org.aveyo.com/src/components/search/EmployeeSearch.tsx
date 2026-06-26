@@ -6,6 +6,7 @@ import { Badge } from '../ui/badge'
 import { getInitials } from '../../lib/utils'
 import { Search, X, ChevronRight } from 'lucide-react'
 import { Button } from '../ui/button'
+import { DepartmentBadge } from '../DepartmentBadge'
 import { buildDepartmentTree, getDepartmentDescendantIds } from '../../lib/queries'
 import { cn } from '../../lib/utils'
 
@@ -189,12 +190,7 @@ export function EmployeeSearch({
                 <p className="font-medium truncate">{profile.full_name}</p>
                 <p className="text-sm text-muted-foreground truncate">{profile.job_title}</p>
                 {profile.department && (
-                  <Badge
-                    className="mt-1 text-xs"
-                    style={{ backgroundColor: profile.department.color, color: 'white' }}
-                  >
-                    {profile.department.name}
-                  </Badge>
+                  <DepartmentBadge department={profile.department} className="mt-1 text-xs" />
                 )}
               </div>
             </div>

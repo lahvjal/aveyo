@@ -10,7 +10,8 @@ import {
   type DragOverEvent,
 } from '@dnd-kit/core'
 import { useDraggable, useDroppable } from '@dnd-kit/core'
-import { useDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment, buildDepartmentTree, getDepartmentDescendantIds } from '../../lib/queries'
+import { useDepartments, useCreateDepartment, useUpdateDepartment, useDeleteDepartment, buildDepartmentTree, getDepartmentDescendantIds, formatDepartmentPath } from '../../lib/queries'
+import { useProfiles } from '../../hooks/useProfile'
 import type { Department } from '../../types'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -152,6 +153,7 @@ function RootDropZone({ isActive }: { isActive: boolean }) {
 
 export function DepartmentManager() {
   const { data: departments, isLoading } = useDepartments()
+  const { data: profiles } = useProfiles()
   const createDepartment = useCreateDepartment()
   const updateDepartment = useUpdateDepartment()
   const deleteDepartment = useDeleteDepartment()
@@ -236,6 +238,18 @@ export function DepartmentManager() {
     const forbidden = new Set(getDepartmentDescendantIds(editingDept.id, departments))
     return departments.filter((d) => !forbidden.has(d.id))
   }, [departments, editingDept])
+
+  const deleteImpact = useMemo(() => {
+    if (!deletingDept || !departments || !profiles) return null
+
+    const affectedDeptIds = new Set(getDepartmentDescendantIds(deletingDept.id, departments))
+    const childCount = departments.filter((d) => d.parent_id === deletingDept.id).length
+    const employeeCount = profiles.filter(
+      (p) => p.department_id && affectedDeptIds.has(p.department_id)
+    ).length
+
+    return { childCount, employeeCount }
+  }, [deletingDept, departments, profiles])
 
   // ── DnD handlers ──
   const handleDragStart = ({ active }: DragStartEvent) => {
@@ -327,7 +341,7 @@ export function DepartmentManager() {
                   <option value="">None (root department)</option>
                   {parentOptions.map((dept) => (
                     <option key={dept.id} value={dept.id}>
-                      {dept.name}
+                      {formatDepartmentPath(dept.id, departments || []) || dept.name}
                     </option>
                   ))}
                 </select>
@@ -424,6 +438,22 @@ export function DepartmentManager() {
                 <span className="font-medium text-foreground">{deletingDept.name}</span> will be
                 permanently deleted. Any child departments will be moved to the root level.
               </p>
+              {deleteImpact && deleteImpact.employeeCount > 0 && (
+                <p className="text-sm text-destructive">
+                  {deleteImpact.employeeCount}{' '}
+                  {deleteImpact.employeeCount === 1 ? 'employee is' : 'employees are'} assigned to
+                  this department
+                  {deleteImpact.childCount > 0 ? ' or its sub-departments' : ''} and will lose their
+                  department assignment.
+                </p>
+              )}
+              {deleteImpact && deleteImpact.childCount > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {deleteImpact.childCount}{' '}
+                  {deleteImpact.childCount === 1 ? 'sub-department will' : 'sub-departments will'} be
+                  moved to the root level.
+                </p>
+              )}
             </div>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setDeletingDept(null)} disabled={deleteDepartment.isPending}>

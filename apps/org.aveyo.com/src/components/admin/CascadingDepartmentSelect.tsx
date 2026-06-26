@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { Label } from '../ui/label'
-import { buildDepartmentTree } from '../../lib/queries'
+import { buildDepartmentTree, formatDepartmentPath, departmentHasChildren } from '../../lib/queries'
 import type { Department } from '../../types'
 import { Info } from 'lucide-react'
 
@@ -97,6 +97,14 @@ export function CascadingDepartmentSelect({
     return 'Sub-department'
   }
 
+  const parentScopeNote = useMemo(() => {
+    if (!value || departments.length === 0) return null
+    if (!departmentHasChildren(value, departments)) return null
+
+    const path = formatDepartmentPath(value, departments)
+    return `Assigning to "${path}" applies to this department and all sub-departments for permissions and KPI scope. Select a sub-department below to narrow the assignment.`
+  }, [value, departments])
+
   return (
     <div className="space-y-3">
       {levels.map(({ levelItems, selectedId }, index) => (
@@ -125,6 +133,12 @@ export function CascadingDepartmentSelect({
           </select>
         </div>
       ))}
+      {parentScopeNote && (
+        <div className="flex items-start gap-2 text-xs text-muted-foreground rounded-md border border-border bg-muted/40 p-2.5">
+          <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+          <span>{parentScopeNote}</span>
+        </div>
+      )}
       {autoFilledNote && (
         <div className="flex items-start gap-2 text-xs text-muted-foreground">
           <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />

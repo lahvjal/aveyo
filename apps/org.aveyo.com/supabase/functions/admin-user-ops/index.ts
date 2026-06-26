@@ -128,6 +128,34 @@ async function getManagedUserIds(supabaseAdmin: ReturnType<typeof createClient>,
   return managed
 }
 
+async function isAllowedManagerAssignment(
+  supabaseAdmin: ReturnType<typeof createClient>,
+  actorUserId: string,
+  teamIds: Set<string>,
+  proposedManagerId: unknown
+): Promise<boolean> {
+  if (proposedManagerId === null || proposedManagerId === undefined) {
+    return true
+  }
+  if (typeof proposedManagerId !== 'string' || !proposedManagerId) {
+    return false
+  }
+  if (proposedManagerId === actorUserId) {
+    return true
+  }
+  if (!teamIds.has(proposedManagerId)) {
+    return false
+  }
+
+  const { data: mgrRow } = await supabaseAdmin
+    .from('profiles')
+    .select('is_manager')
+    .eq('id', proposedManagerId)
+    .maybeSingle()
+
+  return Boolean(mgrRow?.is_manager)
+}
+
 serve(async (req) => {
   const requestId = crypto.randomUUID()
 
@@ -542,17 +570,28 @@ serve(async (req) => {
 
       if (!isAdmin && isManager) {
         const teamIds = await getManagedUserIds(supabaseAdmin, userId)
+        const proposedManagerId = (profileData as Record<string, unknown>)?.manager_id
+
         if (!teamIds.has(targetUserId)) {
-          logEvent('authz_scope_denied', {
-            requestId,
-            action,
-            actorUserId: userId,
-            targetUserId,
-          })
-          return jsonResponse(
-            { error: 'Managers can only update team members', code: 'AUTHZ_SCOPE_DENIED', requestId },
-            403
+          const allowedOnboardingAssignment = await isAllowedManagerAssignment(
+            supabaseAdmin,
+            userId,
+            teamIds,
+            proposedManagerId
           )
+
+          if (!allowedOnboardingAssignment) {
+            logEvent('authz_scope_denied', {
+              requestId,
+              action,
+              actorUserId: userId,
+              targetUserId,
+            })
+            return jsonResponse(
+              { error: 'Managers can only update team members', code: 'AUTHZ_SCOPE_DENIED', requestId },
+              403
+            )
+          }
         }
       }
 
@@ -665,11 +704,17 @@ serve(async (req) => {
       }
 
       if (!isAdmin && isManager && Object.prototype.hasOwnProperty.call(safeUpdate, 'manager_id')) {
-        const managerValue = safeUpdate.manager_id
-        if (managerValue !== null && managerValue !== userId) {
+        const teamIds = await getManagedUserIds(supabaseAdmin, userId)
+        const allowed = await isAllowedManagerAssignment(
+          supabaseAdmin,
+          userId,
+          teamIds,
+          safeUpdate.manager_id
+        )
+        if (!allowed) {
           return jsonResponse(
             {
-              error: 'Managers can only assign direct reports to themselves or clear manager assignment',
+              error: 'Managers can only assign employees to themselves or a subordinate manager',
               code: 'AUTHZ_SCOPE_DENIED',
               requestId,
             },

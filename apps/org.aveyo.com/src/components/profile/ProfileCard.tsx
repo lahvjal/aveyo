@@ -2,8 +2,8 @@ import DOMPurify from 'dompurify'
 import type { Profile } from '../../types'
 import { Card, CardContent, CardHeader } from '../ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
-import { Badge } from '../ui/badge'
 import { Button } from '../ui/button'
+import { DepartmentBadge } from '../DepartmentBadge'
 import { getInitials, formatDateOnly } from '../../lib/utils'
 import { Mail, Phone, MapPin, Calendar, Cake, Linkedin, Instagram, Facebook, Pencil } from 'lucide-react'
 import { usePermissions } from '../../hooks/usePermissions'
@@ -41,12 +41,7 @@ export function ProfileCard({ profile, showContactInfo = true, onEdit }: Profile
             <h2 className="text-2xl font-bold">{profile.full_name}</h2>
             <p className="text-muted-foreground">{profile.job_title}</p>
             {profile.department && (
-              <Badge 
-                className="mt-2"
-                style={{ backgroundColor: profile.department.color, color: 'white' }}
-              >
-                {profile.department.name}
-              </Badge>
+              <DepartmentBadge department={profile.department} className="mt-2" />
             )}
           </div>
 

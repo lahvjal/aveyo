@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useProfiles, useUpdateProfile } from '../../hooks/useProfile'
 import { useDepartments } from '../../lib/queries'
 import type { Profile } from '../../types'
@@ -22,6 +22,7 @@ export function AdminUserEditor({ profile, onSaved, onCancel }: AdminUserEditorP
   const updateProfile = useUpdateProfile()
 
   const [departmentAutoFilled, setDepartmentAutoFilled] = useState(false)
+  const prevManagerIdRef = useRef(profile.manager_id || '')
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState(profile.profile_photo_url)
   const [formData, setFormData] = useState({
     full_name: profile.full_name,
@@ -50,22 +51,25 @@ export function AdminUserEditor({ profile, onSaved, onCancel }: AdminUserEditorP
     })
     setCurrentPhotoUrl(profile.profile_photo_url)
     setDepartmentAutoFilled(false)
+    prevManagerIdRef.current = profile.manager_id || ''
   }, [profile])
 
-  // Auto-update department when manager changes
+  // Auto-update department only when manager selection changes (not on manual dept edits)
   useEffect(() => {
+    if (formData.manager_id === prevManagerIdRef.current) return
+    prevManagerIdRef.current = formData.manager_id
+
     if (formData.manager_id && profiles) {
       const selectedManager = profiles.find(p => p.id === formData.manager_id)
-      if (selectedManager?.department_id && selectedManager.department_id !== formData.department_id) {
+      if (selectedManager?.department_id) {
         setFormData(prev => ({ ...prev, department_id: selectedManager.department_id || '' }))
         setDepartmentAutoFilled(true)
       }
     }
-  }, [formData.manager_id, formData.department_id, profiles])
+  }, [formData.manager_id, profiles])
 
   const handleManagerChange = (value: string) => {
     setFormData(prev => ({ ...prev, manager_id: value }))
-    setDepartmentAutoFilled(false)
   }
 
   const handleDepartmentChange = (value: string) => {

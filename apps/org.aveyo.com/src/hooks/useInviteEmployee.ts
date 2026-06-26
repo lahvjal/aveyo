@@ -78,8 +78,8 @@ export function useInviteEmployee() {
         if (!isManager && !isAdmin) {
           return { success: false, error: 'You do not have permission to invite team members' }
         }
-        if (!data.managerId || data.managerId !== currentUser.id) {
-          return { success: false, error: 'Manager ID must be set to your user ID in manager mode' }
+        if (!data.managerId) {
+          return { success: false, error: 'Manager is required' }
         }
       }
 
@@ -132,11 +132,14 @@ export function useInviteEmployee() {
           })
 
           if (updateError || !updateData?.success) {
-            console.warn(
-              'useInviteEmployee: Failed to update manager/department:',
-              getAdminErrorMessage(updateData, updateError, 'Failed to update manager/department')
-            )
-            // Don't fail the entire invitation for this
+            const errMsg = getAdminErrorMessage(updateData, updateError, 'Failed to update manager/department')
+            console.error('useInviteEmployee: Failed to update manager/department:', errMsg)
+            return {
+              success: false,
+              userId: newUserId,
+              email: data.email,
+              error: `User created but failed to assign manager/department: ${errMsg}`,
+            }
           }
         }
 

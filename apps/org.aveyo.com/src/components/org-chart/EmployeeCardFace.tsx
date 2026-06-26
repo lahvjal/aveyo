@@ -1,6 +1,6 @@
 import type { HTMLAttributes } from 'react'
 import type { OrgChartProfile } from '../../types'
-import { Badge } from '../ui/badge'
+import { DepartmentBadge } from '../DepartmentBadge'
 import { getInitials, cn } from '../../lib/utils'
 import { Mail } from 'lucide-react'
 
@@ -80,15 +80,7 @@ export function EmployeeCardFace({
         </p>
 
         {profile.department && (
-          <Badge
-            className={styles.badge}
-            style={{
-              backgroundColor: profile.department.color,
-              color: 'white',
-            }}
-          >
-            {profile.department.name}
-          </Badge>
+          <DepartmentBadge department={profile.department} className={styles.badge} />
         )}
 
         {profile.email && (

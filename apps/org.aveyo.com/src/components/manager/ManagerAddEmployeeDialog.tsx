@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useInviteEmployee } from '../../hooks/useInviteEmployee'
 import { useProfile, useProfileBranch } from '../../hooks/useProfile'
-import { useDepartments } from '../../lib/queries'
+import { useDepartments, getDepartmentDescendantIds } from '../../lib/queries'
 import {
   Dialog,
   DialogContent,
@@ -12,7 +12,8 @@ import {
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
-import { Loader2, CheckCircle2, AlertCircle, Info } from 'lucide-react'
+import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
+import { CascadingDepartmentSelect } from '../admin/CascadingDepartmentSelect'
 
 interface ManagerAddEmployeeDialogProps {
   open: boolean
@@ -37,21 +38,34 @@ export function ManagerAddEmployeeDialog({ open, onOpenChange }: ManagerAddEmplo
   const { data: departments } = useDepartments()
 
   // Managers the current user can assign: themselves + any managers in their reporting chain
-  const assignableManagers = [
+  const assignableManagers = useMemo(() => [
     ...(currentManager ? [currentManager] : []),
     ...((branchProfiles ?? []).filter((p) => p.is_manager && p.id !== currentManager?.id)),
-  ]
+  ], [currentManager, branchProfiles])
 
-  // Auto-fill department and manager when dialog opens
+  const scopedDepartments = useMemo(() => {
+    if (!departments) return []
+    if (!currentManager?.department_id) return departments
+    const allowedIds = new Set(getDepartmentDescendantIds(currentManager.department_id, departments))
+    return departments.filter((d) => allowedIds.has(d.id))
+  }, [departments, currentManager?.department_id])
+
+  // Auto-fill manager when dialog opens
   useEffect(() => {
     if (open && currentManager) {
       setManagerId(currentManager.id)
-      if (currentManager.department_id) {
-        setDepartmentId(currentManager.department_id)
-        setDepartmentAutoFilled(true)
-      }
     }
   }, [open, currentManager])
+
+  // Auto-fill department when manager selection changes
+  useEffect(() => {
+    if (!open || !managerId) return
+    const selectedManager = assignableManagers.find((m) => m.id === managerId)
+    if (selectedManager?.department_id) {
+      setDepartmentId(selectedManager.department_id)
+      setDepartmentAutoFilled(true)
+    }
+  }, [open, managerId, assignableManagers])
 
   // Handle manual department change
   const handleDepartmentChange = (value: string) => {
@@ -284,34 +298,13 @@ export function ManagerAddEmployeeDialog({ open, onOpenChange }: ManagerAddEmplo
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="department">
-                Department
-                {departmentAutoFilled && (
-                  <span className="ml-2 text-xs text-muted-foreground">(auto-filled from your department)</span>
-                )}
-              </Label>
-              <select
-                id="department"
-                value={departmentId}
-                onChange={(e) => handleDepartmentChange(e.target.value)}
-                disabled={inviteEmployee.isPending}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="">No Department</option>
-                {departments?.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name}
-                  </option>
-                ))}
-              </select>
-              {departmentAutoFilled && (
-                <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                  <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                  <span>Department automatically set from your department. You can change it if needed.</span>
-                </div>
-              )}
-            </div>
+            <CascadingDepartmentSelect
+              departments={scopedDepartments}
+              value={departmentId}
+              onChange={handleDepartmentChange}
+              disabled={inviteEmployee.isPending}
+              autoFilledNote={departmentAutoFilled ? '(auto-filled from manager)' : undefined}
+            />
 
             <div className="space-y-2">
               <Label htmlFor="startDate">Start Date</Label>

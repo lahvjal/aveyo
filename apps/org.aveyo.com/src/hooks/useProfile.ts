@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Profile } from '../types'
+import type { Profile, Department } from '../types'
+import { formatDepartmentPath } from '../lib/queries'
 import { sendProfileUpdateEmail, sendManagerChangeEmail, sendDepartmentChangeEmail } from '../lib/notifications'
 import { useAuth } from './useAuth'
 
@@ -109,10 +110,24 @@ export function useUpdateProfile() {
 
       // Department change notification
       if (oldProfile && data && (oldProfile as any).department_id !== (data as any).department_id) {
+        const { data: allDepartments } = await supabase
+          .from('departments')
+          .select('id, name, parent_id')
+
+        const deptList = (allDepartments ?? []) as Department[]
+        const oldPath =
+          formatDepartmentPath((oldProfile as any).department_id, deptList) ||
+          (oldProfile as any).department?.name ||
+          null
+        const newPath =
+          formatDepartmentPath((data as any).department_id, deptList) ||
+          (data as any).department?.name ||
+          'None'
+
         sendDepartmentChangeEmail(
           data as any,
-          (oldProfile as any).department?.name || null,
-          (data as any).department?.name || 'None'
+          oldPath,
+          newPath
         ).catch(err => console.error('Failed to send department change email:', err))
       }
 

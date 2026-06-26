@@ -1,6 +1,6 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useProfiles, useUpdateProfile, useProfileBranch } from '../../hooks/useProfile'
-import { useDepartments } from '../../lib/queries'
+import { useDepartments, getDepartmentDescendantIds } from '../../lib/queries'
 import { useUserAuthStatus, useResendInvite, hasUserLoggedIn } from '../../hooks/useResendInvite'
 import { usePermissions } from '../../hooks/usePermissions'
 import { useProfile } from '../../hooks/useProfile'
@@ -13,8 +13,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar'
 import { Badge } from '../ui/badge'
 import { getInitials } from '../../lib/utils'
-import { Edit2, Loader2, UserPlus, Info, Mail, Clock } from 'lucide-react'
+import { Edit2, Loader2, UserPlus, Mail, Clock } from 'lucide-react'
 import { ManagerAddEmployeeDialog } from './ManagerAddEmployeeDialog'
+import { CascadingDepartmentSelect } from '../admin/CascadingDepartmentSelect'
+import { DepartmentBadge } from '../DepartmentBadge'
 
 export function ManagerUserManagement() {
   const { data: allProfiles, isLoading } = useProfiles()
@@ -35,6 +37,7 @@ export function ManagerUserManagement() {
   const [editingUser, setEditingUser] = useState<Profile | null>(null)
   const [showInviteDialog, setShowInviteDialog] = useState(false)
   const [departmentAutoFilled, setDepartmentAutoFilled] = useState(false)
+  const prevManagerIdRef = useRef('')
   const [resendingUserId, setResendingUserId] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     job_title: '',
@@ -49,9 +52,17 @@ export function ManagerUserManagement() {
     return getTeamMembers() || []
   }, [allProfiles, currentManager, getTeamMembers])
 
+  const scopedDepartments = useMemo(() => {
+    if (!departments) return []
+    if (!currentManager?.department_id) return departments
+    const allowedIds = new Set(getDepartmentDescendantIds(currentManager.department_id, departments))
+    return departments.filter((d) => allowedIds.has(d.id))
+  }, [departments, currentManager?.department_id])
+
   const handleEdit = (profile: Profile) => {
     setEditingUser(profile)
     setDepartmentAutoFilled(false)
+    prevManagerIdRef.current = profile.manager_id || ''
     setFormData({
       job_title: profile.job_title,
       manager_id: profile.manager_id || '',
@@ -60,16 +71,19 @@ export function ManagerUserManagement() {
     })
   }
 
-  // Auto-update department when manager changes (though manager shouldn't change for managers)
+  // Auto-update department only when manager selection changes
   useEffect(() => {
-    if (editingUser && formData.manager_id && allProfiles) {
+    if (!editingUser || formData.manager_id === prevManagerIdRef.current) return
+    prevManagerIdRef.current = formData.manager_id
+
+    if (formData.manager_id && allProfiles) {
       const selectedManager = allProfiles.find(p => p.id === formData.manager_id)
-      if (selectedManager?.department_id && selectedManager.department_id !== formData.department_id) {
+      if (selectedManager?.department_id) {
         setFormData(prev => ({ ...prev, department_id: selectedManager.department_id || '' }))
         setDepartmentAutoFilled(true)
       }
     }
-  }, [formData.manager_id, formData.department_id, allProfiles, editingUser])
+  }, [formData.manager_id, allProfiles, editingUser])
 
   const handleDepartmentChange = (value: string) => {
     setFormData(prev => ({ ...prev, department_id: value }))
@@ -196,33 +210,13 @@ export function ManagerUserManagement() {
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="department">
-                  Department
-                  {departmentAutoFilled && (
-                    <span className="ml-2 text-xs text-muted-foreground">(auto-updated from manager)</span>
-                  )}
-                </Label>
-                <select
-                  id="department"
-                  value={formData.department_id}
-                  onChange={(e) => handleDepartmentChange(e.target.value)}
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <option value="">No Department</option>
-                  {departments?.map((dept) => (
-                    <option key={dept.id} value={dept.id}>
-                      {dept.name}
-                    </option>
-                  ))}
-                </select>
-                {departmentAutoFilled && (
-                  <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                    <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                    <span>Department automatically updated from manager. You can change it if needed.</span>
-                  </div>
-                )}
-              </div>
+              <CascadingDepartmentSelect
+                departments={scopedDepartments}
+                value={formData.department_id}
+                onChange={handleDepartmentChange}
+                disabled={updateProfile.isPending}
+                autoFilledNote={departmentAutoFilled ? '(auto-updated from manager)' : undefined}
+              />
 
               <div className="space-y-2">
                 <Label>Job Description</Label>
@@ -233,6 +227,12 @@ export function ManagerUserManagement() {
                   minRows={4}
                 />
               </div>
+
+              {updateProfile.isError && (
+                <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
+                  Failed to update profile. Please try again.
+                </div>
+              )}
 
               <div className="flex gap-2">
                 <Button type="submit" disabled={updateProfile.isPending}>
@@ -277,12 +277,7 @@ export function ManagerUserManagement() {
                         </div>
                         <p className="text-sm text-muted-foreground truncate">{profile.job_title}</p>
                         {profile.department && (
-                          <Badge
-                            className="mt-1"
-                            style={{ backgroundColor: profile.department.color, color: 'white' }}
-                          >
-                            {profile.department.name}
-                          </Badge>
+                          <DepartmentBadge department={profile.department} className="mt-1" />
                         )}
                       </div>
                     </div>
