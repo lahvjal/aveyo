@@ -60,6 +60,9 @@ function isSurveyWindowOpen(): boolean {
   return now < windowClose
 }
 
+// Layout mirrors the "Email Wrapper" design in Figma (Aveyo 2026, node 1195:2484):
+// black header with logo + accent line, white body card, light-blue callout and
+// CTA, gray footer. Table-based with inline styles for email client support.
 function surveyEmailHtml(kind: 'launch' | 'reminder', quarterLabel: string): string {
   const heading =
     kind === 'launch'
@@ -71,37 +74,73 @@ function surveyEmailHtml(kind: 'launch' | 'reminder', quarterLabel: string): str
       ? 'Our quarterly employee survey is now open. It takes about two minutes to complete.'
       : "Just a quick reminder — you haven't completed this quarter's employee survey yet. It takes about two minutes."
 
+  const fontStack = "'Inter', Helvetica, Arial, sans-serif"
+
   return `<!DOCTYPE html>
 <html>
   <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Aveyo</title>
-    <style>
-      body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-      .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-      .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-      .header img { height: 40px; margin-bottom: 16px; }
-      .content { background: #f9fafb; padding: 30px; border-radius: 0 0 8px 8px; }
-      .button { display: inline-block; background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin: 20px 0; }
-      .note { background: #dbeafe; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0; border-radius: 4px; font-size: 14px; }
-      .footer { text-align: center; color: #6b7280; font-size: 12px; margin-top: 30px; }
-    </style>
   </head>
-  <body>
-    <div class="container">
-      <div class="header">
-        <img src="${APP_URL}/images/logo-white.png" alt="Aveyo" />
-        <h1>${heading}</h1>
-      </div>
-      <div class="content">
-        <p>Hi there,</p>
-        <p>${intro}</p>
-        <p>A key part of our mission is to become the most trusted solar brand in the world. To achieve that, we must ensure that our customers and employees feel completely taken care of. Your feedback is crucial to improving our internal processes and culture.</p>
-        <div class="note">Please answer openly and honestly. Your answers will remain confidential &mdash; responses are stored anonymously and are never linked to your name.</div>
-        <a href="${APP_URL}/survey" class="button">Take the Survey</a>
-        <p>Best regards,<br>The Aveyo Team</p>
-      </div>
-      <div class="footer"><p>This is an automated message from your organization system.</p></div>
-    </div>
+  <body style="margin: 0; padding: 0; background-color: #f4f4f4;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f4f4f4;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="672" cellpadding="0" cellspacing="0" border="0" style="width: 672px; max-width: 100%;">
+
+            <!-- Header -->
+            <tr>
+              <td align="center" style="background-color: #111111; padding: 48px 40px;">
+                <img src="${APP_URL}/images/logo-wordmark-white.png" alt="Aveyo" width="110" style="display: block; width: 110px; height: auto;" />
+                <div style="width: 48px; height: 2px; background-color: #a8d8ea; margin: 24px auto;"></div>
+                <div style="font-family: ${fontStack}; font-size: 28px; font-weight: bold; color: #ffffff; text-align: center; max-width: 520px;">
+                  ${heading}
+                </div>
+              </td>
+            </tr>
+
+            <!-- Body card -->
+            <tr>
+              <td style="background-color: #ffffff; padding: 40px 48px;">
+                <p style="font-family: ${fontStack}; font-size: 15px; color: #111111; margin: 0 0 20px;">Hi there,</p>
+                <p style="font-family: ${fontStack}; font-size: 15px; color: #111111; line-height: 1.5; margin: 0 0 20px;">${intro}</p>
+                <p style="font-family: ${fontStack}; font-size: 15px; color: #111111; line-height: 1.5; margin: 0 0 24px;">A key part of our mission is to become the most trusted solar brand in the world. To achieve that, we must ensure that our customers and employees feel completely taken care of. Your feedback is crucial to improving our internal processes and culture.</p>
+
+                <!-- Confidentiality callout -->
+                <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 28px;">
+                  <tr>
+                    <td style="background-color: #eef7fb; border-left: 4px solid #a8d8ea; padding: 16px 20px;">
+                      <p style="font-family: ${fontStack}; font-size: 14px; color: #111111; line-height: 1.5; margin: 0;">Please answer openly and honestly. Your answers will remain confidential &mdash; responses are stored anonymously and are never linked to your name.</p>
+                    </td>
+                  </tr>
+                </table>
+
+                <!-- CTA button -->
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 28px;">
+                  <tr>
+                    <td style="background-color: #a8d8ea;">
+                      <a href="${APP_URL}/survey" style="display: inline-block; font-family: ${fontStack}; font-size: 14px; font-weight: 600; color: #111111; text-decoration: none; padding: 14px 28px;">Take the Survey</a>
+                    </td>
+                  </tr>
+                </table>
+
+                <p style="font-family: ${fontStack}; font-size: 15px; color: #111111; margin: 0;">Best regards,</p>
+                <p style="font-family: ${fontStack}; font-size: 15px; font-weight: 600; color: #111111; margin: 2px 0 0;">The Aveyo Team</p>
+              </td>
+            </tr>
+
+            <!-- Footer -->
+            <tr>
+              <td align="center" style="background-color: #f4f4f4; padding: 28px 48px;">
+                <p style="font-family: ${fontStack}; font-size: 12px; color: #888888; text-align: center; margin: 0;">This is an automated message from your organization system.</p>
+              </td>
+            </tr>
+
+          </table>
+        </td>
+      </tr>
+    </table>
   </body>
 </html>`
 }
