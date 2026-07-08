@@ -5,10 +5,11 @@ import { usePageTitle } from '../hooks/usePageTitle'
 import { DepartmentManager } from '../components/admin/DepartmentManager'
 import { UserManagement } from '../components/admin/UserManagement'
 import { LogoUpload } from '../components/admin/LogoUpload'
+import { SurveyDashboard } from '../components/admin/SurveyDashboard'
 import { Button } from '../components/ui/button'
-import { Building2, Users, Palette } from 'lucide-react'
+import { Building2, Users, Palette, BarChart3 } from 'lucide-react'
 
-type Tab = 'departments' | 'users' | 'branding'
+type Tab = 'departments' | 'users' | 'branding' | 'survey'
 
 
 export default function AdminPanel() {
@@ -59,11 +60,20 @@ export default function AdminPanel() {
           <Palette className="mr-2 h-4 w-4" />
           Branding
         </Button>
+        <Button
+          variant={activeTab === 'survey' ? 'default' : 'ghost'}
+          onClick={() => setActiveTab('survey')}
+          className="rounded-b-none"
+        >
+          <BarChart3 className="mr-2 h-4 w-4" />
+          Survey / eNPS
+        </Button>
       </div>
 
       {activeTab === 'users' && <UserManagement />}
       {activeTab === 'departments' && <DepartmentManager />}
       {activeTab === 'branding' && <LogoUpload />}
+      {activeTab === 'survey' && <SurveyDashboard />}
     </div>
   )
 }

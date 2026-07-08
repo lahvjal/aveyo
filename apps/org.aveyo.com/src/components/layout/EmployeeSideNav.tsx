@@ -7,6 +7,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useProfile } from "@/hooks/useProfile";
+import { useSurveyStatus } from "@/hooks/useEmployeeSurvey";
 import { PLATFORM_UTILITY_NAV_ITEMS } from "@packages/ui/src/platform-nav";
 import { PlatformSideNav } from "@packages/ui/src/shell/platform-side-nav";
 import {
@@ -15,7 +16,7 @@ import {
 } from "@packages/ui/src/shell/types";
 
 type UtilityNavItem = PlatformUtilityNavItem & {
-  visible: (flags: { isAdmin: boolean; isManager: boolean }) => boolean;
+  visible: (flags: { isAdmin: boolean; isManager: boolean; surveyPending: boolean }) => boolean;
 };
 
 const primaryNavMatchPrefixes: Record<string, string[]> = {
@@ -55,6 +56,17 @@ const utilityNavItems: UtilityNavItem[] = PLATFORM_UTILITY_NAV_ITEMS.map((item) 
     visible: () => true
   };
 });
+
+// Quarterly employee survey link, shown while the window is open and the
+// signed-in employee hasn't submitted yet.
+const surveyNavItem: UtilityNavItem = {
+  id: "survey",
+  label: "Employee Survey",
+  icon: "documents",
+  href: "/survey",
+  matchPrefixes: ["/survey"],
+  visible: ({ surveyPending }) => surveyPending
+};
 
 function routeMatches(pathname: string, prefixes: string[] | undefined): boolean {
   if (!prefixes || prefixes.length === 0) {
@@ -121,19 +133,24 @@ export function EmployeeSideNav() {
   const { user, signOut } = useAuth();
   const { data: profile } = useProfile();
   const { isAdmin, isManager, isSuperAdmin } = usePermissions();
+  const surveyStatus = useSurveyStatus();
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const surveyPending =
+    !surveyStatus.isLoading && surveyStatus.windowOpen && !surveyStatus.hasCompleted;
 
   const visibleUtilityNavItems = useMemo(
     () =>
-      utilityNavItems
+      [surveyNavItem, ...utilityNavItems]
         .filter((item) =>
           item.visible({
             isAdmin,
-            isManager
+            isManager,
+            surveyPending
           })
         )
         .map(({ visible: _visible, ...item }) => item),
-    [isAdmin, isManager]
+    [isAdmin, isManager, surveyPending]
   );
 
   const displayName = profile?.full_name ?? user?.email ?? "Aveyo User";

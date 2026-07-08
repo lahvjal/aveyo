@@ -66,6 +66,46 @@ export async function sendDepartmentChangeEmail(
   })
 }
 
+// ── Quarterly survey emails (admin-only; recipients computed server-side) ────
+
+async function invokeSurveyEmail(type: 'launch' | 'reminder' | 'test', emails?: string[]) {
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    console.warn('invokeSurveyEmail: Not authenticated, skipping', type)
+    return { success: false as const, error: 'Not authenticated' }
+  }
+
+  const { data, error } = await supabase.functions.invoke('send-survey-email', {
+    body: emails ? { type, emails } : { type },
+  })
+
+  if (error) {
+    console.error('invokeSurveyEmail: edge function error', type, error)
+    return { success: false as const, error: error.message }
+  }
+
+  if (data?.error) {
+    return { success: false as const, error: data.error as string }
+  }
+
+  return { success: true as const, data }
+}
+
+/** Announce the current quarter's survey to all active employees. */
+export async function sendSurveyLaunchEmail() {
+  return invokeSurveyEmail('launch')
+}
+
+/** Remind active employees who haven't completed the current quarter's survey. */
+export async function sendSurveyReminderEmail() {
+  return invokeSurveyEmail('reminder')
+}
+
+/** Send a preview of the survey email to specific addresses (max 10). */
+export async function sendSurveyTestEmail(emails: string[]) {
+  return invokeSurveyEmail('test', emails)
+}
+
 // ── Invitation email (already uses edge function) ────────────────────────────
 
 export async function sendEmployeeInvitationEmail(

@@ -7,9 +7,12 @@ import { OrgChartCanvas } from '../components/org-chart/OrgChartCanvas'
 import { EmployeeSearch } from '../components/search/EmployeeSearch'
 import { ProfileCard } from '../components/profile/ProfileCard'
 import { AdminUserEditorDialog } from '../components/admin/AdminUserEditorDialog'
+import { SurveyBanner } from '../components/survey/SurveyBanner'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
-import { X, SlidersHorizontal } from 'lucide-react'
+import { X, SlidersHorizontal, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+
+const FILTER_PANEL_STORAGE_KEY = 'org-chart-filter-panel-collapsed'
 import { useDepartments, getDepartmentDescendantIds, useOrgChartPositions } from '../lib/queries'
 
 export default function Dashboard() {
@@ -21,6 +24,7 @@ export default function Dashboard() {
   const [editingProfile, setEditingProfile] = useState<string | null>(null)
   const [selectedDepartment, setSelectedDepartment] = useState<string | null>(null)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [filterPanelCollapsed, setFilterPanelCollapsed] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [isFlashMode, setIsFlashMode] = useState(false)
   const hasInitializedDepartment = useRef(false)
@@ -36,6 +40,29 @@ export default function Dashboard() {
       hasInitializedDepartment.current = true
     }
   }, [currentProfile?.department_id])
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(FILTER_PANEL_STORAGE_KEY)
+      if (stored === 'true') {
+        setFilterPanelCollapsed(true)
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [])
+
+  const toggleFilterPanelCollapsed = useCallback(() => {
+    setFilterPanelCollapsed((current) => {
+      const next = !current
+      try {
+        localStorage.setItem(FILTER_PANEL_STORAGE_KEY, String(next))
+      } catch {
+        // ignore storage errors
+      }
+      return next
+    })
+  }, [])
 
   console.log('Dashboard: user:', user?.id)
   console.log('Dashboard: currentProfile:', currentProfile)
@@ -88,7 +115,9 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col md:flex-row">
+    <div className="flex h-full min-h-0 flex-col">
+      <SurveyBanner />
+      <div className="flex flex-1 min-h-0 flex-col md:flex-row">
       {/* Mobile: filter toggle bar */}
       <div className="md:hidden flex items-center gap-2 px-4 py-2 border-b bg-white shrink-0">
         <Button
@@ -110,31 +139,62 @@ export default function Dashboard() {
       {/* Sidebar */}
       <div
         className={`
-          bg-white border-b md:border-b-0 md:border-r md:w-80 md:h-full p-4 overflow-y-auto shrink-0
-          ${sidebarOpen ? 'block' : 'hidden md:block'}
+          bg-white border-b md:border-b-0 md:border-r md:h-full shrink-0
+          transition-[width] duration-200 ease-in-out
+          ${sidebarOpen ? 'block' : 'hidden md:flex md:flex-col'}
+          ${filterPanelCollapsed ? 'md:w-12' : 'md:w-80'}
         `}
       >
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold mb-2">Organization Chart</h2>
-          <p className="text-sm text-muted-foreground">
-            {selectedDepartment
-              ? `Focusing on ${profiles.length} of ${allProfiles?.length || 0} employees`
-              : `Browse and search ${allProfiles?.length || 0} employees`}
-          </p>
+        {/* Desktop collapse toggle */}
+        <div
+          className={`hidden md:flex shrink-0 items-center border-b px-2 py-2 ${
+            filterPanelCollapsed ? 'justify-center' : 'justify-end'
+          }`}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleFilterPanelCollapsed}
+            title={filterPanelCollapsed ? 'Show search & filters' : 'Hide search & filters'}
+            aria-label={filterPanelCollapsed ? 'Show search & filters' : 'Hide search & filters'}
+            aria-expanded={!filterPanelCollapsed}
+            className="h-8 w-8"
+          >
+            {filterPanelCollapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </Button>
         </div>
 
-        <EmployeeSearch
-          profiles={allProfiles || []}
-          departments={allDepartments || []}
-          onSelectEmployee={(id) => {
-            setSelectedProfileId(id)
-            setSidebarOpen(false) // Close sidebar on mobile after selecting
-          }}
-          currentUserDepartmentId={currentProfile?.department_id || undefined}
-          selectedDepartment={selectedDepartment}
-          onDepartmentChange={setSelectedDepartment}
-          onSearchChange={setSearchQuery}
-        />
+        <div
+          className={`flex-1 overflow-y-auto p-4 ${
+            filterPanelCollapsed ? 'md:hidden' : ''
+          }`}
+        >
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold mb-2">Organization Chart</h2>
+            <p className="text-sm text-muted-foreground">
+              {selectedDepartment
+                ? `Focusing on ${profiles.length} of ${allProfiles?.length || 0} employees`
+                : `Browse and search ${allProfiles?.length || 0} employees`}
+            </p>
+          </div>
+
+          <EmployeeSearch
+            profiles={allProfiles || []}
+            departments={allDepartments || []}
+            onSelectEmployee={(id) => {
+              setSelectedProfileId(id)
+              setSidebarOpen(false) // Close sidebar on mobile after selecting
+            }}
+            currentUserDepartmentId={currentProfile?.department_id || undefined}
+            selectedDepartment={selectedDepartment}
+            onDepartmentChange={setSelectedDepartment}
+            onSearchChange={setSearchQuery}
+          />
+        </div>
       </div>
 
       {/* Main content - Org Chart */}
@@ -190,6 +250,7 @@ export default function Dashboard() {
           open={!!editingProfile}
           onOpenChange={(open) => !open && setEditingProfile(null)}
         />
+      </div>
       </div>
     </div>
   )

@@ -10,7 +10,8 @@ const protectedRoutePrefixes = [
   "/manager",
   "/admin",
   "/profile",
-  "/onboarding"
+  "/onboarding",
+  "/survey"
 ];
 const publicRoutePrefixes = ["/share", "/signup", "/forgot-password", "/reset-password"];
 

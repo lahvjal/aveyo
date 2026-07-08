@@ -677,6 +677,71 @@ export interface Database {
           },
         ]
       }
+      employee_survey_responses: {
+        Row: {
+          id: string
+          quarter: string
+          tenure: '3_plus_years' | '2_years' | '1_year' | '6_months' | 'less_than_6_months'
+          enps_score: number
+          tools_freedom: number
+          lives_values: number
+          safe_seen: number
+          comment: string | null
+          created_on: string
+        }
+        Insert: {
+          id?: string
+          quarter: string
+          tenure: '3_plus_years' | '2_years' | '1_year' | '6_months' | 'less_than_6_months'
+          enps_score: number
+          tools_freedom: number
+          lives_values: number
+          safe_seen: number
+          comment?: string | null
+          created_on?: string
+        }
+        Update: {
+          id?: string
+          quarter?: string
+          tenure?: '3_plus_years' | '2_years' | '1_year' | '6_months' | 'less_than_6_months'
+          enps_score?: number
+          tools_freedom?: number
+          lives_values?: number
+          safe_seen?: number
+          comment?: string | null
+          created_on?: string
+        }
+        Relationships: []
+      }
+      employee_survey_completions: {
+        Row: {
+          id: string
+          profile_id: string
+          quarter: string
+          completed_at: string
+        }
+        Insert: {
+          id?: string
+          profile_id: string
+          quarter: string
+          completed_at?: string
+        }
+        Update: {
+          id?: string
+          profile_id?: string
+          quarter?: string
+          completed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'employee_survey_completions_profile_id_fkey'
+            columns: ['profile_id']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       process_edit_locks: {
         Row: {
           process_id: string
@@ -813,6 +878,25 @@ export interface Database {
           locked_at: string
           message: string
         }[]
+      }
+      submit_employee_survey: {
+        Args: {
+          p_tenure: string
+          p_enps_score: number
+          p_tools_freedom: number
+          p_lives_values: number
+          p_safe_seen: number
+          p_comment?: string | null
+        }
+        Returns: string
+      }
+      current_survey_quarter: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      is_survey_window_open: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
       }
       release_process_edit_lock: {
         Args: { p_process_id: string }
