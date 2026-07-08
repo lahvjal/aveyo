@@ -145,23 +145,39 @@ function surveyEmailHtml(kind: 'launch' | 'reminder', quarterLabel: string): str
 </html>`
 }
 
-async function sendEmail(to: string, subject: string, html: string) {
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${RESEND_API_KEY}`,
-    },
-    body: JSON.stringify({ from: FROM_EMAIL, to: [to], subject, html }),
-  })
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-  if (!response.ok) {
+// Resend allows 2 requests/second. Retry 429s with backoff so a full company
+// send doesn't silently drop most recipients.
+async function sendEmail(to: string, subject: string, html: string) {
+  const maxAttempts = 4
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${RESEND_API_KEY}`,
+      },
+      body: JSON.stringify({ from: FROM_EMAIL, to: [to], subject, html }),
+    })
+
+    if (response.ok) {
+      return true
+    }
+
     const errText = await response.text()
-    console.error('send-survey-email: Resend API error:', errText)
+
+    if (response.status === 429 && attempt < maxAttempts) {
+      await sleep(1000 * attempt)
+      continue
+    }
+
+    console.error('send-survey-email: Resend API error:', response.status, errText)
     return false
   }
 
-  return true
+  return false
 }
 
 serve(async (req) => {
@@ -299,12 +315,16 @@ serve(async (req) => {
     const html = surveyEmailHtml(kind, quarterLabel)
 
     // Send individually so recipients never see each other's addresses.
+    // Batch size and pacing stay under Resend's 2 requests/second limit.
     let sentCount = 0
-    const batchSize = 10
+    const batchSize = 2
     for (let i = 0; i < recipients.length; i += batchSize) {
       const batch = recipients.slice(i, i + batchSize)
       const results = await Promise.all(batch.map((p) => sendEmail(p.email, subject, html)))
       sentCount += results.filter(Boolean).length
+      if (i + batchSize < recipients.length) {
+        await sleep(1100)
+      }
     }
 
     logEvent('survey_email_sent', {
