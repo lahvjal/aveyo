@@ -153,8 +153,7 @@
   padding-top: 10px;
 }
 
-.eventCard,
-.placeholderCard {
+.eventCard {
   aspect-ratio: 3 / 4;
   border: 1px solid var(--line-soft);
   border-radius: 10px;
@@ -468,12 +467,6 @@
   background: #f0cf61;
 }
 
-.placeholderCard {
-  background:
-    radial-gradient(circle at 50% 100%, rgba(192, 192, 192, 0.24), rgba(227, 227, 227, 0.1) 72%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(245, 245, 245, 0.78));
-}
-
 .announcementsPanel {
   display: flex;
   flex-direction: column;
@@ -599,6 +592,8 @@
   color: #111111;
   font-size: 16px;
   line-height: 1.58;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .eventInfoActionRow {

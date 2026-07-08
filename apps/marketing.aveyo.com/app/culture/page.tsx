@@ -22,7 +22,6 @@ import { CultureEventModal } from "./create-event-modal";
 import { EventInfoModal } from "./event-info-modal";
 import styles from "./culture-page.module.css";
 
-const MIN_EVENT_SLOTS = 8;
 const eventDateFormatter = new Intl.DateTimeFormat("en-US", {
   month: "long",
   day: "numeric",
@@ -191,8 +190,6 @@ export default function CulturePage() {
 
   const canManageCulture = canManageCultureFromSession(session);
   const upcomingEvents = events.filter((event) => isUpcomingEvent(event));
-  const placeholderCount = Math.max(0, MIN_EVENT_SLOTS - upcomingEvents.length);
-
   function openCreateModal() {
     setStatusMessage("");
     setLoadErrorMessage("");
@@ -399,14 +396,6 @@ export default function CulturePage() {
                   </div>
                 ) : null}
               </article>
-            ))}
-
-            {Array.from({ length: placeholderCount }, (_, index) => (
-              <div
-                key={`culture-placeholder-${index}`}
-                className={styles.placeholderCard}
-                aria-hidden="true"
-              />
             ))}
           </div>
         </section>

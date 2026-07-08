@@ -86,6 +86,10 @@ function buildPosterLabel(kind: CulturePosterKind, source: string) {
 }
 
 function buildPosterDraftsFromEvent(event: CultureEvent | null | undefined): PosterDraft[] {
+  if (!event) {
+    return [];
+  }
+
   return getEventPosters(event).map((poster) => ({
     id: poster.id,
     kind: poster.kind,
