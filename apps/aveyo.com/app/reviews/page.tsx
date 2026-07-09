@@ -15,9 +15,9 @@ type ReviewGalleryItem = {
 const reviewGalleryItems: ReviewGalleryItem[] = [
   {
     review: customerReviews[0],
-    posterSrc: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone.jpg",
-    posterAlt: "Solar-ready home exterior captured from above at golden hour",
-    videoUrl: "https://vz-bd3d2939-ded.b-cdn.net/399086ce-1515-4c0c-badd-dfa22ab8cb15/play_1080p.mp4"
+    posterSrc: "/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT4.jpg",
+    posterAlt: "Residential solar panels shown in warm afternoon light",
+    videoUrl: "https://vz-bd3d2939-ded.b-cdn.net/5c5ff234-2368-4b0b-bc7b-c2d132fb702d/play_1080p.mp4"
   },
   {
     review: customerReviews[1],
@@ -47,8 +47,14 @@ const reviewGalleryItems: ReviewGalleryItem[] = [
     review: customerReviews[9],
     posterSrc: "/images/web_photos/WhySolar_02_System-Design-CloseUp_ALT4.jpg",
     posterAlt: "Residential solar panels shown in warm afternoon light",
+    videoUrl: "https://vz-bd3d2939-ded.b-cdn.net/be86b330-10e3-458e-a689-3034bc39892b/play_1080p.mp4"
+  },
+  {
+    review: customerReviews[2],
+    posterSrc: "/images/web_photos/WhySolar_01_Hero-Solar-Home-Exterior_Drone.jpg",
+    posterAlt: "Solar-ready home exterior captured from above at golden hour",
     videoUrl: "https://vz-bd3d2939-ded.b-cdn.net/399086ce-1515-4c0c-badd-dfa22ab8cb15/play_1080p.mp4"
-  }
+  },
 ];
 
 const publishedVideoCount = reviewGalleryItems.filter((item) => item.videoUrl).length;
