@@ -37,6 +37,10 @@ export function canAccessAvaManagerViews(
   role: string | null | undefined,
   access?: PlatformAccessContext | null
 ) {
+  if (access?.isAdmin || access?.isSuperAdmin) {
+    return true;
+  }
+
   const normalizedRole = typeof role === "string" ? role.trim().toLowerCase() : "";
   if (MANAGER_VIEW_ROLE_KEYS.has(normalizedRole)) {
     return true;
@@ -49,6 +53,10 @@ export function canAccessAvaDashboard(
   role: string | null | undefined,
   access?: PlatformAccessContext | null
 ) {
+  if (access?.isAdmin || access?.isSuperAdmin) {
+    return true;
+  }
+
   if (role === "support_agent" || role === "super_admin") {
     return true;
   }

@@ -30,6 +30,17 @@ function toRoleLabel(role: string | null | undefined) {
   return "Support Agent";
 }
 
+function formatHour12(hour24: number) {
+  const period = hour24 < 12 ? "AM" : "PM";
+  const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+  return `${hour12}:00 ${period}`;
+}
+
+const HOUR_12_OPTIONS = Array.from({ length: 24 }, (_, hour24) => ({
+  value: hour24,
+  label: formatHour12(hour24)
+}));
+
 export function DashboardSettingsShell() {
   const authSession = useAuthSession();
   const [signOutPending, setSignOutPending] = useState(false);
@@ -84,7 +95,7 @@ export function DashboardSettingsShell() {
     setError(null);
     try {
       const result = await updateManagerConfigApi({
-        timezone: configDraft.timezone,
+        timezone: "America/Denver",
         workingHours: {
           enabled: configDraft.workingHours.enabled,
           weekdays: configDraft.workingHours.weekdays,
@@ -235,23 +246,10 @@ export function DashboardSettingsShell() {
             </header>
             {configDraft ? (
               <div className="manager-config-grid">
-                <label>
-                  Timezone
-                  <input
-                    type="text"
-                    value={configDraft.timezone}
-                    onChange={(event) =>
-                      setConfigDraft((current) =>
-                        current
-                          ? {
-                              ...current,
-                              timezone: event.target.value
-                            }
-                          : current
-                      )
-                    }
-                  />
-                </label>
+                <div className="manager-config-static-field">
+                  <span>Timezone</span>
+                  <p>Always MT/MST (America/Denver)</p>
+                </div>
                 <label className="manager-inline-toggle">
                   <input
                     type="checkbox"
@@ -273,11 +271,8 @@ export function DashboardSettingsShell() {
                   Enable working hours
                 </label>
                 <label>
-                  Start hour (0-23)
-                  <input
-                    type="number"
-                    min={0}
-                    max={23}
+                  Start time
+                  <select
                     value={configDraft.workingHours.startHour24}
                     onChange={(event) =>
                       setConfigDraft((current) =>
@@ -292,14 +287,17 @@ export function DashboardSettingsShell() {
                           : current
                       )
                     }
-                  />
+                  >
+                    {HOUR_12_OPTIONS.map((option) => (
+                      <option key={`start-${option.value}`} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label>
-                  End hour (0-23)
-                  <input
-                    type="number"
-                    min={0}
-                    max={23}
+                  End time
+                  <select
                     value={configDraft.workingHours.endHour24}
                     onChange={(event) =>
                       setConfigDraft((current) =>
@@ -314,7 +312,13 @@ export function DashboardSettingsShell() {
                           : current
                       )
                     }
-                  />
+                  >
+                    {HOUR_12_OPTIONS.map((option) => (
+                      <option key={`end-${option.value}`} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </label>
                 <label>
                   Weekdays (0-6 comma-separated)

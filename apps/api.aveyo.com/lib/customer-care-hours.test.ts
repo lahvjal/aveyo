@@ -4,6 +4,7 @@ import {
   isCustomerCareAvailable
 } from "@/lib/customer-care-hours";
 import {
+  FIXED_MANAGER_TIMEZONE,
   getManagerConfigSnapshot,
   updateManagerConfigResult
 } from "@/lib/manager/service";
@@ -13,7 +14,7 @@ const DEFAULT_CONFIG = getManagerConfigSnapshot();
 async function resetManagerConfig() {
   await updateManagerConfigResult(
     {
-      timezone: DEFAULT_CONFIG.timezone,
+      timezone: FIXED_MANAGER_TIMEZONE,
       workingHours: {
         enabled: DEFAULT_CONFIG.workingHours.enabled,
         weekdays: DEFAULT_CONFIG.workingHours.weekdays,
@@ -42,7 +43,6 @@ describe("customer care working hours", () => {
   it("allows handoffs during configured weekday hours", async () => {
     await updateManagerConfigResult(
       {
-        timezone: "America/Chicago",
         workingHours: {
           enabled: true,
           weekdays: [1, 2, 3, 4, 5],
@@ -54,18 +54,19 @@ describe("customer care working hours", () => {
       "super_admin"
     );
 
+    // 2026-01-05T16:00:00Z = 09:00 MST
     const result = getCustomerCareAvailability(new Date("2026-01-05T16:00:00.000Z"));
 
     expect(result.available).toBe(true);
     expect(result.reason).toBe("inside");
+    expect(result.timezone).toBe(FIXED_MANAGER_TIMEZONE);
     expect(result.localWeekday).toBe(1);
-    expect(result.localHour24).toBe(10);
+    expect(result.localHour24).toBe(9);
   });
 
   it("blocks handoffs before the start hour on an active weekday", async () => {
     await updateManagerConfigResult(
       {
-        timezone: "America/Chicago",
         workingHours: {
           enabled: true,
           weekdays: [1, 2, 3, 4, 5],
@@ -77,6 +78,7 @@ describe("customer care working hours", () => {
       "super_admin"
     );
 
+    // 2026-01-05T13:00:00Z = 06:00 MST
     const result = getCustomerCareAvailability(new Date("2026-01-05T13:00:00.000Z"));
 
     expect(result.available).toBe(false);
@@ -87,7 +89,6 @@ describe("customer care working hours", () => {
   it("blocks handoffs on inactive weekdays", async () => {
     await updateManagerConfigResult(
       {
-        timezone: "America/Chicago",
         workingHours: {
           enabled: true,
           weekdays: [1, 2, 3, 4, 5],
@@ -109,7 +110,6 @@ describe("customer care working hours", () => {
   it("treats disabled working hours as always available", async () => {
     await updateManagerConfigResult(
       {
-        timezone: "America/Chicago",
         workingHours: {
           enabled: false,
           weekdays: [1, 2, 3, 4, 5],
@@ -130,7 +130,6 @@ describe("customer care working hours", () => {
   it("supports overnight working-hour windows", async () => {
     await updateManagerConfigResult(
       {
-        timezone: "UTC",
         workingHours: {
           enabled: true,
           weekdays: [1],
@@ -142,8 +141,28 @@ describe("customer care working hours", () => {
       "super_admin"
     );
 
-    expect(getCustomerCareAvailability(new Date("2026-01-05T23:00:00.000Z")).available).toBe(true);
-    expect(getCustomerCareAvailability(new Date("2026-01-06T03:00:00.000Z")).available).toBe(true);
-    expect(getCustomerCareAvailability(new Date("2026-01-06T07:00:00.000Z")).available).toBe(false);
+    // Mon 22:00 MST, Tue 05:00 MST, Tue 07:00 MST
+    expect(getCustomerCareAvailability(new Date("2026-01-06T05:00:00.000Z")).available).toBe(true);
+    expect(getCustomerCareAvailability(new Date("2026-01-06T12:00:00.000Z")).available).toBe(true);
+    expect(getCustomerCareAvailability(new Date("2026-01-06T14:00:00.000Z")).available).toBe(false);
+  });
+
+  it("keeps timezone locked to Mountain Time even when a different value is sent", async () => {
+    const result = await updateManagerConfigResult(
+      {
+        timezone: "UTC",
+        workingHours: {
+          enabled: true,
+          weekdays: [1, 2, 3, 4, 5],
+          startHour24: 8,
+          endHour24: 18
+        }
+      },
+      "super-admin-1",
+      "super_admin"
+    );
+
+    expect(result.config.timezone).toBe(FIXED_MANAGER_TIMEZONE);
+    expect(getManagerConfigSnapshot().timezone).toBe(FIXED_MANAGER_TIMEZONE);
   });
 });

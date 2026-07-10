@@ -217,8 +217,10 @@ interface AgentDirectoryProfileRow {
 
 const MAX_ACTIVITY_ROWS = 200;
 
+export const FIXED_MANAGER_TIMEZONE = "America/Denver";
+
 const DEFAULT_MANAGER_CONFIG: ManagerConfig = {
-  timezone: "America/Chicago",
+  timezone: FIXED_MANAGER_TIMEZONE,
   workingHours: {
     enabled: true,
     weekdays: [1, 2, 3, 4, 5],
@@ -1473,7 +1475,9 @@ export async function getManagerHandoffsResult(
 }
 
 export function getManagerConfigSnapshot(): ManagerConfig {
-  return structuredClone(managerConfigState.config);
+  const config = structuredClone(managerConfigState.config);
+  config.timezone = FIXED_MANAGER_TIMEZONE;
+  return config;
 }
 
 export async function getManagerConfigResult(actorUserId: string, actorRole: AppRole): Promise<ManagerConfigResult> {
@@ -1493,18 +1497,8 @@ export async function updateManagerConfigResult(
   await checkManagerAccess(actorUserId, actorRole);
 
   const nextConfig = structuredClone(managerConfigState.config);
-  if (body.timezone !== undefined) {
-    const timezone = body.timezone.trim();
-    if (!timezone) {
-      throw new ServiceError(400, "timezone must be a non-empty IANA timezone.");
-    }
-    try {
-      Intl.DateTimeFormat("en-US", { timeZone: timezone }).format(new Date());
-    } catch {
-      throw new ServiceError(400, "timezone must be a valid IANA timezone.");
-    }
-    nextConfig.timezone = timezone;
-  }
+  // Working hours always run in Mountain Time; ignore client-provided timezone.
+  nextConfig.timezone = FIXED_MANAGER_TIMEZONE;
 
   if (body.workingHours) {
     if (body.workingHours.enabled !== undefined) {
