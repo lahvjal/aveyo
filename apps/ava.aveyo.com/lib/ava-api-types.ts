@@ -75,6 +75,8 @@ export interface ConversationCustomerDetails {
     projectRef: string | null;
     projectStatus: string | null;
     siteAddress: string | null;
+    podioItemId?: string | null;
+    podioLink?: string | null;
     metadata: Record<string, unknown>;
   };
 }

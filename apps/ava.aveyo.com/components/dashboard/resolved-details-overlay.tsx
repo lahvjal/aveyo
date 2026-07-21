@@ -80,7 +80,20 @@ export function WorkspaceDetailsOverlay({
 
         {hasSelectedConversation ? (
           <div className="workspace-details-panel-info">
-            <span className="workspace-details-panel-link">Podio Link</span>
+            {customerDetails?.podioLink ? (
+              <a
+                className="workspace-details-panel-link"
+                href={customerDetails.podioLink}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Podio Link
+              </a>
+            ) : (
+              <span className="workspace-details-panel-link workspace-details-panel-link-disabled">
+                Podio Link
+              </span>
+            )}
 
             <div className="workspace-details-panel-field">
               <span>ID:</span>

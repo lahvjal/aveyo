@@ -1255,6 +1255,11 @@ body.ava-embed-mode nextjs-portal {
   text-decoration: underline;
 }
 
+.workspace-details-panel-link-disabled {
+  color: #9aa3b2;
+  cursor: default;
+}
+
 .workspace-details-panel-field {
   display: flex;
   align-items: center;
@@ -4062,6 +4067,11 @@ body.ava-embed-mode nextjs-portal {
   color: #296cff;
   font-size: 16px;
   text-decoration: underline;
+}
+
+.detail-top-link-disabled {
+  color: #9aa3b2;
+  cursor: default;
 }
 
 .detail-info {

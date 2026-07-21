@@ -216,6 +216,7 @@ export function mapConversationCustomerDetailsToPanelData(
     address: details.customer.address ?? details.project.siteAddress ?? "N/A",
     fin: details.customer.fin ?? "N/A",
     projectRef: details.project.projectRef ?? "N/A",
-    projectStatus: details.project.projectStatus ?? "N/A"
+    projectStatus: details.project.projectStatus ?? "N/A",
+    podioLink: details.project.podioLink ?? null
   };
 }

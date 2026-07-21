@@ -11,6 +11,7 @@ export interface MySqlCustomerProjectDetails {
   financeId: string | null;
   projectStatus: string | null;
   projectTitle: string | null;
+  podioItemId: string | null;
 }
 
 export interface MySqlProjectCustomerCandidate {
@@ -47,6 +48,7 @@ interface ProjectDataRow {
   financeId: string | null;
   projectStatus: string | null;
   projectTitle: string | null;
+  podioItemId: string | null;
 }
 
 interface ProjectCustomerListRow extends ProjectDataRow {
@@ -240,7 +242,10 @@ function mapProjectDataRow(
     fullAddress: normalizeString(row.fullAddress),
     financeId: normalizeString(row.financeId),
     projectStatus: normalizeString(row.projectStatus),
-    projectTitle: normalizeString(row.projectTitle)
+    projectTitle: normalizeString(row.projectTitle),
+    podioItemId: normalizeString(
+      row.podioItemId === null || row.podioItemId === undefined ? null : String(row.podioItemId)
+    )
   };
 }
 
@@ -264,7 +269,8 @@ async function queryProjectData(
         \`full-address\` AS fullAddress,
         \`finance-id\` AS financeId,
         \`project-status\` AS projectStatus,
-        \`project-title\` AS projectTitle
+        \`project-title\` AS projectTitle,
+        CAST(\`item_id\` AS CHAR) AS podioItemId
       FROM \`project-data\`
       WHERE \`is_deleted\` = 0
         AND ${whereClause}

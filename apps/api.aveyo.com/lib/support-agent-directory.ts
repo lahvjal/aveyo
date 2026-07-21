@@ -1,3 +1,4 @@
+import { toAgentFirstName } from "@/lib/agent-name";
 import { getOnlineSupportAgentIds } from "@/lib/presence/service";
 import { ServiceError } from "@/lib/service-error";
 import { getSupabaseServiceRoleClient } from "@/lib/supabase/server";
@@ -32,12 +33,12 @@ function isActiveEmployee(employmentStatus: string | null | undefined) {
 function toDisplayName(profile: SupportAgentProfileRow) {
   const preferredName = profile.preferred_name?.trim();
   if (preferredName) {
-    return preferredName;
+    return toAgentFirstName(preferredName, "Support Agent");
   }
 
   const fullName = profile.full_name?.trim();
   if (fullName) {
-    return fullName;
+    return toAgentFirstName(fullName, "Support Agent");
   }
 
   const email = profile.email?.trim();

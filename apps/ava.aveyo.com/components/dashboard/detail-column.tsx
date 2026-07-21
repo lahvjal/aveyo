@@ -44,7 +44,18 @@ export function DetailColumn({
     <aside className="detail-column">
       <header className="detail-topbar">
         <strong>Details</strong>
-        <span className="detail-top-link">Podio Link</span>
+        {customerDetails?.podioLink ? (
+          <a
+            className="detail-top-link"
+            href={customerDetails.podioLink}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Podio Link
+          </a>
+        ) : (
+          <span className="detail-top-link detail-top-link-disabled">Podio Link</span>
+        )}
       </header>
 
       {hasSelectedConversation ? (

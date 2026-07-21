@@ -59,4 +59,5 @@ export interface CustomerPanelDetails {
   fin: string;
   projectRef: string;
   projectStatus: string;
+  podioLink: string | null;
 }

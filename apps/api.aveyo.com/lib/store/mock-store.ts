@@ -18,6 +18,7 @@ import {
   listMySqlIdentityProjects,
   listMySqlProjectCustomers
 } from "@/lib/mysql/customer-projects";
+import { toAgentFirstName } from "@/lib/agent-name";
 import { getMySqlCustomerProjectContextSnapshot } from "@/lib/mysql/customer-project-context";
 import {
   detectCustomerMessageSentimentForIncomingMessage,
@@ -119,6 +120,8 @@ export interface ConversationCustomerDetails {
     projectRef: string | null;
     projectStatus: string | null;
     siteAddress: string | null;
+    podioItemId: string | null;
+    podioLink: string | null;
     metadata: Record<string, unknown>;
   };
 }
@@ -293,6 +296,8 @@ interface ResolvedCustomerProjectDetails {
   projectRef: string | null;
   projectStatus: string | null;
   siteAddress: string | null;
+  podioItemId: string | null;
+  podioLink: string | null;
   metadata: Record<string, unknown>;
 }
 
@@ -1252,7 +1257,7 @@ async function getSupportAgentMap(ids: string[]) {
 
   const result = new Map<string, RepresentativeProfile>();
   for (const row of (data ?? []) as ProfileRow[]) {
-    const name = row.preferred_name?.trim() || row.full_name?.trim() || "Representative";
+    const name = toAgentFirstName(row.preferred_name?.trim() || row.full_name?.trim() || null);
     result.set(row.id, {
       id: row.id,
       name,
@@ -3400,7 +3405,7 @@ export async function claimHandoff(
   }
 
   const supabase = getSupabaseServiceRoleClient();
-  const representativeName = params.representative.name || "Representative";
+  const representativeName = toAgentFirstName(params.representative.name);
   const { data: claimedRequestRows, error: claimRpcError } = await supabase.rpc(
     "claim_ava_handoff_request",
     {
@@ -3568,7 +3573,7 @@ export async function claimHandoff(
           impersonationByName: queuePresentation.impersonationByName,
           representative: {
             id: actorUserId,
-            name: params.representative.name || "Representative",
+            name: representativeName,
             avatarUrl: params.representative.avatarUrl
           }
         })
@@ -5065,6 +5070,11 @@ async function resolveCustomerProjectDetails(
   const resolvedProjectRef = projectRef ?? mysqlProjectData?.projectId ?? null;
   const resolvedProjectStatus = projectStatus ?? mysqlProjectData?.projectStatus ?? null;
   const resolvedSiteAddress = siteAddress ?? mysqlProjectData?.fullAddress ?? customerAddress;
+  const resolvedPodioItemId = mysqlProjectData?.podioItemId ?? null;
+  // Podio's id-only permalink pattern: https://podio.com/x/y/item/{item_id}
+  const resolvedPodioLink = resolvedPodioItemId
+    ? `https://podio.com/x/y/item/${encodeURIComponent(resolvedPodioItemId)}`
+    : null;
 
   const responseMetadata: Record<string, unknown> = {
     ...metadata
@@ -5115,6 +5125,8 @@ async function resolveCustomerProjectDetails(
     projectRef: resolvedProjectRef,
     projectStatus: resolvedProjectStatus,
     siteAddress: resolvedSiteAddress,
+    podioItemId: resolvedPodioItemId,
+    podioLink: resolvedPodioLink,
     metadata: responseMetadata
   };
 }
@@ -5153,6 +5165,8 @@ export async function getConversationCustomerDetails(
       projectRef: resolved.projectRef,
       projectStatus: resolved.projectStatus,
       siteAddress: resolved.siteAddress,
+      podioItemId: resolved.podioItemId,
+      podioLink: resolved.podioLink,
       metadata: resolved.metadata
     }
   };

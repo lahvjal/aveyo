@@ -1,3 +1,4 @@
+import { toAgentFirstName } from "@/lib/agent-name";
 import { runAvaSessionAutomationSweep } from "@/lib/automation/session-automation";
 import { type AppRole } from "@/lib/auth/types";
 import { getOnlineSupportAgentIds } from "@/lib/presence/service";
@@ -737,13 +738,13 @@ function getProfileDisplayName(profile: ProfileRow | undefined, fallback = "Agen
   if (!profile) {
     return fallback;
   }
-  const fullName = profile.full_name?.trim();
-  if (fullName) {
-    return fullName;
-  }
   const preferredName = profile.preferred_name?.trim();
   if (preferredName) {
-    return preferredName;
+    return toAgentFirstName(preferredName, fallback);
+  }
+  const fullName = profile.full_name?.trim();
+  if (fullName) {
+    return toAgentFirstName(fullName, fallback);
   }
   const email = profile.email?.trim();
   if (email) {
