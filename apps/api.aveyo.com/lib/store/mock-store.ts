@@ -5071,9 +5071,13 @@ async function resolveCustomerProjectDetails(
   const resolvedProjectStatus = projectStatus ?? mysqlProjectData?.projectStatus ?? null;
   const resolvedSiteAddress = siteAddress ?? mysqlProjectData?.fullAddress ?? customerAddress;
   const resolvedPodioItemId = mysqlProjectData?.podioItemId ?? null;
-  // Podio's id-only permalink pattern: https://podio.com/x/y/item/{item_id}
-  const resolvedPodioLink = resolvedPodioItemId
-    ? `https://podio.com/x/y/item/${encodeURIComponent(resolvedPodioItemId)}`
+  // Agents work in the Projects workspace's Project app, where items are addressed
+  // by the numeric project ref (Podio app_item_id), e.g. project "05211" lives at
+  // /aveyo/projects/apps/project/items/5211. The MySQL item_id points at a sync
+  // mirror in a workspace agents cannot access, so it is not used for the link.
+  const podioProjectNumber = resolvedProjectRef?.replace(/\D/g, "").replace(/^0+/, "") || null;
+  const resolvedPodioLink = podioProjectNumber
+    ? `https://podio.com/aveyo/projects/apps/project/items/${podioProjectNumber}`
     : null;
 
   const responseMetadata: Record<string, unknown> = {
