@@ -32,6 +32,7 @@ function getLeadRows(payload: PlansLeadPayload) {
     ["UTM adset", payload.utmAdset],
     ["UTM ad", payload.utmAd],
     ["fbclid", payload.fbclid],
+    ["Consent to contact", payload.consentToContact],
     ["Submitted at", payload.submittedAt]
   ];
 }

@@ -7,6 +7,7 @@ import { CardGradientBorder } from "@/components/ui/card-gradient-border";
 import {
   AVEYO_PLAN_OPTIONS,
   AVEYO_PLANS_FORM_ID,
+  CONSENT_TO_CONTACT_TEXT,
   PLANS_LEAD_TOTAL_STEPS,
   ELECTRIC_BILL_OPTIONS,
   createPlansLeadPayload,
@@ -349,6 +350,25 @@ export default function PlansLeadForm({
                 ? "Enter a 10-digit phone number."
                 : "We'll format your number as +1 in the lead payload."}
             </p>
+            <label className="flex cursor-pointer items-start gap-3 text-left">
+              <input
+                type="checkbox"
+                checked={formState.consentToContact}
+                onChange={(event) => updateField("consentToContact", event.target.checked)}
+                className="mt-1 h-5 w-5 shrink-0 cursor-pointer accent-[#212120]"
+              />
+              <span className="text-xs leading-relaxed text-[#5f646b] text-[color:var(--site-text-muted)]">
+                {CONSENT_TO_CONTACT_TEXT}{" "}
+                <a
+                  href="/privacy-policy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline underline-offset-2"
+                >
+                  Privacy Policy
+                </a>
+              </span>
+            </label>
           </div>
         );
       default:

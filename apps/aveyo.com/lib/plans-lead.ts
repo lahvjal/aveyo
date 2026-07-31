@@ -34,10 +34,13 @@ export interface PlansLeadFormState {
   fbclid: string;
   selectedPlanId: string;
   selectedPlanName: string;
+  consentToContact: boolean;
 }
 
-export interface PlansLeadPayload extends Omit<PlansLeadFormState, "phone"> {
+export interface PlansLeadPayload
+  extends Omit<PlansLeadFormState, "phone" | "consentToContact"> {
   phone: string;
+  consentToContact: "yes" | "no";
   submittedAt: string;
 }
 
@@ -49,6 +52,9 @@ export const AVEYO_PLANS_FORM_ID = "plans-lead-form";
 export const DEFAULT_PLANS_PAGE_SLUG = "plans-form";
 export const DEFAULT_PLANS_OFFER_NAME = "Aveyo Plans Form";
 export const PLANS_LEAD_TOTAL_STEPS = 6;
+
+export const CONSENT_TO_CONTACT_TEXT =
+  "By checking this box, I agree to receive calls and text messages (including via automated technology and prerecorded messages) from Aveyo and its partners about my solar quote at the phone number provided. Consent is not a condition of purchase. Message and data rates may apply. Message frequency varies. Reply STOP to opt out.";
 
 export const ELECTRIC_BILL_OPTIONS: ElectricBill[] = [
   "$0 - $100",
@@ -294,7 +300,8 @@ export function createInitialPlansLeadFormState(searchParams: SearchParamSource)
     utmAd: readSearchParam(searchParams, "utm_ad"),
     fbclid: readSearchParam(searchParams, "fbclid"),
     selectedPlanId: resolvedPlan?.id ?? "",
-    selectedPlanName: resolvedPlan?.title ?? ""
+    selectedPlanName: resolvedPlan?.title ?? "",
+    consentToContact: false
   };
 }
 
@@ -330,6 +337,7 @@ export function createPlansLeadPayload(
     fbclid: state.fbclid.trim(),
     selectedPlanId,
     selectedPlanName,
+    consentToContact: state.consentToContact ? "yes" : "no",
     submittedAt
   };
 }
@@ -352,7 +360,12 @@ export function getStepValidationError(
         ? null
         : "Enter both your first and last name.";
     case 6:
-      return isValidPhone(state.phone) ? null : "Enter a valid 10-digit phone number.";
+      if (!isValidPhone(state.phone)) {
+        return "Enter a valid 10-digit phone number.";
+      }
+      return state.consentToContact
+        ? null
+        : "Please check the consent box so we can contact you about your quote.";
     default:
       return null;
   }
@@ -402,7 +415,8 @@ export function sanitizePlansLeadPayload(input: unknown): PlansLeadPayload {
     utmAd: readRecordString(record, "utmAd"),
     fbclid: readRecordString(record, "fbclid"),
     selectedPlanId: resolvedPlan?.id ?? "",
-    selectedPlanName: resolvedPlan?.title ?? readRecordString(record, "selectedPlanName")
+    selectedPlanName: resolvedPlan?.title ?? readRecordString(record, "selectedPlanName"),
+    consentToContact: readRecordString(record, "consentToContact") === "yes"
   };
 
   const validationError = getPlansLeadSubmissionValidationError(formState);
