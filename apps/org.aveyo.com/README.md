@@ -61,6 +61,7 @@ Set privileged values as Supabase Edge Function secrets instead:
 supabase secrets set RESEND_API_KEY=...
 supabase secrets set FROM_EMAIL=noreply@send.yourdomain.com
 supabase secrets set APP_URL=https://org.aveyo.com
+supabase secrets set GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64=...
 ```
 
 ### Database Setup
@@ -170,6 +171,7 @@ Deploy the `dist` folder to your hosting provider.
 - `VITE_APP_URL`: Your application URL (for email links)
 - `RESEND_API_KEY` (Edge secret): Resend API key, never client-side
 - `FROM_EMAIL` (Edge secret): Verified sender address
+- `GOOGLE_DRIVE_SERVICE_ACCOUNT_JSON_BASE64` (Edge secret): Base64-encoded JSON key for the read-only Google Drive library sync account
 
 ## License
 

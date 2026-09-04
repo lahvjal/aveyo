@@ -457,6 +457,143 @@ export interface Database {
           },
         ]
       }
+      field_safety_folders: {
+        Row: {
+          id: string
+          name: string
+          drive_url: string
+          drive_item_id: string | null
+          parent_folder_id: string | null
+          sort_order: number
+          updated_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          drive_url: string
+          drive_item_id?: string | null
+          parent_folder_id?: string | null
+          sort_order?: number
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          drive_url?: string
+          drive_item_id?: string | null
+          parent_folder_id?: string | null
+          sort_order?: number
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'field_safety_folders_parent_folder_id_fkey'
+            columns: ['parent_folder_id']
+            isOneToOne: false
+            referencedRelation: 'field_safety_folders'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'field_safety_folders_updated_by_fkey'
+            columns: ['updated_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      field_safety_documents: {
+        Row: {
+          id: string
+          folder_id: string | null
+          drive_item_id: string | null
+          title: string
+          description: string
+          url: string
+          sort_order: number
+          updated_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          folder_id?: string | null
+          drive_item_id?: string | null
+          title: string
+          description?: string
+          url: string
+          sort_order?: number
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          folder_id?: string | null
+          drive_item_id?: string | null
+          title?: string
+          description?: string
+          url?: string
+          sort_order?: number
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'field_safety_documents_folder_id_fkey'
+            columns: ['folder_id']
+            isOneToOne: false
+            referencedRelation: 'field_safety_folders'
+            referencedColumns: ['id']
+          },
+          {
+            foreignKeyName: 'field_safety_documents_updated_by_fkey'
+            columns: ['updated_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
+      operations_tab_links: {
+        Row: {
+          tab_key: 'processes' | 'sops' | 'field_safety_protocol'
+          drive_url: string | null
+          updated_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          tab_key: 'processes' | 'sops' | 'field_safety_protocol'
+          drive_url?: string | null
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          tab_key?: 'processes' | 'sops' | 'field_safety_protocol'
+          drive_url?: string | null
+          updated_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: 'operations_tab_links_updated_by_fkey'
+            columns: ['updated_by']
+            isOneToOne: false
+            referencedRelation: 'profiles'
+            referencedColumns: ['id']
+          },
+        ]
+      }
       organization_settings: {
         Row: {
           id: string
@@ -822,6 +959,19 @@ export interface Database {
       get_public_process_bundle: {
         Args: { p_slug: string }
         Returns: Json
+      }
+      set_operations_tab_link: {
+        Args: {
+          p_tab_key: 'processes' | 'sops' | 'field_safety_protocol'
+          p_drive_url: string | null
+        }
+        Returns: {
+          tab_key: 'processes' | 'sops' | 'field_safety_protocol'
+          drive_url: string | null
+          updated_by: string | null
+          created_at: string
+          updated_at: string
+        }
       }
       get_manager_team: {
         Args: { p_manager_id: string }

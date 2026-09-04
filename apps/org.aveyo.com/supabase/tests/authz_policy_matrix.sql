@@ -18,6 +18,182 @@ $$;
 
 DO $$
 DECLARE
+  v_manage_function_def TEXT;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'field_safety_folders'
+      AND c.relrowsecurity = TRUE
+  ) OR NOT EXISTS (
+    SELECT 1
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'field_safety_documents'
+      AND c.relrowsecurity = TRUE
+  ) THEN
+    RAISE EXCEPTION 'Field Safety library tables must have RLS enabled';
+  END IF;
+
+  IF has_table_privilege('anon', 'public.field_safety_folders', 'SELECT')
+     OR has_table_privilege('anon', 'public.field_safety_documents', 'SELECT')
+     OR has_table_privilege('anon', 'public.field_safety_folders', 'INSERT')
+     OR has_table_privilege('anon', 'public.field_safety_documents', 'INSERT') THEN
+    RAISE EXCEPTION 'anon must not access the Field Safety library';
+  END IF;
+
+  IF NOT has_table_privilege('authenticated', 'public.field_safety_folders', 'SELECT')
+     OR NOT has_table_privilege('authenticated', 'public.field_safety_documents', 'SELECT')
+     OR NOT has_table_privilege('authenticated', 'public.field_safety_folders', 'INSERT')
+     OR NOT has_table_privilege('authenticated', 'public.field_safety_documents', 'INSERT') THEN
+    RAISE EXCEPTION 'authenticated needs Field Safety table grants so RLS can enforce access';
+  END IF;
+
+  SELECT pg_get_functiondef(p.oid)
+  INTO v_manage_function_def
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'private'
+    AND p.proname = 'can_manage_field_safety_library'
+  LIMIT 1;
+
+  IF v_manage_function_def IS NULL
+     OR position('employment_status' IN lower(v_manage_function_def)) = 0
+     OR position('onboarding_completed' IN lower(v_manage_function_def)) = 0
+     OR position('is_manager' IN lower(v_manage_function_def)) = 0
+     OR position('actor_department' IN lower(v_manage_function_def)) = 0
+     OR position('is_admin' IN lower(v_manage_function_def)) = 0
+     OR position('is_super_admin' IN lower(v_manage_function_def)) = 0 THEN
+    RAISE EXCEPTION 'Field Safety writes must be limited to active Operations Managers and admins';
+  END IF;
+
+  IF position('is_process_editor' IN lower(v_manage_function_def)) > 0 THEN
+    RAISE EXCEPTION 'Process Editors must not receive Field Safety write access';
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
+  v_read_policy_qual TEXT;
+  v_writer_function_def TEXT;
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_class c
+    JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname = 'public'
+      AND c.relname = 'operations_tab_links'
+      AND c.relrowsecurity = TRUE
+  ) THEN
+    RAISE EXCEPTION 'operations_tab_links must have RLS enabled';
+  END IF;
+
+  IF has_table_privilege('anon', 'public.operations_tab_links', 'SELECT')
+     OR has_table_privilege('anon', 'public.operations_tab_links', 'INSERT')
+     OR has_table_privilege('anon', 'public.operations_tab_links', 'UPDATE')
+     OR has_table_privilege('anon', 'public.operations_tab_links', 'DELETE') THEN
+    RAISE EXCEPTION 'anon must not have privileges on operations_tab_links';
+  END IF;
+
+  IF NOT has_table_privilege('authenticated', 'public.operations_tab_links', 'SELECT') THEN
+    RAISE EXCEPTION 'authenticated must have SELECT so RLS can authorize Operations link reads';
+  END IF;
+
+  IF has_table_privilege('authenticated', 'public.operations_tab_links', 'INSERT')
+     OR has_table_privilege('authenticated', 'public.operations_tab_links', 'UPDATE')
+     OR has_table_privilege('authenticated', 'public.operations_tab_links', 'DELETE') THEN
+    RAISE EXCEPTION 'authenticated must not have direct DML privileges on operations_tab_links';
+  END IF;
+
+  IF has_function_privilege(
+    'anon',
+    'public.set_operations_tab_link(text,text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'anon must not execute set_operations_tab_link';
+  END IF;
+
+  IF NOT has_function_privilege(
+    'authenticated',
+    'public.set_operations_tab_link(text,text)',
+    'EXECUTE'
+  ) THEN
+    RAISE EXCEPTION 'authenticated must reach the role-checking set_operations_tab_link RPC';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'set_operations_tab_link'
+      AND p.prosecdef = TRUE
+  ) THEN
+    RAISE EXCEPTION 'the exposed set_operations_tab_link RPC must not be SECURITY DEFINER';
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'private'
+      AND p.proname = 'set_operations_tab_link'
+      AND p.prosecdef = TRUE
+  ) THEN
+    RAISE EXCEPTION 'the private set_operations_tab_link implementation must be SECURITY DEFINER';
+  END IF;
+
+  IF has_schema_privilege('anon', 'private', 'USAGE') THEN
+    RAISE EXCEPTION 'anon must not have USAGE on the private schema';
+  END IF;
+
+  SELECT qual
+  INTO v_read_policy_qual
+  FROM pg_policies
+  WHERE schemaname = 'public'
+    AND tablename = 'operations_tab_links'
+    AND policyname = 'Authorized staff can view Operations tab links';
+
+  IF v_read_policy_qual IS NULL
+     OR position('is_manager' IN lower(v_read_policy_qual)) = 0
+     OR position('actor_department' IN lower(v_read_policy_qual)) = 0
+     OR position('is_admin' IN lower(v_read_policy_qual)) = 0
+     OR position('is_super_admin' IN lower(v_read_policy_qual)) = 0 THEN
+    RAISE EXCEPTION 'Operations link SELECT policy must allow only Operations Managers and admins';
+  END IF;
+
+  IF position('is_process_editor' IN lower(v_read_policy_qual)) > 0 THEN
+    RAISE EXCEPTION 'Process Editors must not receive Operations link SELECT access';
+  END IF;
+
+  SELECT pg_get_functiondef(p.oid)
+  INTO v_writer_function_def
+  FROM pg_proc p
+  JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = 'private'
+    AND p.proname = 'set_operations_tab_link'
+  LIMIT 1;
+
+  IF v_writer_function_def IS NULL
+     OR position('is_manager' IN lower(v_writer_function_def)) = 0
+     OR position('actor_department' IN lower(v_writer_function_def)) = 0
+     OR position('is_admin' IN lower(v_writer_function_def)) = 0
+     OR position('is_super_admin' IN lower(v_writer_function_def)) = 0 THEN
+    RAISE EXCEPTION 'Operations link writer must allow only Operations Managers and admins';
+  END IF;
+
+  IF position('is_process_editor' IN lower(v_writer_function_def)) > 0 THEN
+    RAISE EXCEPTION 'Process Editors must not receive Operations link write access';
+  END IF;
+END;
+$$;
+
+DO $$
+DECLARE
   v_function_def TEXT;
 BEGIN
   SELECT pg_get_functiondef(p.oid)

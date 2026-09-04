@@ -44,4 +44,53 @@ describe('authz regression matrix', () => {
     expect(matrix.edge.admin_user_ops_update_profile_manager_privileged_fields.manager).toBe('deny')
     expect(matrix.edge.send_invitation_email_body_spoofed_userid.authenticated).toBe('deny')
   })
+
+  it('limits Operations link reads and writes to Operations Managers and admins', () => {
+    for (const scenario of [
+      matrix.sql.operations_tab_links_read,
+      matrix.sql.operations_tab_links_write,
+    ]) {
+      expect(scenario.anon).toBe('deny')
+      expect(scenario.authenticated).toBe('deny')
+      expect(scenario.manager).toBe('deny')
+      expect(scenario.operations_manager).toBe('allow')
+      expect(scenario.admin).toBe('allow')
+      expect(scenario.super_admin).toBe('allow')
+      expect(scenario.process_editor).toBe('deny')
+    }
+  })
+
+  it('lets active staff read Field Safety while limiting maintenance to Operations leaders', () => {
+    expect(matrix.sql.field_safety_library_read).toEqual({
+      anon: 'deny',
+      authenticated: 'allow',
+      manager: 'allow',
+      operations_manager: 'allow',
+      admin: 'allow',
+      super_admin: 'allow',
+      process_editor: 'allow',
+    })
+
+    expect(matrix.sql.field_safety_library_write).toEqual({
+      anon: 'deny',
+      authenticated: 'deny',
+      manager: 'deny',
+      operations_manager: 'allow',
+      admin: 'allow',
+      super_admin: 'allow',
+      process_editor: 'deny',
+    })
+  })
+
+  it('limits Google Drive synchronization to Operations Managers and admins', () => {
+    expect(matrix.edge.sync_google_drive_library).toEqual({
+      anon: 'deny',
+      authenticated: 'deny',
+      manager: 'deny',
+      operations_manager: 'allow',
+      admin: 'allow',
+      super_admin: 'allow',
+      process_editor: 'deny',
+    })
+  })
 })

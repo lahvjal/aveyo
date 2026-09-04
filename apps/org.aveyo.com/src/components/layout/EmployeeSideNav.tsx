@@ -21,7 +21,7 @@ type UtilityNavItem = PlatformUtilityNavItem & {
 
 const primaryNavMatchPrefixes: Record<string, string[]> = {
   org: ["/dashboard"],
-  operations: ["/operations", "/processes", "/sops"]
+  operations: ["/operations", "/processes", "/sops", "/field-safety-protocol"]
 };
 
 const utilityNavItems: UtilityNavItem[] = PLATFORM_UTILITY_NAV_ITEMS.map((item) => {

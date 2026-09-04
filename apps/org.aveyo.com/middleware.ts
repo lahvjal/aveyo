@@ -7,6 +7,7 @@ const protectedRoutePrefixes = [
   "/operations",
   "/processes",
   "/sops",
+  "/field-safety-protocol",
   "/manager",
   "/admin",
   "/profile",

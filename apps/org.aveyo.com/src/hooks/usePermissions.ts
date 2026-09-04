@@ -3,6 +3,7 @@ import { useProfiles } from './useProfile'
 import { useMemo } from 'react'
 import type { Profile } from '../types'
 import { useAuth } from './useAuth'
+import { canManageOperationsTabLinks } from '../lib/operations-config'
 
 export function usePermissions() {
   const { user, loading: authLoading } = useAuth()
@@ -44,6 +45,7 @@ export function usePermissions() {
   const isSuperAdmin = profile?.is_super_admin || false
   const isAdmin = profile?.is_admin || isSuperAdmin
   const isProcessEditor = profile?.is_process_editor || false
+  const canManageOperationsTabs = canManageOperationsTabLinks(profile)
 
   return {
     isAdmin,
@@ -62,6 +64,7 @@ export function usePermissions() {
     canManageTeam: isAdmin || profile?.is_manager || false,
     canEditOrgChart: isAdmin,
     canManageDepartments: isAdmin,
+    canManageOperationsTabs,
     canCreateShareLinks: isAdmin,
     canViewAuditLogs: isAdmin,
     getTeamMembers: () => getTeamMembers || [],

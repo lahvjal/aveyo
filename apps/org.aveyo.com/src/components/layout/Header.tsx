@@ -50,7 +50,7 @@ export function Header() {
     <>
       <Link to="/dashboard" className={navLinkClass('/dashboard')}>Org Chart</Link>
       <Link to="/profile" className={navLinkClass('/profile')}>My Profile</Link>
-      <Link to="/operations" className={navLinkClass('/operations', ['/operations', '/processes', '/sops'])}>Operations</Link>
+      <Link to="/operations" className={navLinkClass('/operations', ['/operations', '/processes', '/sops', '/field-safety-protocol'])}>Operations</Link>
       {isManager && (
         <Link to="/manager" className={navLinkClass('/manager')}>Manager Panel</Link>
       )}
@@ -72,7 +72,7 @@ export function Header() {
     <>
       <Link to="/dashboard" className={mobileNavLinkClass('/dashboard')} onClick={() => setMobileMenuOpen(false)}>Org Chart</Link>
       <Link to="/profile" className={mobileNavLinkClass('/profile')} onClick={() => setMobileMenuOpen(false)}>My Profile</Link>
-      <Link to="/operations" className={mobileNavLinkClass('/operations', ['/operations', '/processes', '/sops'])} onClick={() => setMobileMenuOpen(false)}>Operations</Link>
+      <Link to="/operations" className={mobileNavLinkClass('/operations', ['/operations', '/processes', '/sops', '/field-safety-protocol'])} onClick={() => setMobileMenuOpen(false)}>Operations</Link>
       {isManager && (
         <Link to="/manager" className={mobileNavLinkClass('/manager')} onClick={() => setMobileMenuOpen(false)}>Manager Panel</Link>
       )}
