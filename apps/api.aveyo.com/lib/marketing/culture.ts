@@ -813,7 +813,7 @@ async function resolveCultureEventPosters(
   const resolvedPosters: CultureEventPoster[] = [];
 
   try {
-    for (const [index, posterInput] of posterInputs.entries()) {
+    for (const posterInput of posterInputs) {
       let posterKind = posterInput.posterKind;
       let posterUrl = posterInput.posterUrl;
 

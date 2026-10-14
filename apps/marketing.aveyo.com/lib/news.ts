@@ -120,3 +120,19 @@ export async function deleteMarketingNewsPost(postId: string) {
     method: "DELETE"
   });
 }
+
+export interface MarketingNewsImage {
+  url: string;
+  size: number;
+  name: string;
+}
+
+export async function uploadMarketingNewsImage(file: File): Promise<MarketingNewsImage> {
+  const body = new FormData();
+  body.append("file", file);
+  const payload = await authApiRequest<{ image: MarketingNewsImage }>("/api/marketing/news/images", {
+    method: "POST",
+    body
+  });
+  return payload.image;
+}

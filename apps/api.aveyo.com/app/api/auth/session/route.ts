@@ -5,6 +5,7 @@ import { extractAuthTokensFromRequest } from "@/lib/auth/token";
 
 function buildSessionResponsePayload(session: Awaited<ReturnType<typeof getAuthSessionResultWithOptions>>) {
   const { refreshedTokens, ...payload } = session;
+  void refreshedTokens;
   if (session.authenticated || process.env.NODE_ENV !== "production") {
     return payload;
   }

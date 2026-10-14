@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import NewsImageUpload from "@/components/news-image-upload";
 import {
   SUGGESTED_NEWS_CATEGORIES,
   type MarketingNewsMutationInput,
@@ -59,6 +60,10 @@ export default function NewsPostEditor({
 }: NewsPostEditorProps) {
   const [formState, setFormState] = useState<MarketingNewsMutationInput>(() => toFormState(initialPost));
   const [slugTouched, setSlugTouched] = useState(Boolean(initialPost?.slug));
+  const [uploadingImage, setUploadingImage] = useState<"hero" | "body" | null>(null);
+  const [bodyImage, setBodyImage] = useState<{ url: string; name: string } | null>(null);
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const isBusy = isSaving || isDeleting || uploadingImage !== null;
 
   useEffect(() => {
     setFormState(toFormState(initialPost));
@@ -74,7 +79,10 @@ export default function NewsPostEditor({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSubmit(formState);
+    if (!isBusy) {
+      const { publish, ...content } = formState;
+      onSubmit(canPublish ? { ...content, publish } : content);
+    }
   }
 
   return (
@@ -153,21 +161,30 @@ export default function NewsPostEditor({
           </div>
 
           <div className="field full">
-            <label htmlFor="news-hero-image">Hero image URL</label>
-            <input
-              id="news-hero-image"
-              value={formState.heroImageUrl}
-              onChange={(event) =>
-                setFormState((current) => ({ ...current, heroImageUrl: event.target.value }))
-              }
-              placeholder="https://..."
+            <NewsImageUpload
+              id="news-hero-upload"
+              label="Upload hero image"
+              disabled={isBusy}
+              onBusyChange={(busy) => setUploadingImage(busy ? "hero" : null)}
+              onUploaded={(image) => setFormState((current) => ({ ...current, heroImageUrl: image.url }))}
             />
+            {formState.heroImageUrl ? (
+              <div className="news-image-preview">
+                {/* eslint-disable-next-line @next/next/no-img-element -- Preview the uploaded hero image. */}
+                <img src={formState.heroImageUrl} alt="Hero image preview" />
+                <button type="button" className="secondary-button" disabled={isBusy}
+                  onClick={() => setFormState((current) => ({ ...current, heroImageUrl: "" }))}>
+                  Remove hero image
+                </button>
+              </div>
+            ) : null}
           </div>
 
           <div className="field full">
             <label htmlFor="news-body">Body markdown</label>
             <textarea
               id="news-body"
+              ref={bodyRef}
               required
               value={formState.bodyMarkdown}
               onChange={(event) =>
@@ -176,6 +193,34 @@ export default function NewsPostEditor({
               placeholder="# Article heading"
               className="news-body-field"
             />
+            <NewsImageUpload
+              id="news-body-upload"
+              label="Insert article image"
+              disabled={isBusy}
+              onBusyChange={(busy) => setUploadingImage(busy ? "body" : null)}
+              onUploaded={(image) => {
+                const start = bodyRef.current?.selectionStart ?? formState.bodyMarkdown.length;
+                const end = bodyRef.current?.selectionEnd ?? start;
+                const alt = image.name.replace(/\.[^.]+$/, "").replace(/[\[\]\\\r\n]/g, " ");
+                const markdown = `\n\n![${alt}](${image.url})\n\n`;
+                setFormState((current) => ({
+                  ...current,
+                  bodyMarkdown: current.bodyMarkdown.slice(0, start) + markdown + current.bodyMarkdown.slice(end)
+                }));
+                setBodyImage(image);
+                requestAnimationFrame(() => {
+                  bodyRef.current?.focus();
+                  bodyRef.current?.setSelectionRange(start + markdown.length, start + markdown.length);
+                });
+              }}
+            />
+            {bodyImage ? (
+              <div className="news-image-preview">
+                {/* eslint-disable-next-line @next/next/no-img-element -- Preview the uploaded article image. */}
+                <img src={bodyImage.url} alt={bodyImage.name} />
+                <span className="helper-text">Image inserted into the article. Edit its description in the markdown.</span>
+              </div>
+            ) : null}
           </div>
 
           <div className="field">
@@ -202,8 +247,8 @@ export default function NewsPostEditor({
         </div>
 
         <p className="helper-text">
-          Markdown supports headings, links, lists, and basic formatting. Leave the hero image URL blank if the
-          article should render without a hero visual.
+          Markdown supports headings, links, lists, images, and basic formatting. Use Insert article image
+          to add an image at the cursor in the body.
         </p>
 
         {canPublish ? (
@@ -224,8 +269,8 @@ export default function NewsPostEditor({
         {errorMessage ? <div className="notice warning">{errorMessage}</div> : null}
 
         <div className="button-row">
-          <button type="submit" className="primary-button" disabled={isSaving || isDeleting}>
-            {isSaving ? "Saving..." : mode === "create" ? "Create post" : "Save changes"}
+          <button type="submit" className="primary-button" disabled={isBusy}>
+            {uploadingImage ? "Preparing image..." : isSaving ? "Saving..." : mode === "create" ? "Create post" : "Save changes"}
           </button>
           <Link href={cancelHref} className="secondary-button">
             Cancel
@@ -235,7 +280,7 @@ export default function NewsPostEditor({
               type="button"
               className="secondary-button"
               onClick={onDelete}
-              disabled={isSaving || isDeleting}
+              disabled={isBusy}
             >
               {isDeleting ? "Deleting..." : "Delete post"}
             </button>
